@@ -384,6 +384,18 @@ def tang_chinh_phu():
              "có nút 🔍 Dò — người dùng bấm chọn, không phải gõ đường dẫn")
         _bao("def _quet(" in src_t3 and "NFC" in src_t3,
              "bộ dò so tên bằng NFC (macOS lưu NFD, glob trượt)")
+        # ⑧k DÁN LINK KHO LÀ ĐỦ (anh chốt 15/08): Claude trên máy mới phải tự đọc ra
+        #    hệ này là gì và luật gì phải theo — thiếu CLAUDE.md hay thiếu skill trong
+        #    kho là máy khác kéo về mất sạch 50 KB bài học đã trả giá.
+        for t_, mo_ in ((("CLAUDE.md"), "Claude tự đọc đầu phiên"),
+                        (("README.md"), "người mở link biết dùng thế nào"),
+                        (("cai-windows.ps1"), "bộ cài máy Windows"),
+                        (("HUONG-DAN-MAY-MOI.md"), "hướng dẫn người ngồi máy mới")):
+            _bao(os.path.exists(os.path.join(MAY, t_)), f"kho có {t_} — {mo_}")
+        for t_ in ("BRAIN.md", "KIEN-TRUC.md", "NHAT-KY.md", "SKILL.md"):
+            _bao(os.path.exists(os.path.join(
+                MAY, ".claude", "skills", "soc-kien-truc-su", t_)),
+                f"skill kiến trúc sư TRONG kho: {t_}")
     except OSError:
         pass
     # ⑨  CẢNH THUỘC CÂU NÀO — CHỈ ĐƯỢC TRA MỘT LẦN, trên mốc GỐC (anh bắt 13/08:
