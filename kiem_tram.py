@@ -444,6 +444,36 @@ def _get(d):
         return r.status, json.loads(r.read().decode())
 
 
+def tang_windows():
+    """CHẠY ĐƯỢC TRÊN MÁY THỨ HAI KHÔNG — nạp thử mọi module trong môi trường GIẢ
+    WINDOWS (chặn `fcntl`, thứ chỉ có trên Unix).
+
+    Vì sao thành cổng: 15/08 anh hỏi "đã ổn để chạy trên máy kia chưa", rà mới lộ ra
+    TRẠM KHÔNG KHỞI ĐỘNG NỔI — 6 tệp `import fcntl` là ImportError ngay dòng đầu.
+    Trước đó em đã báo xong vì chỉ rà LỆNH hệ điều hành mà quên rà MODULE. Cổng này
+    bắt được cả họ lỗi ấy, không riêng fcntl.
+    """
+    print("⑥ CHẠY ĐƯỢC TRÊN WINDOWS (nạp thử trong môi trường giả)")
+    import tempfile as _tf
+    gia = os.path.join(_tf.mkdtemp(), "gia-windows")
+    os.makedirs(gia, exist_ok=True)
+    for m in ("fcntl", "pwd", "grp", "termios"):        # module chỉ có trên Unix
+        open(os.path.join(gia, m + ".py"), "w").write(
+            f"raise ImportError(\"No module named '{m}'\")\n")
+    mod = ["duong_dan", "nen_tang", "kich_ban", "chuan_ten", "nhip_canh", "dong_ho",
+           "nhap_kho_chu_the", "nhap_kho_video", "xuong", "buoc3_xepkho"]
+    ma = ("import sys; sys.path.insert(0, %r); sys.path[1:1] = [%r, %r]\n"
+          % (gia, MAY, TRAM))
+    for m in mod + ["tram_tai_nguyen"]:
+        r = subprocess.run(
+            [sys.executable, "-c", ma + f"import {m}"],
+            capture_output=True, text=True, timeout=120,
+            cwd=TRAM if m == "tram_tai_nguyen" else MAY)
+        vet = (r.stderr or "").strip().splitlines()
+        _bao(r.returncode == 0, f"nạp được khi KHÔNG có fcntl · {m}",
+             vet[-1][:70] if vet and r.returncode else "")
+
+
 def tang3_route():
     print("③ ROUTE SỐNG")
     try:
@@ -763,6 +793,7 @@ if __name__ == "__main__":
     tang_nhac()
     tang_phong_cach()
     tang_extension()
+    tang_windows()          # chạy được trên máy thứ hai không (15/08)
     if sau:
         tang4_luong(ma)
     else:

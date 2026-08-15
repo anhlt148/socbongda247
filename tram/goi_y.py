@@ -24,10 +24,12 @@ import subprocess
 import unicodedata
 import sys
 
+import nen_tang as NT
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import duong_dan as DD                              # noqa: E402 — phép tách câu dùng chung
 
-CLAUDE = os.path.expanduser("~/.local/bin/claude")
+CLAUDE = NT.tim_claude()
 # Nâng haiku → SONNET (anh chốt 06/08 tối): từ khoá haiku gợi chưa trúng, anh phải tự gõ
 # tìm lại nhiều — mất thời gian người, đắt hơn nhiều so với chênh giá model. Chọn từ khoá
 # trúng đòi hỏi hình dung ẢNH NÀO TỒN TẠI cho tin này — việc VỪA, không phải việc dễ.

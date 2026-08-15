@@ -24,6 +24,8 @@ import re
 import subprocess
 import unicodedata
 
+import nen_tang as NT
+
 # dòng từ khoá: "- abc", "• abc", "* abc", "`abc`", "1. abc"
 _DONG_TK = re.compile(r"^\s*(?:[-–—*•·]|\d+[.)])\s*(.+?)\s*$")
 # câu thoại GPT trích: nằm trong " " hoặc “ ” hoặc ' ' — lấy cả dòng in đậm **...**
@@ -139,7 +141,7 @@ def _tim_cau(trich, rut_cau, da_dung):
     return tot if diem >= 0.5 else None
 
 
-CLAUDE = os.path.expanduser("~/.local/bin/claude")
+CLAUDE = NT.tim_claude()
 
 
 def _boc_bang_model(chu_dan, cac_cau):

@@ -23,7 +23,8 @@ import unicodedata
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import duong_dan as DD                                        # noqa: E402
+import duong_dan as DD
+import nen_tang as NT                                        # noqa: E402
 
 KHOV = os.path.join(DD.KHO_TAI_NGUYEN, "video-chu-the")
 SOV = os.path.join(KHOV, "so-video.jsonl")
@@ -70,9 +71,7 @@ def _doc_so():
 
 
 def _ghi_so(so):
-    import fcntl
-    with open(SOV + ".lock", "w") as khoa:
-        fcntl.flock(khoa, fcntl.LOCK_EX)
+    with NT.khoa_ghi(SOV) as khoa:
         with open(SOV, "w", encoding="utf-8") as f:
             for d in so:
                 f.write(json.dumps(d, ensure_ascii=False) + "\n")
@@ -126,7 +125,7 @@ def _nhan_may(ds_moi):
         "RÌA khung cũng false — rìa đã có phép cắt mép lo."
     )
     try:
-        r = subprocess.run([os.path.expanduser("~/.local/bin/claude"), "-p",
+        r = subprocess.run([NT.tim_claude(), "-p",
                             "--model", os.environ.get("KHO_MODEL",
                                                       "claude-haiku-4-5-20251001"),
                             "--allowedTools", "Read"],

@@ -29,7 +29,8 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tram"))
-import duong_dan as DD                                        # noqa: E402
+import duong_dan as DD
+import nen_tang as NT                                        # noqa: E402
 import gap_anh                                                # noqa: E402
 from PIL import Image                                         # noqa: E402
 
@@ -198,7 +199,7 @@ def _nhan_may(ds_moi, kho_tam):
     try:
         # prompt đi qua STDIN — để sau --allowedTools là bị cờ đó NUỐT làm tên tool,
         # CLI báo "Input must be provided" (dò ra 10/08)
-        r = subprocess.run([os.path.expanduser("~/.local/bin/claude"), "-p",
+        r = subprocess.run([NT.tim_claude(), "-p",
                             "--model", os.environ.get("KHO_MODEL",
                                                       "claude-haiku-4-5-20251001"),
                             "--allowedTools", "Read"],
@@ -430,7 +431,6 @@ def bo_nhan(me=15):
     if not can:
         print("không còn nhãn thô nào")
         return
-    import fcntl
     for i in range(0, len(can), me):
         cum = can[i:i + me]
         ds = [{"tep_tam": os.path.join(KHO, d["tep"]), "moi":
@@ -439,8 +439,7 @@ def bo_nhan(me=15):
         nhan = _nhan_may(ds, KHO)
         # KHOÁ FILE quanh đọc-merge-ghi: nhiều máy song song + anh sửa tay trên trang
         # duyệt — nguoi_sua là chân lý, máy không đè; không khoá là giẫm sổ nhau
-        with open(SO + ".lock", "w") as khoa:
-            fcntl.flock(khoa, fcntl.LOCK_EX)
+        with NT.khoa_ghi(SO) as khoa:
             so = _doc_so()
             theo_tep = {d["tep"]: d for d in so}
             bo_duoc = 0
@@ -517,7 +516,6 @@ def soat(me=8):
     đang chạy thì bỏ qua — chạy lại lệnh này mười lần cũng không đốt thêm token.
     Muốn ép soát lại tất thì thêm cờ `--lai` trên dòng lệnh.
     """
-    import fcntl
     bac = _bac_model()
     lai = "--lai" in sys.argv
     so_het = _doc_so()
@@ -574,7 +572,7 @@ def soat(me=8):
             'Ảnh nào chỉ cần trả "ok" thì thêm dòng riêng "<tên tệp>#chac": "cao|vua|thap".'
         )
         try:
-            r = subprocess.run([os.path.expanduser("~/.local/bin/claude"), "-p",
+            r = subprocess.run([NT.tim_claude(), "-p",
                                 "--model", os.environ.get("KHO_MODEL",
                                                           "claude-sonnet-5"),
                                 "--allowedTools", "Read"],
@@ -584,8 +582,7 @@ def soat(me=8):
         except Exception as e:
             print(f"  ⚠ mẻ nghẽn ({e})")
             continue
-        with open(SO + ".lock", "w") as khoa:
-            fcntl.flock(khoa, fcntl.LOCK_EX)
+        with NT.khoa_ghi(SO) as khoa:
             so = _doc_so()
             theo = {d["tep"]: d for d in so}
             sua = 0

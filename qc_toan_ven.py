@@ -37,7 +37,7 @@ def _do_dai(f):
     return float(r.stdout.strip())
 
 
-def _trich_het(video, buoc, thu_muc="/tmp/_qc_khung"):
+def _trich_het(video, buoc, thu_muc=NT.thu_muc_tam("_qc_khung")):
     """Trích TOÀN BỘ khung cần kiểm bằng một lệnh ffmpeg duy nhất."""
     import glob as _g
     import shutil

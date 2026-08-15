@@ -12,9 +12,10 @@ VÌ SAO CÓ FILE NÀY (anh đặt 12/08: "cho SEO chạy cùng lúc với dựng
 CÁCH LÀM: mọi đường ghi phải qua `ghi_gop()` — khoá tệp, ĐỌC LẠI bản mới nhất trên
 đĩa, gộp phần mình sửa, rồi mới ghi. Không ai đè ai, dù chạy cùng lúc.
 """
-import fcntl
 import json
 import os
+
+import nen_tang as NT
 
 
 def duong(viec):
@@ -35,20 +36,18 @@ def ghi_gop(viec, moi):
     (tiến trình kia vừa ghi thêm trường khác). Chỉ đè đúng những khoá mình mang tới.
     """
     p = duong(viec)
-    p_khoa = p + ".khoa"
     os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
-    with open(p_khoa, "w") as f_khoa:
-        fcntl.flock(f_khoa, fcntl.LOCK_EX)
+    # KHOÁ qua nen_tang — chạy được cả macOS lẫn Windows (anh chốt 15/08: máy thứ
+    # hai chạy Windows, mà `fcntl` chỉ có trên Unix nên trạm không khởi động nổi).
+    # `with` tự mở khoá khi thoát, kể cả lúc có lỗi — khỏi cần finally như bản cũ.
+    with NT.khoa_ghi(p):
         try:
-            try:
-                kb = json.load(open(p, encoding="utf-8"))
-            except Exception:
-                kb = {}
-            kb.update(moi or {})
-            tam = p + ".tam"
-            json.dump(kb, open(tam, "w", encoding="utf-8"),
-                      ensure_ascii=False, indent=1)
-            os.replace(tam, p)          # thay NGUYÊN KHỐI — không ai đọc phải bản dở
-            return kb
-        finally:
-            fcntl.flock(f_khoa, fcntl.LOCK_UN)
+            kb = json.load(open(p, encoding="utf-8"))
+        except Exception:
+            kb = {}
+        kb.update(moi or {})
+        tam = p + ".tam"
+        json.dump(kb, open(tam, "w", encoding="utf-8"),
+                  ensure_ascii=False, indent=1)
+        os.replace(tam, p)          # thay NGUYÊN KHỐI — không ai đọc phải bản dở
+        return kb

@@ -543,3 +543,11 @@ Máy thứ hai đăng nhập Drive bằng tài khoản KHÁC, nên kho tài nguy
 **Phải làm**: web → Được chia sẻ với tôi → chuột phải → Sắp xếp → **Thêm lối tắt vào Drive** → chọn Drive của tôi. Xong mới đồng bộ xuống.
 
 **Vì sao đáng ghi**: người cài sẽ thấy 'đã chia sẻ rồi mà máy không có', rồi đi tìm lỗi ở phần mềm — trong khi lỗi nằm ở cách Google Drive hoạt động. Đã viết vào HUONG-DAN-MAY-MOI.md mục B4 kèm nhãn 'bước hay bị vấp nhất'.
+
+## Tài liệu về CODE phải đi CÙNG code (15/08)
+
+Skill kiến trúc sư — bản đồ hệ + 50 KB bài học — sống trên Drive, tách khỏi kho mã. Hôm nay dựng git mới lộ ra: máy khác `git clone` về thì có đủ mã nhưng **không có một chữ nào** về luật phải theo. Claude bên đó sẽ giẫm lại đúng những cái hố đã trả giá.
+
+**Luật**: thứ nào MÔ TẢ code (kiến trúc, bài học, nhật ký thay đổi, hướng dẫn cài) thì phải nằm TRONG kho mã, không phải ở kho tài liệu riêng. Chúng đổi cùng nhịp với mã; tách ra là chắc chắn lệch. Thứ ở ngoài chỉ nên là DỮ LIỆU (ảnh, video, sổ học của từng máy).
+
+**Kèm theo**: `CLAUDE.md` ở gốc kho là cửa vào — Claude Code tự đọc đầu mỗi phiên. Viết nó như viết cho người mới đến làm ca đêm: hệ là gì, cấm làm gì, làm xong phải kiểm gì.

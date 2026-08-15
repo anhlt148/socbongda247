@@ -28,7 +28,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 # con; dọn về gốc thì đường lệch, /tin /lam tra bảng tin ở /Users/letuananh/radar (không có)
 # → "Không thấy mã" dù mã đúng. Anh bắt trúng lỗi này 07/08.
 RADAR = os.path.join(BASE, "radar")
-CLAUDE_BIN = os.path.expanduser("~/.local/bin/claude")
+CLAUDE_BIN = NT.tim_claude()
 HANG_CHO = os.path.join(BASE, "hang-cho.jsonl")
 NHAT_KY = os.path.join(BASE, "nhat-ky-lenh.jsonl")
 # hộp thư cầu 2 chiều với phiên Claude (Monitor của phiên canh file này)

@@ -20,16 +20,18 @@ Lệnh quét GỘP HỒI TỐ toàn kho (code thuần, không model):
     python3 chuan_ten.py --quet          # xem trước, chưa ghi
     python3 chuan_ten.py --quet --ghi    # gộp thật vào sổ + bảng
 """
-import fcntl
 import json
 import os
 import re
 import time
 import unicodedata
 
-KHO = "/Volumes/DATA/socbongda247/kho-tai-nguyen/anh-chu-the"
+import duong_dan as DD
+import nen_tang as NT
+
+KHO = os.path.join(DD.KHO_TAI_NGUYEN, "anh-chu-the")
 SO = os.path.join(KHO, "so-chu-the.jsonl")
-SO_VIDEO = "/Volumes/DATA/socbongda247/kho-tai-nguyen/video-chu-the/so-video.jsonl"
+SO_VIDEO = os.path.join(DD.KHO_TAI_NGUYEN, "video-chu-the", "so-video.jsonl")
 BANG = os.path.join(KHO, "chuan-hoa-ten.json")
 
 # từ phân-THỰC-THỂ: hai tên chỉ chênh nhau mấy từ này là HAI chủ thể khác nhau
@@ -101,8 +103,7 @@ class BoGopTen:
         if bo_dau(bien) == bo_dau(chuan):
             pass                              # khác mỗi dấu vẫn đáng ghi — tra ① trúng ngay
         try:
-            with open(BANG + ".lock", "w") as kh:
-                fcntl.flock(kh, fcntl.LOCK_EX)
+            with NT.khoa_ghi(BANG) as kh:
                 try:
                     bang = json.load(open(BANG, encoding="utf-8"))
                 except Exception:
@@ -244,8 +245,7 @@ def quet(ghi=False):
     for p in (SO, SO_VIDEO):
         if not os.path.exists(p):
             continue
-        with open(p + ".lock", "w") as kh:
-            fcntl.flock(kh, fcntl.LOCK_EX)
+        with NT.khoa_ghi(p) as kh:
             ds = [json.loads(l) for l in open(p, encoding="utf-8") if l.strip()]
             n = 0
             for m in ds:

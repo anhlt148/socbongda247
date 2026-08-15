@@ -24,7 +24,6 @@ Chạy:  python3 tram_tai_nguyen.py [--cong 8756]
 """
 import argparse
 import base64
-import fcntl
 import glob
 import hashlib
 import html
@@ -49,12 +48,12 @@ from PIL import Image
 
 # đường đầy đủ trước, tên trần sau: script có thể chạy ngoài trạm (cron, launchd
 # một-lần) nơi PATH không có ~/.local/bin — gọi tên trần là FileNotFoundError câm
-_CLAUDE = next((p for p in (os.path.expanduser("~/.local/bin/claude"),
-                            "/opt/homebrew/bin/claude") if os.path.exists(p)), "claude")
 TRAM = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(TRAM))
 sys.path.insert(0, TRAM)
-import duong_dan as DD                                        # noqa: E402
+import duong_dan as DD
+import nen_tang as NT                                        # noqa: E402
+_CLAUDE = NT.tim_claude()   # MỘT nguồn — nen_tang lo cả macOS lẫn Windows (15/08)
 import nhip_canh as NC                                        # noqa: E402 — nhịp DÙNG CHUNG với xưởng
 import gap_anh                                                # noqa: E402
 import kich_ban as KB_SO                                      # noqa: E402 — cửa ghi kịch bản có khoá
@@ -105,8 +104,7 @@ SO_VIDEO_CT = os.path.join(KHO_VIDEO_CT, "so-video.jsonl")
 def _so_video_ct(sua=None):
     """Đọc/ghi sổ kho video (khoá file — script nhập cũng ghi song song)."""
     os.makedirs(KHO_VIDEO_CT, exist_ok=True)
-    with open(SO_VIDEO_CT + ".lock", "w") as khoa:
-        fcntl.flock(khoa, fcntl.LOCK_EX)
+    with NT.khoa_ghi(SO_VIDEO_CT) as khoa:
         ds = []
         if os.path.exists(SO_VIDEO_CT):
             ds = [json.loads(l) for l in open(SO_VIDEO_CT, encoding="utf-8")
@@ -451,8 +449,7 @@ def _ghi_hoc_ghep(ma, cau_chu, tu_khoa, m_anh):
              "cau": (cau_chu or "")[:180], "tu_khoa": (tu_khoa or "")[:90],
              "chu_the": m_anh.get("chu_the", ""),
              "nhan": (m_anh.get("nhan") or [])[:6]}
-        with open(HOC_GHEP + ".lock", "w") as kh:
-            fcntl.flock(kh, fcntl.LOCK_EX)
+        with NT.khoa_ghi(HOC_GHEP) as kh:
             with open(HOC_GHEP, "a", encoding="utf-8") as f:
                 f.write(json.dumps(d, ensure_ascii=False) + "\n")
         _HOC["mtime"] = 0
@@ -714,7 +711,7 @@ def _trich_ho_so_bai(ma):
         "da_dien_ra=false thì TUYỆT ĐỐI không có ảnh ăn mừng/tỷ số của trận đó.")
     try:
         r = subprocess.run(
-            [os.path.expanduser("~/.local/bin/claude"), "-p", "--model",
+            [NT.tim_claude(), "-p", "--model",
              os.environ.get("KHO_MODEL", "claude-sonnet-5")],
             input=lenh, capture_output=True, text=True, timeout=300)
         m = re.search(r"\{.*\}", r.stdout, re.S)
@@ -918,7 +915,7 @@ def _xep_kho_nghia(ma, bao_tien=None, so_ung_vien=140):
         "trong lời bình, kể cả cảnh phụ.")
     try:
         r = subprocess.run(
-            [os.path.expanduser("~/.local/bin/claude"), "-p", "--model",
+            [NT.tim_claude(), "-p", "--model",
              os.environ.get("KHO_MODEL", "claude-sonnet-5")],
             input=lenh, capture_output=True, text=True, timeout=600)
         # GIỮ BẢN THÔ của model: khi máy "không đề xuất gì" thì đây là bằng chứng duy
@@ -4523,7 +4520,7 @@ class Tay(BaseHTTPRequestHandler):
                 subprocess.Popen([sys.executable,
                                   os.path.join(DD.MAY, "nhap_kho_video.py"),
                                   "--tai", url_v],
-                                 stdout=open("/tmp/kho-video-tai.log", "a"),
+                                 stdout=open(NT.thu_muc_tam("kho-video-tai.log"), "a"),
                                  stderr=subprocess.STDOUT, start_new_session=True)
                 return self._js({"ok": True})
             if d == "/api/kho-video-sua":
@@ -4618,7 +4615,7 @@ class Tay(BaseHTTPRequestHandler):
                                       os.path.join(DD.MAY, "nhap_kho_video.py"),
                                       "--bo-nhan"],
                                      env={**os.environ, "KHO_MODEL": "claude-sonnet-5"},
-                                     stdout=open("/tmp/kho-video-tai.log", "a"),
+                                     stdout=open(NT.thu_muc_tam("kho-video-tai.log"), "a"),
                                      stderr=subprocess.STDOUT, start_new_session=True)
                 return self._js({"ok": True, "so": len(ids)})
             if d == "/api/kho-video-goc":
@@ -4746,7 +4743,7 @@ class Tay(BaseHTTPRequestHandler):
                 subprocess.Popen([sys.executable,
                                   os.path.join(DD.MAY, "nhap_kho_chu_the.py"),
                                   "--bo-nhan"],
-                                 stdout=open("/tmp/khonha-quet-nhan.log", "a"),
+                                 stdout=open(NT.thu_muc_tam("khonha-quet-nhan.log"), "a"),
                                  stderr=subprocess.STDOUT, start_new_session=True)
                 return self._js({"ok": True})
             if d == "/api/kho-nha-nhin-lai":
@@ -4770,7 +4767,7 @@ class Tay(BaseHTTPRequestHandler):
                                       os.path.join(DD.MAY, "nhap_kho_chu_the.py"),
                                       "--bo-nhan"],
                                      env={**os.environ, "KHO_MODEL": "claude-sonnet-5"},
-                                     stdout=open("/tmp/khonha-nhin-lai.log", "a"),
+                                     stdout=open(NT.thu_muc_tam("khonha-nhin-lai.log"), "a"),
                                      stderr=subprocess.STDOUT, start_new_session=True)
                 return self._js({"ok": True, "so": len(tep_ds)})
             if d == "/api/kho-nha-xoa":

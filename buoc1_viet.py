@@ -15,10 +15,10 @@ from datetime import datetime
 
 # đường đầy đủ trước, tên trần sau: script có thể chạy ngoài trạm (cron, launchd
 # một-lần) nơi PATH không có ~/.local/bin — gọi tên trần là FileNotFoundError câm
-_CLAUDE = next((p for p in (os.path.expanduser("~/.local/bin/claude"),
-                            "/opt/homebrew/bin/claude") if os.path.exists(p)), "claude")
+_CLAUDE = NT.tim_claude()   # MỘT nguồn — nen_tang lo cả macOS lẫn Windows (15/08)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import duong_dan as DD
+import nen_tang as NT                    # noqa: E402
 
 DUNG_SCRIPT = "--script" in sys.argv
 ap = [x for x in sys.argv[1:] if not x.startswith("--")]

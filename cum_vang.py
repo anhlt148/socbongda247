@@ -18,11 +18,11 @@ import os
 import re
 import subprocess
 import sys
+import nen_tang as NT                    # noqa: E402
 
 MODEL = "claude-haiku-4-5-20251001"
 # đường đầy đủ trước, tên trần sau: job chạy nền (launchd) có PATH khác hẳn shell
-_CLAUDE = next((p for p in (os.path.expanduser("~/.local/bin/claude"),
-                            "/opt/homebrew/bin/claude") if os.path.exists(p)), "claude")
+_CLAUDE = NT.tim_claude()   # MỘT nguồn — nen_tang lo cả macOS lẫn Windows (15/08)
 
 
 def chon(tieu_de, timeout=120):

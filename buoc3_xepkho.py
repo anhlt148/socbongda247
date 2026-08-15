@@ -14,6 +14,8 @@ import kich_ban as KB
 import dong_ho as DH
 import lam_tag
 
+import nen_tang as NT
+
 KHO_PY = DD.nap(DD.KHO_VIDEO_PY, "kho_video")
 
 
@@ -69,7 +71,7 @@ def _bo_sung_seo(viec, kb):
             '"binh_luan_ghim": "1-2 câu bình luận ghim giọng gần gũi, chốt bằng MỘT câu hỏi'
             ' cho người xem", "hashtag": ["3 hashtag không dấu, có #"]}')
     try:
-        r = subprocess.run([os.path.expanduser("~/.local/bin/claude"), "-p", "--model",
+        r = subprocess.run([NT.tim_claude(), "-p", "--model",
                             "claude-haiku-4-5-20251001", lenh],
                            capture_output=True, text=True, timeout=240)
         m = re.search(r"\{.*\}", r.stdout, re.S)

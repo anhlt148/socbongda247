@@ -547,3 +547,10 @@
 - **Vá bám macOS**: `open`→`_mo_thu_muc()` (os.startfile trên Windows), `osascript`→`_bao_man_hinh()` (PowerShell toast); `kiem_tram.py` bỏ 4 đường `/Volumes` ghi cứng.
 - **CHƯA THỬ THẬT** trên Windows — Mac không chạy được. Soi tĩnh: ngoặc cân, không biến lạ.
 - `kiem_tram.py --sau` ĐẠT HẾT.
+
+## 15/08 — DÁN LINK KHO LÀ ĐỦ
+- **`CLAUDE.md`** ở gốc kho (8,3 KB): Claude Code tự đọc đầu phiên — hệ là gì, ba nhịp bắt buộc, 8 nguyên tắc, cách cài, lệnh hay dùng, luật nhiều người cùng làm.
+- **`README.md`**: bảng 'nói thế này → Claude làm gì' cho người mở link.
+- **Chuyển skill soc-kien-truc-su VÀO kho** `.claude/skills/` — trước sống trên Drive, máy khác kéo mã về là mất sạch BRAIN 50 KB + KIEN-TRUC + NHAT-KY. Nay git giữ lịch sử bài học luôn. Symlink `~/.claude/skills/soc-kien-truc-su` trỏ NGƯỢC vào kho; bản Drive đổi tên `.CHUYEN-VAO-REPO-15-08` để không còn hai nguồn.
+- **Đã thử thật**: clone sang /tmp như máy trắng → đủ 8 tệp, 0 khoá lọt, 7 MB.
+- Cổng ⑧k canh đủ 8 tệp. `kiem_tram.py --sau` ĐẠT HẾT.

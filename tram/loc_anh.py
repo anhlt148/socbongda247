@@ -28,8 +28,9 @@ import subprocess
 import sys
 
 from PIL import Image, ImageDraw, ImageFont
+import nen_tang as NT                    # noqa: E402
 
-CLAUDE = os.path.expanduser("~/.local/bin/claude")
+CLAUDE = NT.tim_claude()                 # một nguồn (15/08)
 MODEL = "claude-haiku-4-5-20251001"
 O, COT = 260, 5                                    # cỡ ô và số cột trong bảng gửi model
 LO = 20                                            # mỗi lượt hỏi tối đa ngần này ảnh
