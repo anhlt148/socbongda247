@@ -3336,6 +3336,97 @@ class Tay(BaseHTTPRequestHandler):
                 return self._js({"cau_hinh": PC.doc(), "mac_dinh": PC.MAC_DINH,
                                  "ten_viet": PC.TEN_VIET,
                                  "dem": {n: len(CN._bai_trong(n)) for n in PC.TEN_VIET}})
+            if d == "/api/may-do":
+                # DÒ HỘ NGƯỜI DÙNG (anh chốt 15/08: "nhân viên máy Windows muốn đẩy
+                # lên Drive chia sẻ thì phải thay đường dẫn thế nào cho DỄ LÀM NHẤT").
+                # Bắt người ta gõ tay một đường dẫn dài là thiết kế lười — máy quét
+                # được thì máy phải quét, người chỉ việc BẤM CHỌN.
+                import glob as _g
+                loai = (q.get("loai", ["kho_tai_nguyen"])[0] or "").strip()
+                nen = [os.path.expanduser("~/Library/CloudStorage"),   # macOS
+                       os.path.expanduser("~"), "G:\\", "H:\\",     # Windows
+                       "/Volumes", "D:\\", "E:\\"]
+                ra_d, thay = [], set()
+
+                def _them(duong, vi_sao):
+                    duong = os.path.normpath(duong)
+                    if duong in thay or not os.path.isdir(duong):
+                        return
+                    thay.add(duong)
+                    try:
+                        so = len([x for x in os.listdir(duong)[:400]])
+                    except OSError:
+                        so = 0
+                    ra_d.append({"duong": duong, "vi_sao": vi_sao, "so_muc": so})
+
+                def _quet(nen_ds, ten, sau=4):
+                    """Tìm thư mục có tên CHỨA `ten`, trong vài cấp đầu.
+
+                    KHÔNG dùng glob cho phần có dấu tiếng Việt: macOS lưu tên dạng NFD
+                    (chữ và dấu tách rời), chuỗi trong mã là NFC — glob "*Sóc bóng đá*"
+                    trượt sạch dù thư mục sờ sờ ra đó. Bài học đã ghi sổ, nay tái phát.
+                    Nên: tự duyệt thư mục rồi SO CHUỖI ĐÃ CHUẨN HOÁ cả hai vế.
+                    Không quét đệ quy cả ổ — Drive vài chục nghìn tệp, quét sâu là treo.
+                    """
+                    import unicodedata as _u
+                    kim = _u.normalize("NFC", ten.strip("*")).lower()
+                    # thư mục hệ thống / rác — vào đó là quét cả đời không xong
+                    _BO = {"library", "applications", "system", "windows", ".git",
+                           "node_modules", "__pycache__", "program files",
+                           "program files (x86)", "$recycle.bin", "appdata"}
+                    ra_q, tang = [], list(nen_ds)
+                    for _ in range(sau):
+                        ke = []
+                        for n_ in tang:
+                            try:
+                                for x in os.listdir(n_):
+                                    dd = os.path.join(n_, x)
+                                    if (x.startswith(".") or x.lower() in _BO
+                                            or not os.path.isdir(dd)):
+                                        continue
+                                    if kim in _u.normalize("NFC", x).lower():
+                                        ra_q.append(dd)
+                                    else:
+                                        ke.append(dd)
+                            except OSError:
+                                pass
+                        if len(ke) > 400:          # bề ngang quá rộng thì dừng, khỏi treo
+                            break
+                        tang = ke
+                    return ra_q
+
+                if loai == "kho_tai_nguyen":
+                    # ưu tiên kho THẬT: thư mục tên kho-tai-nguyen, hoặc có sổ kho bên trong
+                    if True:
+                        for m in _quet(nen, "kho-tai-nguyen"):
+                            dau = "đã có sổ kho ảnh" if os.path.exists(
+                                os.path.join(m, "anh-chu-the", "so-chu-the.jsonl")) \
+                                else "thư mục tên kho-tai-nguyen"
+                            _them(m, ("trên Drive · " if "Drive" in m or "CloudStorage" in m
+                                      else "") + dau)
+                elif loai == "drive":
+                    goc_dr = []
+                    for n in nen:
+                        goc_dr += _g.glob(os.path.join(n, "GoogleDrive-*", "*")) + \
+                            _g.glob(os.path.join(n, "My Drive")) + \
+                            _g.glob(os.path.join(n, "Drive của tôi"))
+                    for k_ in _quet(goc_dr, "*Sóc bóng đá 247*", sau=3):
+                        _them(k_, "✅ thư mục kênh — chọn cái này")
+                    for m in goc_dr:
+                        _them(m, "gốc Drive (kênh chưa có, sẽ tạo trong đây)")
+                elif loai == "viec":
+                    for n in ("/Volumes", "D:\\", "E:\\", os.path.expanduser("~")):
+                        for m in _g.glob(os.path.join(n, "*", "socbongda247", "viec")) + \
+                                _g.glob(os.path.join(n, "socbongda247", "viec")):
+                            _them(m, "kho việc sẵn có")
+                    for n in ("/Volumes", "D:\\", "E:\\"):
+                        for m in _g.glob(os.path.join(n, "*")):
+                            if os.path.isdir(m) and not os.path.basename(m).startswith("."):
+                                _them(os.path.join(m, "socbongda247", "viec"),
+                                      "ổ trống — sẽ tạo mới ở đây")
+                # xếp: thứ CÓ THẬT và nhiều nội dung lên trước
+                ra_d.sort(key=lambda x: (-x["so_muc"], len(x["duong"])))
+                return self._js({"ds": ra_d[:8], "loai": loai})
             if d == "/api/may":                          # ĐỌC đường dẫn máy này
                 p_m = os.path.expanduser("~/.config/socbongda247/may.json")
                 try:

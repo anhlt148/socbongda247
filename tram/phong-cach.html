@@ -20,6 +20,16 @@
   .num{display:grid;grid-template-columns:1fr 110px;gap:12px;align-items:center;
        padding:7px 0;border-top:1px solid #241d1a}
   .num:first-of-type{border-top:0}
+  /* danh sách máy DÒ RA — bấm một cái là điền vào ô, khỏi gõ (anh chốt 15/08) */
+  .ds-do{display:none;margin:2px 0 8px;padding:8px;background:#0f0c0b;
+         border:1px solid var(--vien);border-radius:9px}
+  .ds-do.mo{display:block}
+  .ds-do .m{display:flex;gap:9px;align-items:center;padding:6px 8px;border-radius:7px;
+            cursor:pointer;font-size:12.5px}
+  .ds-do .m:hover{background:#1c1614}
+  .ds-do .m .d{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
+               white-space:nowrap;font-family:ui-monospace,Menlo,monospace}
+  .ds-do .m .v{color:var(--mo);font-size:11.5px;white-space:nowrap}
   .num label{font-size:13px}
   .num .ph{display:block;color:var(--mo);font-size:11.5px;margin-top:1px}
   input[type=text],input:not([type]),input[type=number],select{background:#0b0908;color:var(--chu);border:1px solid var(--vien);
@@ -132,32 +142,51 @@
     <div class="ghi" id="danhGia"></div>
   </div>
 
-  <h2>💻 Máy này</h2>
-  <p class="giai">Đường dẫn <b>riêng của máy này</b>, không dùng chung với người khác.
-    Kho tài nguyên nên trỏ vào Drive để cả nhà cùng bồi; thư mục việc để trên ổ trong
-    cho nhanh và khỏi giẫm chân nhau. Đổi xong phải <b>khởi động lại trạm</b>.</p>
-  <div class="num" style="grid-template-columns:1fr 1fr">
-    <label>Người làm
-      <span class="ph">đặt tên hộp thành phẩm — nhiều người khỏi trùng</span></label>
-    <input id="m_nguoi" placeholder="vd: anhlt · tam · quang">
+  <div class="khoi">
+    <h2>💻 Máy này</h2>
+    <p class="giai">Đường dẫn <b>riêng của máy này</b> — mỗi người một kiểu, không dùng chung.
+      Bấm <b>🔍 Dò</b> là máy tự tìm rồi anh chỉ việc chọn, khỏi gõ đường dẫn dài.
+      Đổi xong nhớ <b>khởi động lại trạm</b>.</p>
+
+    <div class="num" style="grid-template-columns:1fr 300px">
+      <label>Người làm
+        <span class="ph">đặt tên hộp thành phẩm — nhiều người khỏi trùng</span></label>
+      <input id="m_nguoi" placeholder="vd: anhlt · tam · quang">
+    </div>
+
+    <div class="num" style="grid-template-columns:1fr 300px">
+      <label>🏠 Kho TÀI NGUYÊN
+        <span class="ph">ảnh · video · nhãn. Trỏ vào Drive để CẢ NHÀ DÙNG CHUNG</span></label>
+      <div style="display:flex;gap:6px">
+        <input id="m_kho_tai_nguyen" placeholder="để trống = máy tự dò" style="flex:1;min-width:0">
+        <button class="do" data-loai="kho_tai_nguyen" title="máy tự tìm giúp">🔍</button>
+      </div>
+    </div>
+    <div class="ds-do" id="ds_kho_tai_nguyen"></div>
+
+    <div class="num" style="grid-template-columns:1fr 300px">
+      <label>📁 Thư mục VIỆC
+        <span class="ph">bài đang làm, nặng — để trên ổ trong máy cho nhanh</span></label>
+      <div style="display:flex;gap:6px">
+        <input id="m_viec" placeholder="để trống = máy tự dò" style="flex:1;min-width:0">
+        <button class="do" data-loai="viec" title="máy tự tìm giúp">🔍</button>
+      </div>
+    </div>
+    <div class="ds-do" id="ds_viec"></div>
+
+    <div class="num" style="grid-template-columns:1fr 300px">
+      <label>☁️ Thư mục DRIVE của kênh
+        <span class="ph">nơi dồn thành phẩm của cả nhà</span></label>
+      <div style="display:flex;gap:6px">
+        <input id="m_drive" placeholder="để trống = máy tự dò" style="flex:1;min-width:0">
+        <button class="do" data-loai="drive" title="máy tự tìm giúp">🔍</button>
+      </div>
+    </div>
+    <div class="ds-do" id="ds_drive"></div>
+
+    <p id="mBao" class="giai" style="min-height:18px;margin-top:10px"></p>
+    <button id="mLuu">💾 Lưu đường dẫn máy này</button>
   </div>
-  <div class="num" style="grid-template-columns:1fr 1fr">
-    <label>📁 Thư mục VIỆC
-      <span class="ph">bài đang làm, nặng — giữ trên ổ trong máy</span></label>
-    <input id="m_viec" placeholder="để trống = máy tự dò">
-  </div>
-  <div class="num" style="grid-template-columns:1fr 1fr">
-    <label>🏠 Kho TÀI NGUYÊN
-      <span class="ph">ảnh · video · nhãn — trỏ vào Drive để DÙNG CHUNG</span></label>
-    <input id="m_kho_tai_nguyen" placeholder="để trống = máy tự dò">
-  </div>
-  <div class="num" style="grid-template-columns:1fr 1fr">
-    <label>☁️ Thư mục DRIVE của kênh
-      <span class="ph">nơi dồn thành phẩm của cả nhà</span></label>
-    <input id="m_drive" placeholder="để trống = máy tự dò">
-  </div>
-  <p id="mBao" class="giai" style="min-height:18px"></p>
-  <button id="mLuu">💻 Lưu đường dẫn máy này</button>
 
   <div style="display:flex;gap:9px;margin-bottom:30px">
     <button class="chinh" id="luu">💾 Lưu cấu hình</button>
@@ -290,6 +319,35 @@ $('#luu').onclick = async () => {
     }
   } catch (e) {}
 })();
+const esc = t => String(t ?? '').replace(/[&<>"]/g,
+  c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+
+/* 🔍 DÒ HỘ — anh chốt 15/08: "nhân viên máy Windows muốn đẩy lên Drive chia sẻ thì
+   phải thay đường dẫn thế nào cho DỄ LÀM NHẤT". Bắt gõ đường dẫn dài là thiết kế
+   lười: máy quét được thì máy quét, người chỉ việc bấm chọn. */
+document.querySelectorAll('button.do').forEach(b => b.onclick = async () => {
+  const loai = b.dataset.loai, o = document.querySelector('#ds_' + loai);
+  b.textContent = '…'; b.disabled = true;
+  try {
+    const r = await api('/api/may-do?loai=' + loai);
+    const ds = r.ds || [];
+    o.innerHTML = ds.length
+      ? ds.map(x => `<div class="m" data-d="${x.duong.replace(/"/g, '&quot;')}">
+           <span class="d">${esc(x.duong)}</span>
+           <span class="v">${esc(x.vi_sao)} · ${x.so_muc} mục</span></div>`).join('')
+      : `<div class="m"><span class="d" style="color:#e8c46a">Không dò ra thư mục nào
+         — gõ tay vào ô bên trên, hoặc tạo thư mục trước rồi dò lại.</span></div>`;
+    o.classList.add('mo');
+    o.querySelectorAll('.m[data-d]').forEach(m => m.onclick = () => {
+      document.querySelector('#m_' + loai).value = m.dataset.d;
+      o.classList.remove('mo');
+      document.querySelector('#mBao').innerHTML =
+        '<span style="color:#e8c46a">Đã điền — bấm 💾 Lưu để chốt.</span>';
+    });
+  } catch (e) { bao('Dò hỏng: ' + e.message, true); }
+  b.textContent = '🔍'; b.disabled = false;
+});
+
 document.querySelector('#mLuu').onclick = async () => {
   const than = {};
   for (const k of ['nguoi', 'viec', 'kho_tai_nguyen', 'drive'])

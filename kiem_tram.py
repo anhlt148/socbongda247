@@ -376,6 +376,12 @@ def tang_chinh_phu():
         src_pc = open(os.path.join(TRAM, "phong-cach.html"), encoding="utf-8").read()
         _bao("m_kho_tai_nguyen" in src_pc and "mLuu" in src_pc,
              "trang phong cách có mục Máy này để đổi đường dẫn")
+        _bao('class="khoi"' in src_pc.split("💻 Máy này")[0][-200:],
+             "mục Máy này nằm trong KHUNG như các mục khác")
+        _bao('button.do' in src_pc and "/api/may-do" in src_pc,
+             "có nút 🔍 Dò — người dùng bấm chọn, không phải gõ đường dẫn")
+        _bao("def _quet(" in src_t3 and "NFC" in src_t3,
+             "bộ dò so tên bằng NFC (macOS lưu NFD, glob trượt)")
     except OSError:
         pass
     # ⑨  CẢNH THUỘC CÂU NÀO — CHỈ ĐƯỢC TRA MỘT LẦN, trên mốc GỐC (anh bắt 13/08:
