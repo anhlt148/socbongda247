@@ -34,6 +34,8 @@ import urllib.error
 import urllib.request
 
 MAY = os.path.expanduser("~/socbongda247")
+sys.path.insert(0, MAY)
+import duong_dan as DD                      # noqa: E402 — đường theo MÁY
 TRAM = os.path.join(MAY, "tram")
 CONG = "http://127.0.0.1:8756"
 PY = ["tram/tram_tai_nguyen.py", "tram/gap_anh.py", "xuong.py", "chuyen_dong.py", "nhip_canh.py",
@@ -406,8 +408,7 @@ def tang_chinh_phu():
         #    bài chưa xếp kho, nút "📂 Mở kho" tụt về "📂 Mở việc" trỏ sang ổ DATA).
         import importlib.util as _iu
         _sp = _iu.spec_from_file_location("_kv", os.path.join(
-            os.path.expanduser("~/Library/CloudStorage/GoogleDrive-anhlt148@gmail.com"),
-            "Drive của tôi/Dự án với claude /Kênh youtube Sóc bóng đá 247/cong-cu/kho_video.py"))
+            DD.CONG_CU, "kho_video.py"))
         _kv = _iu.module_from_spec(_sp)
         _sp.loader.exec_module(_kv)
         _bao("goi-dang" in getattr(_kv, "TEP_TIEN_TO", []) or
@@ -501,10 +502,10 @@ def tang4_luong(ma):
             for a in (r.get("anh") or []):          # dọn ngay, không để rác trong bài
                 for p in (os.path.join(os.environ.get("VIEC_DIR", ""), ""),):
                     pass
-                base = f"/Volumes/DATA/socbongda247/viec/{ma}/anh/"
+                base = os.path.join(DD.VIEC, ma, "anh") + os.sep
                 for p in (base + a["tep"], base + "_thumb/anh__" + a["tep"]):
                     os.path.exists(p) and os.remove(p)
-            p_sg = f"/Volumes/DATA/socbongda247/viec/{ma}/anh/so-gap.jsonl"
+            p_sg = os.path.join(DD.VIEC, ma, "anh", "so-gap.jsonl")
             if os.path.exists(p_sg):
                 giu = [l for l in open(p_sg, encoding="utf-8")
                        if l.strip() and "zz-kiem" not in l]
@@ -519,7 +520,7 @@ def tang4_luong(ma):
              str(r)[:60])
         if r.get("so"):                             # dọn tấm vừa nhận
             import fcntl
-            KHO = "/Volumes/DATA/socbongda247/kho-tai-nguyen/anh-chu-the"
+            KHO = os.path.join(DD.KHO_TAI_NGUYEN, "anh-chu-the")
             SO = KHO + "/so-chu-the.jsonl"
             with open(SO + ".lock", "w") as kh:
                 fcntl.flock(kh, fcntl.LOCK_EX)

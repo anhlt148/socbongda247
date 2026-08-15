@@ -2180,6 +2180,51 @@ def _diem_anh_uv(a):
     return round(d, 1)
 
 
+def _mo_thu_muc(p):
+    """Mở thư mục trong trình quản lý tệp — Mac dùng `open`, Windows `explorer`.
+
+    Hệ chạy trên máy thứ hai của anh (Windows) từ 15/08, nên mọi lệnh gọi hệ điều
+    hành phải rẽ nhánh. Thiếu nhánh Windows thì nút "📂 Mở kho" chết câm bên đó.
+    """
+    try:
+        if sys.platform == "darwin":
+            subprocess.run(["open", p], timeout=15, capture_output=True)
+        elif os.name == "nt":
+            os.startfile(p)                            # noqa: S606 — API chuẩn Windows
+        else:
+            subprocess.run(["xdg-open", p], timeout=15, capture_output=True)
+        return True
+    except Exception:
+        return False
+
+
+def _bao_man_hinh(text):
+    """Thông báo góc màn hình. Mac: osascript. Windows: PowerShell toast.
+
+    Không có thì thôi — báo Telegram vẫn chạy, đừng để cả luồng chết vì một
+    thông báo không hiện được.
+    """
+    try:
+        if sys.platform == "darwin":
+            subprocess.run(["osascript", "-e",
+                            f'display notification {json.dumps(text)} '
+                            f'with title "Trạm tài nguyên"'],
+                           timeout=10, capture_output=True)
+        elif os.name == "nt":
+            ps = ("[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications,"
+                  " ContentType=WindowsRuntime] > $null; "
+                  "$t=[Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent(0);"
+                  f"$t.GetElementsByTagName('text')[0].AppendChild($t.CreateTextNode("
+                  f"{json.dumps(text)})) > $null; "
+                  "[Windows.UI.Notifications.ToastNotificationManager]"
+                  "::CreateToastNotifier('Trạm tài nguyên').Show("
+                  "[Windows.UI.Notifications.ToastNotification]::new($t))")
+            subprocess.run(["powershell", "-NoProfile", "-Command", ps],
+                           timeout=10, capture_output=True)
+    except Exception:
+        pass
+
+
 def _cat_mep_anh(p_anh, mep, ty=0.13):
     """Cắt dải mép dính watermark, GIỮ bản gốc cạnh bên để anh hoàn tác được.
 
@@ -2790,12 +2835,7 @@ def _bao_ve(text):
             method="POST"), timeout=15).read()
     except Exception:
         pass
-    try:
-        subprocess.run(["osascript", "-e",
-                        f'display notification {json.dumps(text)} with title "Trạm tài nguyên"'],
-                       timeout=10, capture_output=True)
-    except Exception:
-        pass
+    _bao_man_hinh(text)
 
 
 def _chay_loc(ma_job, ma):
@@ -5496,7 +5536,7 @@ class Tay(BaseHTTPRequestHandler):
                 p = _duong_mo(than["ma"], than.get("dich", "hop"))
                 if not p or not os.path.isdir(p):
                     return self._js({"ok": False, "loi": "chưa có thư mục đó"})
-                subprocess.run(["open", p], timeout=15, capture_output=True)
+                _mo_thu_muc(p)
                 return self._js({"ok": True, "duong": p})
             if d == "/api/xep-kho":
                 viec = os.path.join(DD.VIEC, than["ma"])
