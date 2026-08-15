@@ -1,0 +1,259 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Phong cách video — Sóc Bóng Đá 247</title>
+<style>
+  :root{--nen:#0e0b0a;--o:#171210;--vien:#332a26;--chu:#f4efe9;--mo:#a0938a;
+        --vang:#FFD400;--cam:#E85A2A;--xanh:#4ea44e}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--nen);color:var(--chu);
+       font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+         padding:10px 16px;border-bottom:1px solid var(--vien);position:sticky;top:0;
+         background:var(--nen);z-index:10}
+  h1{font-size:17px;margin:0;white-space:nowrap}
+  .cho{margin-left:auto}
+  main{max-width:940px;margin:0 auto;padding:16px}
+  .khoi{background:var(--o);border:1px solid var(--vien);border-radius:12px;
+        padding:14px 16px;margin-bottom:14px}
+  .khoi h2{font-size:14px;margin:0 0 4px;color:var(--vang)}
+  .khoi p.giai{margin:0 0 12px;color:var(--mo);font-size:12.5px}
+  .num{display:grid;grid-template-columns:1fr 110px;gap:12px;align-items:center;
+       padding:7px 0;border-top:1px solid #241d1a}
+  .num:first-of-type{border-top:0}
+  .num label{font-size:13px}
+  .num .ph{display:block;color:var(--mo);font-size:11.5px;margin-top:1px}
+  input[type=number],select{background:#0b0908;color:var(--chu);border:1px solid var(--vien);
+    border-radius:7px;padding:5px 7px;font-size:13px;width:100%}
+  input[type=number]:focus,select:focus{outline:2px solid var(--vang);outline-offset:-1px}
+  .giua{text-align:center;color:var(--mo)}
+  button{background:#241d1a;color:var(--chu);border:1px solid var(--vien);border-radius:8px;
+         padding:7px 13px;font-size:13px;cursor:pointer}
+  button:hover{border-color:var(--vang)}
+  button.chinh{background:var(--cam);border-color:var(--cam);font-weight:600}
+  .cong{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+  .cong input{width:17px;height:17px;accent-color:var(--xanh)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:left;padding:5px 7px;border-bottom:1px solid #241d1a;white-space:nowrap}
+  th{color:var(--mo);font-weight:500}
+  td.n{font-variant-numeric:tabular-nums}
+  #bao{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:#241d1a;
+       border:1px solid var(--vang);border-radius:9px;padding:9px 16px;display:none;z-index:50}
+  .ghi{color:var(--mo);font-size:12px;margin-top:10px;line-height:1.65}
+</style>
+
+<header>
+  <h1>🎚 Phong cách video</h1>
+  <span style="color:var(--mo);font-size:12.5px">thông số dựng video — nhạc · hình · giọng</span>
+  <span id="menuCho" class="cho"></span>
+</header>
+
+<main>
+    <div class="khoi">
+    <h2>🎵 Nhạc nền</h2>
+    <p class="giai">Kho có 12 nhóm cảm xúc. Để <b>máy dò theo nội dung</b> là hợp lý nhất —
+      máy đọc tiêu đề và lời bình rồi chọn nhóm; không đoán được thì nó nói thẳng và dùng
+      nhóm tin nóng.</p>
+    <div class="num" style="grid-template-columns:1fr 1fr">
+      <label>Chọn nhóm cảm xúc
+        <span class="ph">áp cho MỌI video</span></label>
+      <select id="nhac_nhom"></select>
+    </div>
+        <div class="num"><label>Âm lượng nhạc dưới giọng
+        <span class="ph">0.11 là mức đang chạy · thấp hơn = chữ rõ hơn</span></label>
+      <input type="number" id="nhac_am_luong" step="0.005"></div>
+    <div class="num"><label>Nhạc to dần ở ĐẦU video (giây)
+        <span class="ph">Nhạc chỉ chạy ở 11% dưới giọng nên núm này <b>gần như không đổi
+          độ to mở đầu</b> (đo thật: 0s và 3s chênh 0,1 dB) — nó chỉ đổi CẢM GIÁC nhạc
+          ập vào hay len vào. 0,4 là vừa.</span></label>
+      <input type="number" id="nhac_vao" step="0.05"></div>
+    <div class="num"><label>Nhạc nhỏ dần ở CUỐI video (giây)
+        <span class="ph">0 = cắt phụp · 2,5 = tắt mượt trong 2,5 giây cuối</span></label>
+      <input type="number" id="nhac_ra" step="0.05"></div>
+  </div>
+
+  <div class="khoi">
+    <h2>🎬 Chuyển động hình</h2>
+    <p class="giai">Mức phóng và tốc độ trượt áp cho mọi cảnh. Riêng <b>lệch tâm</b> và
+      <b>hướng trượt</b> thì xưởng vẫn tự rải khác nhau giữa các cảnh trong cùng video,
+      nên video không bị "một nhịp từ đầu đến cuối".</p>
+        <div class="num"><label>Mức phóng tối đa (zoom)
+        <span class="ph">1.12 = phóng 12% · anh đã chốt trần 15%</span></label>
+      <input type="number" id="zoom_max" step="0.005"></div>
+    <div class="num"><label>Tốc độ trượt ngang
+        <span class="ph">0.10 = trượt 10% bề ngang mỗi giây</span></label>
+      <input type="number" id="pan_toc_do" step="0.005"></div>
+    <div class="num"><label>Lệch tâm khi phóng
+        <span class="ph">0 = luôn phóng từ giữa (rất lộ) · cao = tâm phóng xê dịch</span></label>
+      <input type="number" id="lech_tam" step="0.01"></div>
+    <div class="num"><label>Trần một kiểu cảnh
+        <span class="ph">0.65 = một kiểu không quá 65% số cảnh trong video</span></label>
+      <input type="number" id="tran_mot_kieu" step="0.01"></div>
+  </div>
+
+  <div class="khoi">
+    <h2>🎙 Giọng đọc — nhiều giọng thay phiên</h2>
+    <p class="giai">Thêm bao nhiêu giọng cũng được: dán <b>mã giọng VBee</b> vào, đặt tên
+      cho dễ nhớ, và cho mỗi giọng một dải tốc độ riêng. Mỗi video sẽ rút một giọng đang
+      bật. Kênh có 2–3 chất giọng thay phiên thì người xem đỡ chán hơn hẳn một giọng đọc
+      suốt hàng trăm video.<br>
+      <b>Bấm ▶ Thử trước khi lưu</b> — gõ sai mã giọng thì cả mẻ video hỏng mà mãi mới biết.
+      Tốc độ: dưới 1.0 nghe ề à, trên 1.2 nghe hụt hơi.</p>
+    <table id="bangGiong"><thead><tr>
+      <th style="width:42px">Bật</th><th>Tên gợi nhớ</th><th>Mã giọng VBee</th>
+      <th style="width:92px">Tốc độ đọc</th>
+      <th style="width:130px"></th></tr></thead><tbody id="giongTB"></tbody></table>
+    <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
+      <button id="themGiong">+ Thêm giọng</button>
+      <span class="ph" style="color:var(--mo);font-size:12px">
+        Mã giọng lấy ở trang VBee — ví dụ giọng đang chạy:
+        <code style="color:#c8b89a">hn_female_ngochuyen_full_24k-st</code></span>
+    </div>
+    <div class="ghi" id="giongGhi"></div>
+
+    <div style="border-top:1px solid #241d1a;margin-top:12px;padding-top:4px">
+      <div class="num"><label>Giọng to dần ở ĐẦU video (giây)
+          <span class="ph">CHỈ để chống tiếng "bụp" lúc mở file — <b>để rất nhỏ</b>.
+            Đo thật: 0,05s tai không nghe ra · <b>0,3s làm tiếng đầu tụt 14 dB</b>,
+            mất gần trọn chữ đầu tiên. Đừng quá 0,15.</span></label>
+        <input type="number" id="giong_vao" step="0.01"></div>
+      <div class="num"><label>Giọng nhỏ dần ở CUỐI video (giây)
+          <span class="ph">0 = dứt phụp · 0,4 = câu chốt tắt êm (chỗ này để dài thoải mái,
+            cuối video không ai bỏ đi vì nghe hụt chữ)</span></label>
+        <input type="number" id="giong_ra" step="0.05"></div>
+    </div>
+  </div>
+
+  <div class="khoi">
+    <h2>👁 Xem trước — 6 video kế tiếp ai đọc</h2>
+    <p class="giai">Tính THẬT bằng đúng công thức xưởng dùng. Khi anh bật nhiều giọng,
+      đây là chỗ soi xem giọng có luân phiên đều không.</p>
+    <table><thead><tr><th>Video</th><th>Giọng đọc</th><th>Tốc độ</th>
+      <th>Nhóm nhạc</th></tr></thead><tbody id="thu"></tbody></table>
+    <div class="ghi" id="danhGia"></div>
+  </div>
+
+  <div style="display:flex;gap:9px;margin-bottom:30px">
+    <button class="chinh" id="luu">💾 Lưu cấu hình</button>
+    <button id="lai">↩ Trả về mặc định</button>
+    <button id="thuLai">↻ Xem lại</button>
+  </div>
+</main>
+
+<div id="bao"></div>
+<script src="/menu.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+// MỘT chỉ số mỗi núm (anh chốt 12/08 — bỏ dải). Tốc độ đọc nằm TRONG từng giọng.
+const NUM = ["nhac_am_luong","nhac_vao","nhac_ra","giong_vao","giong_ra",
+             "zoom_max","pan_toc_do","lech_tam","tran_mot_kieu"];
+let TEN_VIET = {}, MD = null;
+
+function bao(t, loi){ const b=$('#bao'); b.textContent=t;
+  b.style.borderColor = loi ? '#d24b4b' : 'var(--vang)';
+  b.style.display='block'; clearTimeout(b._t); b._t=setTimeout(()=>b.style.display='none',2600); }
+
+async function api(d, than){
+  const r = await fetch(d, than ? {method:'POST',headers:{'Content-Type':'application/json'},
+                                   body:JSON.stringify(than)} : undefined);
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function docForm(){
+  const d = {nhac_nhom: $('#nhac_nhom').value};
+  NUM.forEach(k => d[k] = parseFloat($('#'+k).value));
+  d.giong_ds = [...document.querySelectorAll('#giongTB tr')].map(tr => ({
+    bat: tr.querySelector('.g-bat').checked,
+    ten: tr.querySelector('.g-ten').value.trim(),
+    ma:  tr.querySelector('.g-ma').value.trim(),
+    toc_do: parseFloat(tr.querySelector('.g-toc').value),
+  })).filter(g => g.ma);
+  return d;
+}
+
+function dongGiong(g){
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="checkbox" class="g-bat" ${g.bat!==false?'checked':''}
+        style="width:17px;height:17px;accent-color:var(--xanh)"></td>
+    <td><input class="g-ten" value="${(g.ten||'').replace(/"/g,'&quot;')}"
+        placeholder="vd: Ngọc Huyền" style="background:#0b0908;color:var(--chu);
+        border:1px solid var(--vien);border-radius:7px;padding:5px 7px;width:100%"></td>
+    <td><input class="g-ma" value="${(g.ma||'').replace(/"/g,'&quot;')}"
+        placeholder="dán mã giọng VBee" style="background:#0b0908;color:var(--chu);
+        border:1px solid var(--vien);border-radius:7px;padding:5px 7px;width:100%;
+        font-family:ui-monospace,monospace;font-size:12px"></td>
+    <td><input type="number" class="g-toc" step="0.01" value="${g.toc_do ?? 1.1}"></td>
+    <td style="display:flex;gap:5px">
+      <button class="g-thu" title="Gọi VBee thử mã giọng này">▶ Thử</button>
+      <button class="g-xoa" title="Bỏ giọng này">✕</button></td>`;
+  tr.querySelector('.g-xoa').onclick = () => {
+    if (document.querySelectorAll('#giongTB tr').length <= 1)
+      return bao('Phải còn ít nhất một giọng — không thì xưởng mất giọng đọc', true);
+    tr.remove(); veThu();
+  };
+  tr.querySelector('.g-thu').onclick = async () => {
+    const ma = tr.querySelector('.g-ma').value.trim();
+    if (!ma) return bao('Chưa nhập mã giọng', true);
+    const n = tr.querySelector('.g-thu'); const cu = n.textContent;
+    n.textContent = '⏳ đang gọi VBee…'; n.disabled = true;
+    try {
+      const r = await api('/api/thu-giong', {ma, toc_do: parseFloat(tr.querySelector('.g-toc').value)});
+      if (r.ok){ n.textContent = '✅ Được';
+        bao(`✅ Mã giọng CHẠY ĐƯỢC (đọc thử ${r.giay}s) — bấm ▶ nghe`);
+        let a = tr.querySelector('audio');
+        if (!a){ a = document.createElement('audio'); a.controls = true;
+                 a.style.cssText = 'height:28px;max-width:190px;vertical-align:middle';
+                 tr.querySelector('td:last-child').appendChild(a); }
+        a.src = r.nghe + '&t=' + Date.now(); }
+      else { n.textContent = '❌ Hỏng'; bao('❌ ' + (r.loi||'mã giọng không dùng được'), true); }
+    } catch(e){ n.textContent = '❌ Hỏng'; bao('Thử hỏng: '+e.message, true); }
+    setTimeout(()=>{ n.textContent = cu; n.disabled = false; }, 4000);
+  };
+  $('#giongTB').appendChild(tr);
+}
+function veForm(c){
+  $('#nhac_nhom').value = c.nhac_nhom;
+  NUM.forEach(k => $('#'+k).value = c[k]);
+  $('#giongTB').innerHTML = '';
+  (c.giong_ds || []).forEach(dongGiong);
+  const n = (c.giong_ds||[]).filter(g=>g.bat!==false).length;
+  $('#giongGhi').innerHTML = n <= 1
+    ? '⚠ Đang chỉ có <b>một</b> giọng — mọi video sẽ cùng chất giọng. Thêm giọng thứ hai để đỡ nhàm.'
+    : `✅ Có <b>${n}</b> giọng đang bật — mỗi video rút một giọng, gieo theo mã việc.`;
+}
+
+async function veThu(){
+  let r;
+  try { r = await api('/api/phong-cach-thu', docForm()); }
+  catch(e){ return bao('Không thử được: '+e.message, true); }
+  $('#thu').innerHTML = r.ds.map(x => `<tr>
+      <td>${x.ten}</td><td>${x.giong_ten}</td><td class="n">×${x.giong_toc_do}</td>
+      <td>${x.nhac_nhom ? (TEN_VIET[x.nhac_nhom]||x.nhac_nhom) : '— máy dò theo nội dung —'}</td>
+    </tr>`).join('');
+  $('#danhGia').innerHTML = r.danh_gia;
+}
+
+(async () => {
+  const r = await api('/api/phong-cach');
+  TEN_VIET = r.ten_viet; MD = r.mac_dinh;
+  $('#nhac_nhom').innerHTML =
+      '<option value="tu_dong">🤖 Máy dò theo nội dung (khuyên dùng)</option>'
+    + '<option value="ngau_nhien">🎲 Ngẫu nhiên trong kho 12 nhóm</option>'
+    + Object.entries(TEN_VIET).map(([k,v]) =>
+        `<option value="${k}">📌 ${v}${r.dem[k] ? ` (${r.dem[k]} bài)` : ' — KHO RỖNG'}</option>`).join('');
+  veForm(r.cau_hinh);
+  veThu();
+})();
+
+$('#luu').onclick = async () => {
+  try { const r = await api('/api/phong-cach', docForm()); veForm(r.cau_hinh);
+        bao('✅ Đã lưu — video dựng từ giờ dùng cấu hình này'); veThu(); }
+  catch(e){ bao('Lưu hỏng: '+e.message, true); }
+};
+$('#lai').onclick = () => { veForm(MD); veThu(); bao('Đã đưa về mặc định — nhớ bấm Lưu'); };
+$('#thuLai').onclick = veThu;
+$('#themGiong').onclick = () => { dongGiong({ten:'',ma:'',toc_do:1.1,bat:true});
+  bao('Dán mã giọng VBee vào rồi bấm ▶ Thử trước khi lưu'); };
+document.addEventListener('change', e => { if(e.target.closest('main')) veThu(); });
+</script>

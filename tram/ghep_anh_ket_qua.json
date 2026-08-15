@@ -1,0 +1,22 @@
+{
+  "0": {"chon": [1], "vi_sao": "ảnh phối cảnh tổng thể sân 135.000 chỗ mở đầu câu chuyện đổi tên."},
+  "1": {"chon": [15], "vi_sao": "phối cảnh sân đúng chủ thể đang được đặt tên VinFast - Trống Đồng."},
+  "2": {"chon": [29], "vi_sao": "phối cảnh chung minh hoạ công trình đã qua các tên Trống Đồng, Hùng Vương, VinFast."},
+  "2:0": {"chon": [], "vi_sao": "kho không còn ảnh khác biệt hẳn với ô chính để làm cảnh phụ, ảnh phối cảnh còn lại đã dồn cho các câu sau."},
+  "3": {"chon": [19], "vi_sao": "ảnh công trường/đoàn khảo sát thể hiện đúng ý 'chưa hoàn thành'."},
+  "4": {"chon": [43], "vi_sao": "phối cảnh sân minh hoạ tiếp mạch nói về ý nghĩa chuỗi đổi tên."},
+  "5": {"chon": [57], "vi_sao": "phối cảnh sân, dùng minh hoạ ý mỗi tên một thông điệp."},
+  "6": {"chon": [71], "vi_sao": "phối cảnh sân là ảnh gần nhất thể hiện thiết kế lấy cảm hứng Trống Đồng, kho không có ảnh cận cảnh hoạ tiết chim Lạc riêng."},
+  "6:0": {"chon": [], "vi_sao": "không còn ảnh phối cảnh nào khác để làm cảnh phụ khác hẳn ô chính."},
+  "7": {"chon": [98], "vi_sao": "ảnh công trường/đoàn khảo sát sân, kho không có ảnh riêng thể hiện ý nghĩa biểu tượng 'Hùng Vương'."},
+  "8": {"chon": [24], "vi_sao": "ông Phạm Nhật Vượng (Chủ tịch Vingroup) đại diện đúng cho ý thương hiệu VinFast."},
+  "9": {"chon": [110], "vi_sao": "ảnh công trường sân, kho không tách được ảnh riêng cho 'hiện đại' và 'văn hóa' nên không ghép đôi.", "doi_bo": "kho chỉ có một loại phối cảnh/công trường chung thể hiện cả hai vế 'thương hiệu hiện đại' và 'dấu ấn văn hóa' cùng lúc, không có ảnh tách riêng từng vế để ghép khung đôi."},
+  "9:0": {"chon": [], "vi_sao": "đã dùng ảnh phù hợp nhất cho ô chính, không còn ảnh khác biệt cho cảnh phụ."},
+  "10": {"chon": [129], "vi_sao": "ảnh đoàn khảo sát công trường sân Trống Đồng, gắn với ý 'sân là trái tim' của khu liên hợp Hùng Vương."},
+  "10:0": {"chon": [], "vi_sao": "không còn ảnh khác biệt cho cảnh phụ này."},
+  "10:1": {"chon": [], "vi_sao": "không còn ảnh khác biệt cho cảnh phụ này."},
+  "11": {"chon": [12], "vi_sao": "ảnh drone toàn cảnh công trường thể hiện ý 'định vị lại vai trò trong một tổ hợp'."},
+  "11:0": {"chon": [], "vi_sao": "không còn ảnh khác biệt cho cảnh phụ này."},
+  "12": {"chon": [33], "vi_sao": "ảnh công trường khung thép, cần cẩu thể hiện đúng ý công trình chưa khánh thành."},
+  "12:0": {"chon": [], "vi_sao": "không còn ảnh khác biệt cho cảnh phụ này."}
+}

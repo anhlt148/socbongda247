@@ -1,0 +1,42 @@
+# ─── KHÔNG BAO GIỜ ĐƯA LÊN KHO CODE ───────────────────────────────────────────
+# Khoá và token: sống ở ~/.config/, chép tay sang máy mới. Lỡ commit một lần là
+# lộ vĩnh viễn trong lịch sử, phải đổi khoá — đừng để chuyện đó xảy ra.
+*.env
+*khoa*
+*token*
+telebot.json
+.dang-tai
+.dang-seo
+
+# ─── RÁC MÁY SINH ─────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+.DS_Store
+*.log
+*.tam
+*.lock
+*.khoa
+
+# ─── DỮ LIỆU: nặng và riêng của từng máy ──────────────────────────────────────
+# Thư mục việc (7 GB) nằm ngoài code; kho tài nguyên đi qua Drive. Ở đây chỉ
+# chặn phòng khi ai đó lỡ chép vào.
+viec/
+kho-tai-nguyen/
+*.mp4
+*.mp3
+*.jpg
+*.jpeg
+*.png
+!do-hoa/**/*.png
+!tram/**/*.png
+
+# ─── HỌC MÁY / CACHE: mỗi máy tự sinh, đồng bộ chỉ gây xung đột ──────────────
+hoc/*.jsonl
+radar/ban-tin/
+_nho/
+
+# ─── BẢN CHÉP TAY THỜI CHƯA CÓ GIT ────────────────────────────────────────────
+# Từ nay git giữ lịch sử, khỏi cần chép ".bak_" nữa. File cũ vẫn nằm trên đĩa,
+# chỉ không đưa lên kho cho khỏi rối.
+*.bak_*
+*.bak

@@ -1,0 +1,46 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  body{width:320px;margin:0;padding:14px;background:#14100f;color:#f4efe9;
+       font:14px/1.5 -apple-system,"SF Pro Text",sans-serif}
+  h1{font-size:14px;margin:0 0 10px;letter-spacing:.3px}
+  h1 span{color:#FFD400}
+  .o{background:#1d1816;border:1px solid #332a26;border-radius:10px;padding:10px;margin-bottom:9px}
+  .nhan{color:#a0938a;font-size:12px;margin-bottom:5px}
+  b{color:#FFD400}
+  select{width:100%;font:13px/1.4 inherit;background:#0e0b0a;color:#f4efe9;
+         border:1px solid #332a26;border-radius:8px;padding:7px 8px}
+  ul{margin:6px 0 0;padding-left:18px;color:#a0938a;font-size:12.5px;line-height:1.6}
+  a{color:#E35C2F}
+  .xau{color:#ffb4b4}
+</style>
+<h1>SÓC — <span>gắp ảnh về kho</span></h1>
+
+<div class="o">
+  <div class="nhan">Ảnh sẽ bay vào kho của việc này</div>
+  <select id="chonViec"><option>đang hỏi trạm…</option></select>
+  <div class="nhan" id="tinh" style="margin:7px 0 0"></div>
+</div>
+
+<div class="o">
+  <button id="layVideo" style="width:100%;font:700 13px/1 inherit;border:0;border-radius:8px;
+    padding:9px 10px;cursor:pointer;background:#FFD400;color:#241a00">
+    🎬 Lấy video trang đang mở về kho</button>
+  <div class="nhan" id="tinhVideo" style="margin:7px 0 0"></div>
+</div>
+
+<div class="o">
+  <div class="nhan">Cách dùng</div>
+  <ul>
+    <li>Chuột phải một ảnh → <b>📥 Gửi ảnh này về kho Sóc</b></li>
+    <li>Trang nhiều ảnh: chuột phải → <b>🖼 Chọn nhiều ảnh…</b> rồi bấm ＋ trên từng tấm</li>
+    <li>Video FB/Instagram/<b>YouTube</b>: mở video ra trang riêng → chuột phải → <b>🎬 Gửi video…</b></li>
+    <li>Video TikTok (hoặc trang chặn chuột phải): bấm nút vàng ở trên</li>
+    <li>YouTube nhận cả link watch/Shorts, tối đa 15 phút — tải về rồi cắt đoạn trên trạm</li>
+  </ul>
+</div>
+
+<div class="o nhan">Đổi việc ở đây là đổi luôn cho cả trạm —
+  <a href="http://localhost:8756/" target="_blank">mở trạm</a></div>
+
+<script src="bang.js"></script>

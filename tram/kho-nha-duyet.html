@@ -1,0 +1,1073 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>🏠 Kho chủ thể — Sóc Bóng Đá 247</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- THIẾT KẾ LẠI 10/08 (anh chê bản cũ khó dùng): nguyên tắc "nhìn là hiểu, bấm là
+     xong, không gõ trừ khi thêm mới" —
+     · ô ảnh GỌN: ảnh to + tên chủ thể + nhãn dạng CHIP (hết rừng input)
+     · chip nhãn SỐNG: bấm = lọc theo nhãn đó · hover hiện ✕ = xoá nhãn một cú
+     · CON DẤU TÊN: bấm thẻ khi chưa chọn gì = cầm dấu, click ảnh nào đóng tên ảnh đó
+     · tìm gõ-là-lọc · xoá có HOÀN TÁC · thanh chỉnh cỡ ô
+     · sửa sâu mở hộp riêng bằng nút 🖊 -->
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0e0b0a; color: #f4efe9;
+         font: 14px/1.5 -apple-system, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: #14100fee;
+           border-bottom: 1px solid #332a26; padding: 8px 16px;
+           display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  header b { color: #FFD400; }
+  input, select, button { background: #0e0b0a; color: #f4efe9;
+    border: 1px solid #332a26; border-radius: 8px; padding: 7px 10px; font: inherit; }
+  button { cursor: pointer; }
+  button.chinh { background: #FFD400; color: #14100f; border: 0; font-weight: 700; }
+  .soi-mui { position: absolute; top: 50%; transform: translateY(-50%); width: 46px;
+    height: 64px; font-size: 30px; background: rgba(20,16,14,.55); color: #f4efe9;
+    border: 1px solid #332a26; border-radius: 10px; cursor: pointer; }
+  .soi-mui:hover { background: rgba(60,48,40,.8); color: #FFD400; }
+  .otim { position: relative; }
+  .otim input { padding-right: 26px; width: 210px; }
+  .otim .xoa-tim { position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+    cursor: pointer; color: #a0938a; display: none; }
+  /* dải thẻ tên */
+  #daiThe { position: sticky; top: 49px; z-index: 5; background: #110d0cee;
+            border-bottom: 1px solid #332a26; padding: 6px 16px;
+            display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .the-ct { padding: 4px 11px; font-size: 12.5px; border-radius: 14px;
+            background: #0e0b0a; border: 1px solid #6b5c2a; color: #f5dea0; cursor: pointer; }
+  .the-ct.dau { background: #FFD400; color: #14100f; font-weight: 700;
+                border-color: #FFD400; }
+  .the-ct i { color: #a0938a; font-style: normal; font-size: 11px; }
+  #trangThaiDau { color: #FFD400; font-weight: 700; }
+  /* thanh loạt */
+  #thanhLoat { position: sticky; top: 90px; z-index: 5; display: none; gap: 8px;
+               align-items: center; flex-wrap: wrap; background: #231c0aee;
+               border-bottom: 1px solid #FFD400; padding: 7px 16px; }
+  /* lưới */
+  #luoi { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--co, 250px), 1fr));
+          gap: 12px; padding: 14px 16px; }
+  .o { background: #14100f; border: 1px solid #332a26; border-radius: 12px;
+       overflow: hidden; position: relative; }
+  .o img.anh { width: 100%; height: var(--cao, 175px); object-fit: cover;
+               display: block; cursor: pointer; }
+  .o.chon { outline: 3px solid #FFD400; }
+  .o .tich { position: absolute; top: 6px; left: 6px; width: 26px; height: 26px;
+             border-radius: 7px; background: #000a; color: #fff;
+             font: 800 14px/26px sans-serif; text-align: center; pointer-events: none; }
+  .o.chon .tich { background: #FFD400; color: #241a00; }
+  .o .soito, .o .sua-nut { position: absolute; width: 27px; height: 27px;
+      border-radius: 7px; background: #000b; text-align: center; line-height: 27px;
+      cursor: pointer; top: 6px; }
+  .o .soito { right: 6px; }
+  .o .sua-nut { right: 39px; }
+  .o .ct-bang { position: absolute; left: 6px; bottom: 6px; max-width: 75%;
+      background: #000c; border-radius: 7px; padding: 2px 9px; font-weight: 700;
+      font-size: 12.5px; color: #ffe9a8; cursor: pointer; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; }
+  .o .ct-bang.trong { color: #a0938a; font-weight: 400; }
+  .o .vidau { position: absolute; right: 6px; bottom: 6px; background: #2e5c2ecc;
+      border-radius: 6px; padding: 1px 7px; font-size: 11px; }
+  .o .nhan-hang { display: flex; gap: 4px; flex-wrap: wrap; padding: 7px 8px 8px; }
+  .chip { position: relative; background: #221b18; border: 1px solid #3a2f2a;
+          border-radius: 11px; padding: 2px 9px; font-size: 11.5px; color: #d8cfc6;
+          cursor: pointer; max-width: 100%; white-space: nowrap; overflow: hidden;
+          text-overflow: ellipsis; }
+  .chip:hover { border-color: #FFD400; padding-right: 22px; }
+  .chip .x { display: none; position: absolute; right: 5px; top: 50%;
+             transform: translateY(-50%); color: #ff9b9b; font-weight: 700; }
+  .chip:hover .x { display: inline; }
+  .chip.them { color: #7fa8d6; border-style: dashed; }
+  .o .trang-thai { font-size: 10.5px; color: #a0938a; padding: 0 9px 7px; }
+  .o .trang-thai .canh-bao { color: #e6c07b; }
+  .bao { position: fixed; top: 64px; right: 16px; z-index: 60; background: #1d3a1d;
+         color: #bfe8bf; border-radius: 10px; padding: 9px 14px;
+         box-shadow: 0 4px 14px #0008; display: flex; gap: 10px; align-items: center; }
+  .bao.xau { background: #4a1d1d; color: #f0bcbc; }
+  .bao button { padding: 3px 10px; }
+  #soi { position: fixed; inset: 0; background: #000d; z-index: 50; display: none;
+         align-items: center; justify-content: center; cursor: zoom-out; }
+  #soi img, #soi video { max-width: 94vw; max-height: 92vh; border-radius: 8px; }
+  /* hộp sửa sâu */
+  #suaHop { position: fixed; inset: 0; background: #000c; z-index: 55; display: none;
+            align-items: center; justify-content: center; }
+  #suaHop .khung-s { background: #14100f; border: 1px solid #443; border-radius: 14px;
+      padding: 16px; width: min(680px, 94vw); max-height: 92vh; overflow-y: auto;
+      display: flex; gap: 14px; }
+  #suaHop img { width: 260px; height: 260px; object-fit: contain; background: #000;
+      border-radius: 10px; flex-shrink: 0; }
+  #suaHop .phai { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  #suaHop .chips { display: flex; gap: 5px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<header>
+  <b>🏠 Kho chủ thể</b>
+  <button id="cdAnh" class="chinh">🖼 Ảnh</button>
+  <button id="cdVideo">🎬 Video</button>
+  <input id="oLink" placeholder="dán link video → máy tự tải, cắt cảnh, gắn nhãn"
+         style="width:270px;display:none">
+  <button id="nutTaiVideo" style="display:none">⬇ Tải về kho</button>
+  <span class="otim">
+    <input id="oTim" placeholder="gõ là lọc ngay…">
+    <span class="xoa-tim" id="xoaTim">✕</span>
+  </span>
+  <select id="oLoc">
+    <option value="tat_ca">Tất cả</option>
+    <option value="chua_chac">⚠ Chưa chắc tên</option>
+    <option value="chua_nhin">🕐 Máy chưa nhìn</option>
+    <option value="cho_nhan">📥 Chờ gắn nhãn</option>
+    <option value="wm_chac">🧽 DÍNH watermark</option>
+    <option value="wm_nghi">🟡 Nghi có chữ</option>
+    <option value="wm_chua">🕐 Chưa quét watermark</option>
+    <option value="len_hinh">Đã lên hình</option>
+    <option value="du_tru">Dự trữ</option>
+  </select>
+  <button id="nutQuetNhan" style="display:none"
+    title="Ảnh extension tải tay đang chờ — bấm là mắt máy nhận diện + gắn nhãn rồi nhập kho chính thức"></button>
+  <!-- 🧽 QUÉT WATERMARK CẢ KHO (anh đặt 11/08) — chỉ soi ảnh chưa quét lần nào;
+       giữ Shift lúc bấm là quét LẠI toàn kho (dùng khi đổi bộ luật dấu nguồn) -->
+  <button id="nutQuetWm" title="Soi cả kho tìm ảnh dính watermark (giữ Shift = quét lại từ đầu).
+Quét xong lọc '🧽 DÍNH watermark' để cắt/xoá hàng loạt.">🧽 Quét watermark</button>
+  <input type="range" id="coO" min="180" max="380" step="20" value="250"
+         style="width:100px;padding:0" title="chỉnh cỡ ô">
+  <span id="dem" style="color:#a0938a"></span>
+  <a href="/" style="color:#FFD400;margin-left:auto">← Về trạm</a>
+</header>
+
+<div id="daiThe">
+  <span id="trangThaiDau" style="display:none"></span>
+  <span class="otim">
+    <input id="locThe" placeholder="lọc thẻ…" style="width:110px;font-size:12px;padding:4px 26px 4px 8px">
+    <span class="xoa-tim" id="xoaLocThe">✕</span>
+  </span>
+  <span id="theCt" style="display:flex;gap:6px;flex-wrap:wrap"></span>
+</div>
+
+<div id="thanhLoat">
+  <b style="color:#FFD400"><span id="soChon">0</span> đang chọn</b>
+  <span style="position:relative">
+    <input id="ctLoat" placeholder="gõ TÊN hoặc NHÃN (không dấu cũng được)…"
+      style="width:250px" autocomplete="off">
+    <!-- gợi ý nhãn đã có cho GÁN LOẠT (anh đặt 11/08) — treo dưới ô, không đẩy thanh -->
+    <div id="ctLoatGoi" style="display:none;position:absolute;top:100%;left:0;z-index:20;
+      width:250px;max-height:150px;overflow-y:auto;background:#0e0b0a;
+      border:1px solid #4a3c36;border-radius:8px;padding:3px;box-shadow:0 6px 16px #000a"></div>
+  </span>
+  <!-- HAI việc khác nhau, tách rõ (anh nhầm 11/08: tưởng "Gán cả loạt" là gắn nhãn):
+       CHỦ THỂ = tên người/đội chính, MỘT giá trị, gán là ĐÈ cái cũ.
+       NHÃN    = từ khoá mô tả, NHIỀU giá trị, thêm là CỘNG DỒN, không mất nhãn cũ. -->
+  <button id="nutGanLoat" class="chinh"
+    title="Đặt CHỦ THỂ (tên người/đội chính) cho cả cụm — đè chủ thể cũ, chỉ một tên">👤 Đặt CHỦ THỂ</button>
+  <button id="nutNhanLoat" style="background:#2e4a5c;color:#dfe9ff;border:0"
+    title="THÊM chữ trong ô làm NHÃN cho cả cụm — cộng thêm, KHÔNG xoá nhãn sẵn có">🏷 Thêm NHÃN</button>
+  <button id="nutDungLoat" title="Nhãn máy đúng rồi — xác nhận cả cụm">✓ Nhãn đúng</button>
+  <button id="nutBoTen" title="Xoá tên chủ thể của cụm (nhãn khác giữ)">🗑 Bỏ tên</button>
+  <button id="nutNhinLai" title="Mắt máy TO nhìn lại + viết lại nhãn cụm này (chạy nền)">🔄 Máy nhìn lại</button>
+  <!-- xử watermark HÀNG LOẠT (anh đặt 11/08): đè luôn ảnh gốc, bản gốc cất thùng rác -->
+  <button id="nutWmXoa" style="background:#3a2e5c;color:#e8dcff;border:0"
+    title="XOÁ watermark bằng LaMa cho cả cụm — vá tại chỗ, GIỮ nguyên khuôn hình (nên vẫn nhận ra trùng về sau). Đè luôn ảnh trong kho.">🧽 Xoá WM loạt</button>
+  <button id="nutWmCat" style="background:#5c4a2e;color:#ffd9a0;border:0"
+    title="CẮT bỏ dải dính watermark cho cả cụm — mất một phần hình, nhưng chắc sạch. Đè luôn ảnh trong kho.">✂ Cắt WM loạt</button>
+  <button id="nutLayVe" style="display:none;background:#1e6b3a;color:#fff;border:0">📥 Lấy về bài</button>
+  <button id="nutXoaLoat" style="background:#5c2e2e;color:#fff;border:0">✕ Xoá loạt</button>
+  <button id="nutChonTrang">☑ Cả trang</button>
+  <button id="nutBoChon">Bỏ chọn</button>
+</div>
+
+<div id="luoi"></div>
+<div style="text-align:center;padding:10px 0 24px">
+  <button id="nutThem" style="display:none">Xem thêm ↓</button>
+</div>
+
+<div id="soi" onclick="if(event.target===this&&!cropMode){this.style.display='none';$('#soiVid').pause()}">
+  <img id="soiAnh">
+  <video id="soiVid" controls style="display:none"></video>
+  <button class="soi-mui" id="soiTruoc" style="left:12px" title="tấm trước (←)">‹</button>
+  <button class="soi-mui" id="soiSau" style="right:12px" title="tấm sau (→)">›</button>
+  <div id="soiNut" style="position:absolute;top:14px;right:16px;display:flex;gap:8px">
+    <button id="soiCrop" title="CẮT LOGO: kéo chuột chọn VÙNG GIỮ LẠI — Enter cắt, ảnh trong kho được thay luôn (C)">✂ Cắt logo (C)</button>
+    <button id="soiCropHoan" style="display:none" title="Hoàn về ảnh gốc trước khi cắt">↩ Hoàn cắt</button>
+    <button id="soiWm" title="XOÁ WATERMARK bằng LaMa: kéo chọn VÙNG CẦN XOÁ — Enter xoá thử, xem trước/sau rồi mới thay (W)">🧽 Xoá WM (W)</button>
+    <button id="soiWmChot" style="display:none;background:#2e5c2e"
+      title="Ưng bản đã xoá — THAY ảnh trong kho (bản gốc giữ để hoàn)">✔ Thay bản đã xoá</button>
+    <button id="soiWmDac" style="display:none"
+      title="Bản thử còn vết? Vá ĐẶC nguyên cả ô — sạch nhất khi chữ nằm trên nền trơn (cỏ, khán đài)">🔁 Vá đặc cả ô</button>
+    <button id="soiWmBo" style="display:none" title="Chưa ưng — giữ nguyên ảnh gốc">✕ giữ gốc</button>
+    <button id="soiWmHoan" style="display:none" title="Hoàn về bản trước khi xoá watermark">↩ Hoàn xoá</button>
+    <button id="soiKhungV" style="display:none"
+      title="KHUNG NÉ LOGO cho đoạn video: kéo chọn VÙNG GIỮ — Enter lưu; lấy về bài là tự cắt vùng này (C)">✂ Khung né logo (C)</button>
+    <button id="soiKhungVBo" style="display:none" title="Bỏ khung đã lưu của đoạn">✕ khung</button>
+    <!-- 🗑 xoá MỘT tấm ngay khi đang phóng to (anh đặt 11/08) — ảnh có hoàn tác -->
+    <button id="soiXoa" style="background:#5c2e2e;color:#fff;border:0"
+      title="XOÁ tấm/đoạn này khỏi kho (phím Delete) — ảnh xoá xong còn nút hoàn ngay trên thông báo">🗑 Xoá</button>
+  </div>
+  <div id="cropLop" style="position:absolute;inset:0;display:none;cursor:crosshair">
+    <div id="cropKhung" style="position:fixed;border:2px solid #FFD400;
+      box-shadow:0 0 0 9999px rgba(0,0,0,.55);display:none;pointer-events:none"></div>
+  </div>
+</div>
+
+<div id="suaHop">
+  <div class="khung-s">
+    <img id="shAnh">
+    <div class="phai">
+      <b style="color:#FFD400">🖊 Sửa sâu</b>
+      <input id="shCt" placeholder="CHỦ THỂ (người/đội chính)" autocomplete="off">
+      <div class="chips" id="shChips"></div>
+      <input id="shThem" placeholder="+ gõ nhãn mới rồi Enter (gõ không dấu cũng ra gợi ý)" autocomplete="off">
+      <!-- 💡 GỢI Ý NHÃN ĐÃ CÓ trong kho ảnh + video (anh đặt 11/08): gõ ở ô chủ thể
+           hay ô nhãn đều ra, khớp KHÔNG DẤU, ↑↓ chọn + Enter, bấm chuột cũng được -->
+      <div id="shGoi" style="display:none;max-height:132px;overflow-y:auto;background:#0e0b0a;
+        border:1px solid #4a3c36;border-radius:8px;padding:3px"></div>
+      <textarea id="shMota" rows="3" placeholder="mô tả một câu"
+        style="background:#0e0b0a;color:#f4efe9;border:1px solid #332a26;border-radius:8px;padding:7px 10px;font:inherit"></textarea>
+      <div style="display:flex;gap:8px">
+        <button id="shLuu" class="chinh" style="flex:1">💾 Lưu (Enter)</button>
+        <button id="shDong">Đóng (Esc)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let trang = 0, tong = 0, henBao = null, henTim = null;
+let cheDo = 'anh', daChonK = new Set(), dsHien = [], dangDau = null, hoanGan = null;
+let _dsThe = [], shDang = null;
+
+function bao(t, xau, nutHoan){
+  document.querySelectorAll('.bao').forEach(e => e.remove());
+  const e = document.createElement('div');
+  e.className = 'bao' + (xau ? ' xau' : '');
+  e.textContent = t;
+  if (nutHoan){
+    const b = document.createElement('button');
+    b.textContent = '↩ Hoàn tác';
+    b.onclick = nutHoan;
+    e.appendChild(b);
+  }
+  document.body.appendChild(e);
+  clearTimeout(henBao); henBao = setTimeout(() => e.remove(), nutHoan ? 12000 : (xau ? 8000 : 3500));
+}
+async function api(u, than){
+  const r = await fetch(u, than ? {method: 'POST',
+    headers: {'Content-Type': 'application/json'}, body: JSON.stringify(than)} : {});
+  return r.json();
+}
+const idCua = m => cheDo === 'video' ? m.tep + '::' + m.tu : m.tep;
+function idsChon(){
+  return cheDo === 'video'
+    ? [...daChonK].map(s => { const i = s.lastIndexOf('::');
+        return [s.slice(0, i), parseFloat(s.slice(i + 2))]; })
+    : [...daChonK];
+}
+function timDong(id){ return dsHien.find(m => idCua(m) === id); }
+
+// ── vẽ Ô: ảnh + tên + CHIP nhãn (không input) ────────────────────────────────
+function oHtml(m){
+  const id = idCua(m);
+  const laV = cheDo === 'video';
+  const anhSrc = laV ? '/kho-video-thumb/' + encodeURIComponent(m.thumb)
+                     : '/kho-nha-anh/' + encodeURIComponent(m.tep);
+  // 🧽 dấu WATERMARK (anh đặt 11/08) — nói rõ dính ở ĐÂU và đọc ra chữ gì
+  const wm = (m.wm_vung || []).length
+    ? `<span class="canh-bao" title="${(m.wm_vung || []).map(v =>
+         (v.chac ? '🧽 ' : '🟡 ') + v.ten + ': “' + (v.chu || '').replace(/"/g, '') + '”')
+         .join('\n')}">${m.wm_muc === 'chac' ? '🧽 DÍNH watermark' : '🟡 nghi có chữ'} ·
+       ${(m.wm_vung || []).map(v => v.ten.replace('góc ', '')).join(', ')}</span>`
+    : (m.wm_da_xu ? `<span style="color:#7fd67f">✓ đã ${m.wm_da_xu.split('·')[0] === 'cat' ? 'cắt' : 'xoá'} WM</span>` : '');
+  const tt = (m.nguoi_sua ? '✎ anh đã sửa'
+    : (m.nhan_tho ? '<span class="canh-bao">🕐 máy chưa nhìn — chờ</span>'
+    : (!m.chu_the ? '<span class="canh-bao">⚠ chưa chắc tên</span>' : '')))
+    + (wm ? (m.nguoi_sua || m.nhan_tho || !m.chu_the ? ' · ' : '') + wm : '');
+  const chips = (m.nhan || []).slice(0, 6).map(n =>
+    `<span class="chip" data-nhan="${n.replace(/"/g, '&quot;')}"
+       title="bấm = LỌC theo nhãn này · ✕ = xoá nhãn khỏi ${laV ? 'đoạn' : 'ảnh'}">${n}<span class="x">✕</span></span>`).join('')
+    + ((m.nhan || []).length > 6 ? `<span class="chip" data-mo-sua="1" title="xem đủ trong hộp sửa">+${m.nhan.length - 6}</span>` : '');
+  return `<div class="o" data-id="${id.replace(/"/g, '&quot;')}"${laV
+      ? ` data-vtep="${m.tep}" data-vtu="${m.tu}" data-vden="${m.den}"` : ''}>
+    <img class="anh" src="${anhSrc}" loading="lazy">
+    <div class="tich"></div>
+    <div class="sua-nut" title="sửa sâu (mô tả, viết lại nhãn)">🖊</div>
+    <div class="soito" title="${laV ? 'phát thử đoạn' : 'xem to'}">${laV ? '▶' : '🔍'}</div>
+    <div class="ct-bang ${m.chu_the ? '' : 'trong'}"
+      title="${m.chu_the ? 'bấm = LỌC theo tên này' : 'chưa có tên — cầm DẤU tên trên dải thẻ rồi click ảnh, hoặc 🖊 sửa'}">${m.chu_the || '＋ tên?'}</div>
+    ${laV ? `<div class="vidau"${m.loai === 'goc' ? ' style="background:#2e4a5ccc"' : ''}
+      title="${m.loai === 'goc' ? 'VIDEO GỐC nguyên con — cắt đoạn từ đây' : 'ĐOẠN ĐÃ CẮT (đúng độ dài đoạn dùng)'}">${
+      m.loai === 'goc'
+        ? '🎞 GỐC ' + ((m.den - m.tu) >= 90 ? ((m.den - m.tu) / 60).toFixed(1) + 'ph' : (m.den - m.tu).toFixed(0) + 's')
+        : '✂ ' + (m.den - m.tu).toFixed(1) + 's'}${m.khung ? ' ✂khung' : ''}</div>` : ''}
+    <div class="nhan-hang">${chips}</div>
+    <div class="trang-thai">${tt}${laV && m.tieu_de ? ' · ' + m.tieu_de.slice(0, 40) : ''}</div>
+  </div>`;
+}
+
+function veThanhLoat(){
+  $('#thanhLoat').style.display = daChonK.size ? 'flex' : 'none';
+  $('#soChon').textContent = daChonK.size;
+  document.querySelectorAll('#luoi .o').forEach(o => {
+    const co = daChonK.has(o.dataset.id);
+    o.classList.toggle('chon', co);
+    o.querySelector('.tich').textContent = co ? '✓' : '';
+  });
+}
+
+// ── gắn hành vi từng ô ───────────────────────────────────────────────────────
+function gan(){
+  document.querySelectorAll('#luoi .o').forEach(o => {
+    if (o.dataset.gan) return;
+    o.dataset.gan = '1';
+    const id = o.dataset.id;
+    o.querySelector('img.anh').onclick = async () => {
+      if (dangDau){                                // ĐANG CẦM DẤU → click = đóng tên
+        await suaMot(id, {chu_the: dangDau});
+        const m = timDong(id);
+        if (m){ m.chu_the = dangDau; m.nguoi_sua = true; veLaiO(o, m); }
+        bao(`👤 "${dangDau}" → 1 ${cheDo === 'video' ? 'đoạn' : 'ảnh'} (Esc để thả dấu)`);
+        return;
+      }
+      daChonK.has(id) ? daChonK.delete(id) : daChonK.add(id);
+      veThanhLoat();
+    };
+    o.querySelector('.soito').onclick = e => {
+      e.stopPropagation();
+      moSoi(timDong(id));
+    };
+    o.querySelector('.sua-nut').onclick = e => { e.stopPropagation(); moSua(id); };
+    o.querySelector('.ct-bang').onclick = e => {
+      e.stopPropagation();
+      const m = timDong(id);
+      if (m && m.chu_the){ $('#oTim').value = m.chu_the; tai(true); }
+      else moSua(id);
+    };
+    o.querySelectorAll('.chip').forEach(c => c.onclick = async e => {
+      e.stopPropagation();
+      if (c.dataset.moSua){ moSua(id); return; }
+      const nhan = c.dataset.nhan;
+      if (e.target.classList.contains('x')){       // ✕ = xoá nhãn này khỏi tấm
+        const m = timDong(id);
+        if (!m) return;
+        m.nhan = (m.nhan || []).filter(n => n !== nhan);
+        await suaMot(id, {nhan: m.nhan});
+        m.nguoi_sua = true;
+        veLaiO(o, m);
+        bao(`✕ bỏ nhãn "${nhan}"`);
+      } else {                                     // bấm chip = LỌC theo nhãn
+        $('#oTim').value = nhan;
+        tai(true);
+      }
+    });
+  });
+}
+function veLaiO(o, m){
+  const moi = document.createElement('div');
+  moi.innerHTML = oHtml(m);
+  o.replaceWith(moi.firstElementChild);
+  gan(); veThanhLoat();
+}
+async function suaMot(id, than){
+  if (cheDo === 'video'){
+    const i = id.lastIndexOf('::');
+    return api('/api/kho-video-sua',
+               Object.assign({ids: [[id.slice(0, i), parseFloat(id.slice(i + 2))]]}, than));
+  }
+  return api('/api/kho-nha-sua', Object.assign({tep: id}, than));
+}
+
+// ── CỬA SOI: mở theo DÒNG dữ liệu (10/08 — để ←/→ chuyển tấm không cần DOM ô,
+// tấm chưa render trong lưới vẫn soi được; anh cắt logo hàng loạt liền tay) ──────
+function moSoi(m){
+  if (!m) return;
+  const id = idCua(m), laV = cheDo === 'video';
+  soiDangTep = laV ? null : id;
+  soiDangDoan = laV ? id : null;
+  $('#soiNut').style.display = 'flex';
+  $('#soiCrop').style.display = laV ? 'none' : '';
+  $('#soiCropHoan').style.display = 'none';
+  $('#soiWm').style.display = laV ? 'none' : '';
+  $('#soiWmChot').style.display = $('#soiWmBo').style.display =
+    $('#soiWmDac').style.display = $('#soiWmHoan').style.display = 'none';
+  vungWmCuoi = null;
+  $('#soiKhungV').style.display = laV ? '' : 'none';
+  $('#soiKhungVBo').style.display = (laV && m.khung) ? '' : 'none';
+  tatCrop();
+  if (laV){
+    const v = $('#soiVid'), den = m.den;
+    $('#soiAnh').style.display = 'none'; v.style.display = '';
+    v.src = '/kho-video-xem/' + encodeURIComponent(m.tep);
+    v.currentTime = m.tu;
+    v.ontimeupdate = () => { if (v.currentTime >= den) v.pause(); };
+    $('#soi').style.display = 'flex'; v.play();
+  } else {
+    $('#soiVid').style.display = 'none'; $('#soiAnh').style.display = '';
+    $('#soiAnh').src = '/kho-nha-anh/' + encodeURIComponent(m.tep);
+    $('#soi').style.display = 'flex';
+  }
+}
+function chuyenSoi(buoc){
+  const id = soiDangTep || soiDangDoan;
+  const i = dsHien.findIndex(m => idCua(m) === id);
+  if (i < 0) return;
+  const j = i + buoc;
+  if (j < 0 || j >= dsHien.length)
+    return bao(buoc > 0 ? 'Hết — đang ở tấm cuối danh sách' : 'Đang ở tấm đầu danh sách');
+  moSoi(dsHien[j]);
+  bao(`${j + 1}/${dsHien.length}`);
+}
+$('#soiTruoc').onclick = e => { e.stopPropagation(); chuyenSoi(-1); };
+$('#soiSau').onclick = e => { e.stopPropagation(); chuyenSoi(1); };
+
+// ── HỘP SỬA SÂU ──────────────────────────────────────────────────────────────
+function moSua(id){
+  const m = timDong(id);
+  if (!m) return;
+  shDang = id;
+  $('#shAnh').src = cheDo === 'video'
+    ? '/kho-video-thumb/' + encodeURIComponent(m.thumb)
+    : '/kho-nha-anh/' + encodeURIComponent(m.tep);
+  $('#shCt').value = m.chu_the || '';
+  $('#shMota').value = m.mo_ta || '';
+  $('#shThem').value = '';       // ô nhãn-mới phải SẠCH mỗi lần mở — không dính tấm trước
+  $('#suaHop').dataset.nhan = JSON.stringify(m.nhan || []);
+  veShChips();
+  $('#suaHop').style.display = 'flex';
+  $('#shCt').focus();
+}
+function veShChips(){
+  const ds = JSON.parse($('#suaHop').dataset.nhan || '[]');
+  $('#shChips').innerHTML = ds.map((n, i) =>
+    `<span class="chip" data-i="${i}" title="✕ xoá">${n}<span class="x">✕</span></span>`).join('');
+  document.querySelectorAll('#shChips .chip').forEach(c => c.onclick = () => {
+    const ds2 = JSON.parse($('#suaHop').dataset.nhan);
+    ds2.splice(+c.dataset.i, 1);
+    $('#suaHop').dataset.nhan = JSON.stringify(ds2);
+    veShChips();
+    shLuuNgam();        // xoá chip cũng lưu luôn — cùng luật với thêm nhãn (11/08)
+  });
+}
+function shThemNhan(v){
+  v = (v || '').trim();
+  if (!v) return;
+  const ds = JSON.parse($('#suaHop').dataset.nhan);
+  if (!ds.some(n => n.toLowerCase() === v.toLowerCase())) ds.push(v);
+  $('#suaHop').dataset.nhan = JSON.stringify(ds);
+  $('#shThem').value = '';
+  veShChips();
+  shLuuNgam(v);         // Enter nhãn = LƯU LUÔN (anh đặt 11/08: khỏi với xuống nút 💾)
+}
+// LƯU NGẦM riêng phần NHÃN — hộp vẫn mở để gõ tiếp nhãn nữa; chủ thể + mô tả vẫn
+// chốt bằng nút 💾 như cũ (gõ dở một nửa mà tự lưu thì thành lưu rác)
+async function shLuuNgam(vMoi){
+  if (!shDang) return;
+  const than = {nhan: JSON.parse($('#suaHop').dataset.nhan)};
+  let r;
+  try { r = await suaMot(shDang, than); } catch (e) { return bao('⚠ lưu nhãn hỏng', true); }
+  // đồng bộ chip theo SỰ THẬT server trả về (khử trùng bỏ dấu, trần 12) — và nếu nhãn
+  // vừa thêm bị trần gạt rụng thì NÓI RA, đừng im (bệnh rụng-im-lặng bắt 11/08)
+  if (r && Array.isArray(r.nhan)){
+    than.nhan = r.nhan;
+    $('#suaHop').dataset.nhan = JSON.stringify(r.nhan);
+    veShChips();
+    if (vMoi && !r.nhan.some(n => n.toLowerCase() === vMoi.toLowerCase()))
+      return bao('⚠ Tấm này đã kịch trần 12 nhãn — xoá bớt nhãn cũ rồi thêm lại', true);
+  }
+  const m = timDong(shDang);
+  if (m) Object.assign(m, than, {nguoi_sua: true});
+  const o = document.querySelector(`#luoi .o[data-id="${CSS.escape(shDang)}"]`);
+  if (o && m) veLaiO(o, m);
+  bao('✓ Nhãn đã lưu');
+}
+$('#shThem').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (goiVt >= 0) return;                // đang chọn một GỢI Ý — để bộ gợi ý xử Enter
+  e.preventDefault();
+  shThemNhan($('#shThem').value);
+  anGoi();
+});
+
+// ── 💡 GỢI Ý NHÃN ĐÃ CÓ, khớp KHÔNG DẤU (anh đặt 11/08) ─────────────────────
+// Nạp MỘT lần cả bộ nhãn kho ảnh + video (kèm tần suất, server cache theo mtime sổ);
+// gõ ở ô CHỦ THỂ hay ô NHÃN đều lọc tức thì phía client — "dinh bac" ra "Nguyễn Đình Bắc".
+let goiDs = [], goiVt = -1, goiCho = null;      // goiCho: input đang được gợi ('ct'|'them')
+const boDauJs = s => (s || '').toLowerCase().normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd');
+(async () => {
+  try { goiDs = (await api('/api/kho-nhan-goiy')).ds || []; } catch (e) {}
+})();
+const hopGoiCua = cho => $(cho === 'loat' ? '#ctLoatGoi' : '#shGoi');
+function veGoi(inp, cho){
+  const q = boDauJs(inp.value.trim());
+  const g = hopGoiCua(cho);
+  if (!q){ anGoi(); return; }
+  // chỉ ô NHÃN mới cần loại nhãn tấm đã đeo; ô chủ thể / ô loạt gợi đủ
+  const daCo = cho === 'them'
+    ? new Set(JSON.parse($('#suaHop').dataset.nhan || '[]').map(n => n.toLowerCase()))
+    : new Set();
+  const khop = goiDs
+    .filter(x => x.k.includes(q) && !daCo.has(x.n.toLowerCase()))
+    .sort((a, b) => (b.k.startsWith(q) - a.k.startsWith(q)) || (b.d - a.d))
+    .slice(0, 8);
+  if (!khop.length){ anGoi(); return; }
+  goiCho = cho; goiVt = -1;
+  g.style.display = '';
+  g.innerHTML = khop.map((x, i) =>
+    `<div class="goi-o" data-i="${i}" data-n="${x.n.replace(/"/g, '&quot;')}"
+       style="padding:4px 8px;border-radius:6px;cursor:pointer;font-size:13px;
+       display:flex;justify-content:space-between;gap:8px">
+       <span>${x.n}</span><span style="color:#6b5c53;font-size:11px">×${x.d}</span></div>`).join('');
+  g.querySelectorAll('.goi-o').forEach(o => {
+    o.onmousedown = e => { e.preventDefault(); chonGoi(o.dataset.n); };   // mousedown: trước blur
+    o.onmouseenter = () => toGoi(+o.dataset.i);
+  });
+}
+function toGoi(i){
+  goiVt = i;
+  hopGoiCua(goiCho).querySelectorAll('.goi-o').forEach((o, k) =>
+    o.style.background = k === i ? '#332a26' : '');
+}
+function chonGoi(n){
+  const cho = goiCho;
+  if (cho === 'ct') $('#shCt').value = n;
+  else if (cho === 'loat') $('#ctLoat').value = n;
+  else shThemNhan(n);
+  anGoi();
+  $(cho === 'ct' ? '#shCt' : cho === 'loat' ? '#ctLoat' : '#shThem').focus();
+}
+function anGoi(){
+  $('#shGoi').style.display = 'none';
+  const g2 = $('#ctLoatGoi'); if (g2) g2.style.display = 'none';
+  goiVt = -1; goiCho = null;
+}
+// 'loat' = ô gõ tên ở thanh GÁN CẢ LOẠT (anh đặt 11/08: gắn nhãn nhiều ảnh cũng phải gợi ý)
+[['shCt', 'ct'], ['shThem', 'them'], ['ctLoat', 'loat']].forEach(([id, cho]) => {
+  const inp = $('#' + id);
+  inp.addEventListener('input', () => veGoi(inp, cho));
+  inp.addEventListener('blur', () => setTimeout(anGoi, 150));
+  inp.addEventListener('keydown', e => {
+    const hop = hopGoiCua(cho);
+    if (hop.style.display === 'none') return;
+    const so = hop.querySelectorAll('.goi-o').length;
+    if (e.key === 'ArrowDown'){ e.preventDefault(); toGoi(Math.min(so - 1, goiVt + 1)); }
+    else if (e.key === 'ArrowUp'){ e.preventDefault(); toGoi(Math.max(0, goiVt - 1)); }
+    else if (e.key === 'Enter' && goiVt >= 0){
+      e.preventDefault(); e.stopPropagation();
+      chonGoi(hop.querySelectorAll('.goi-o')[goiVt].dataset.n);
+    }
+    else if (e.key === 'Escape'){ e.stopPropagation(); anGoi(); }
+  }, true);                              // capture: chặn trước handler Enter/Esc cũ
+});
+async function shLuu(){
+  if (!shDang) return;
+  const than = {chu_the: $('#shCt').value.trim(),
+                nhan: JSON.parse($('#suaHop').dataset.nhan),
+                mo_ta: $('#shMota').value.trim()};
+  await suaMot(shDang, than);
+  const m = timDong(shDang);
+  if (m) Object.assign(m, than, {nguoi_sua: true});
+  const o = document.querySelector(`#luoi .o[data-id="${CSS.escape(shDang)}"]`);
+  if (o && m) veLaiO(o, m);
+  $('#suaHop').style.display = 'none';
+  bao('💾 Đã lưu — máy không đè lại nữa');
+}
+$('#shLuu').onclick = shLuu;
+$('#shDong').onclick = () => $('#suaHop').style.display = 'none';
+['#shCt', '#shMota'].forEach(s => $(s).addEventListener('keydown', e => {
+  if (e.key === 'Enter' && s !== '#shMota'){ e.preventDefault(); shLuu(); }
+}));
+
+// ── THẺ TÊN + CON DẤU ────────────────────────────────────────────────────────
+// bỏ dấu tiếng Việt phía client — lọc thẻ gõ "dinh bac" phải ra "Nguyễn Đình Bắc"
+// (anh bắt 10/08: trước bắt gõ chính xác có dấu)
+const boDau = s => (s || '').toLowerCase().normalize('NFD')
+  .replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd');
+function veThe(){
+  const loc = boDau($('#locThe').value);
+  const hien = _dsThe.filter(m => !loc ||
+    loc.split(/\s+/).every(t => boDau(m.ten).includes(t)));
+  $('#theCt').innerHTML = hien.slice(0, 16).map(m =>
+    `<button class="the-ct ${dangDau === m.ten ? 'dau' : ''}" data-ct="${m.ten.replace(/"/g, '&quot;')}"
+      title="Có cụm chọn: gán cả cụm · Không có cụm: CẦM DẤU rồi click từng ảnh">${m.ten}${m.so ? ` <i>${m.so}</i>` : ''}</button>`).join('')
+    + (hien.length > 16 ? `<span style="color:#a0938a;font-size:12px">…gõ ô lọc</span>` : '');
+  document.querySelectorAll('.the-ct').forEach(b => b.onclick = () => {
+    const t = b.dataset.ct;
+    if (daChonK.size){                             // có cụm → gán cả cụm như cũ
+      suaLoat({chu_the: t}, `👤 "${t}" → N mục`).then(napTheCt);
+      return;
+    }
+    if (dangDau === t){ thaDau(); return; }        // bấm lại thẻ đang cầm = thả
+    dangDau = t;
+    $('#trangThaiDau').style.display = '';
+    $('#trangThaiDau').textContent = `🖋 ĐANG CẦM DẤU "${t}" — click ảnh để đóng tên · Esc thả`;
+    veThe();
+  });
+}
+function thaDau(){
+  dangDau = null;
+  $('#trangThaiDau').style.display = 'none';
+  veThe();
+  napTheCt();
+}
+async function napTheCt(){
+  try { _dsThe = await (await fetch('/api/kho-nha-chuthe')).json() || []; veThe(); }
+  catch (e) {}
+}
+$('#locThe').addEventListener('input', () => {
+  $('#xoaLocThe').style.display = $('#locThe').value ? '' : 'none';
+  veThe();
+});
+$('#xoaLocThe').onclick = () => {
+  $('#locThe').value = ''; $('#xoaLocThe').style.display = 'none'; veThe();
+};
+
+// ── LOẠT ─────────────────────────────────────────────────────────────────────
+async function suaLoat(than, loi_bao){
+  const r = cheDo === 'video'
+    ? await api('/api/kho-video-sua', Object.assign({ids: idsChon()}, than))
+    : await api('/api/kho-nha-sua', Object.assign({tep_ds: [...daChonK]}, than));
+  if (r.ok){ bao(loi_bao.replace('N', r.so)); daChonK = new Set(); tai(true); }
+  else bao('Lỗi', true);
+}
+$('#nutGanLoat').onclick = () => {
+  const ct = $('#ctLoat').value.trim();
+  if (!ct) return bao('Gõ tên vào ô — hoặc bấm thẳng một THẺ TÊN', true);
+  // dùng xong ô tự trống (anh đặt 10/08) — tên cũ nằm lại là gán nhầm loạt sau
+  suaLoat({chu_the: ct}, `👤 CHỦ THỂ "${ct}" → N mục`)
+    .then(() => { $('#ctLoat').value = ''; napTheCt(); });
+};
+// 🏷 THÊM NHÃN cho cả cụm (anh đặt 11/08) — cộng dồn qua `nhan_them`, nhãn riêng của
+// từng tấm giữ nguyên; server khử trùng bỏ dấu nên gắn lại lần nữa cũng không đẻ rác
+$('#nutNhanLoat').onclick = () => {
+  const nh = $('#ctLoat').value.trim();
+  if (!nh) return bao('Gõ nhãn vào ô trước — gõ không dấu cũng ra gợi ý', true);
+  suaLoat({nhan_them: [nh]}, `🏷 Đã thêm nhãn "${nh}" cho N mục`)
+    .then(() => { $('#ctLoat').value = ''; });
+};
+$('#nutDungLoat').onclick = () => suaLoat({}, '✓ Đã xác nhận nhãn máy cho N mục');
+$('#nutBoTen').onclick = () => suaLoat({chu_the: ''}, '🗑 Đã bỏ tên N mục');
+// ── 🧽 WATERMARK: quét cả kho + xử hàng loạt (anh đặt 11/08) ────────────────
+function theoJobWm(job, xong){
+  const han = Date.now() + 1800000;               // 30 phút — kho to + LaMa chậm
+  const nhip = setInterval(async () => {
+    let t;
+    try { t = await api('/api/dung/' + job); }
+    catch (e) { clearInterval(nhip); return; }
+    if (!t.xong){
+      if (t.buoc) $('#dem').textContent = '⏳ ' + t.buoc;
+      if (Date.now() > han) clearInterval(nhip);
+      return;
+    }
+    clearInterval(nhip);
+    xong(t);
+  }, 2000);
+}
+$('#nutQuetWm').onclick = async e => {
+  const lai = e.shiftKey;                         // Shift = quét lại từ đầu cả kho
+  let job;
+  try { ({job} = await api('/api/kho-wm-quet', lai ? {lai: 1} : {})); }
+  catch (err) { return bao('Lỗi: ' + err.message, true); }
+  bao(lai ? '🧽 Đang quét LẠI watermark toàn kho…' : '🧽 Đang quét watermark (ảnh chưa soi)…');
+  theoJobWm(job, t => {
+    if (t.loi) return bao('⚠ ' + t.loi, true);
+    bao(`🧽 Soi ${t.quet} ảnh · ${t.dinh} DÍNH watermark · ${t.nghi} nghi có chữ`
+        + (t.dinh || t.nghi ? ' — lọc "🧽 DÍNH watermark" để xử' : ' — kho sạch'), false);
+    tai(true);
+  });
+};
+async function xuWmLoat(kieu){
+  if (cheDo === 'video') return bao('Xử watermark mới làm cho ẢNH', true);
+  if (!daChonK.size) return bao('Chọn ảnh trước đã', true);
+  const ds = [...daChonK];
+  let job;
+  try { ({job} = await api('/api/kho-wm-xu', {tep_ds: ds, kieu})); }
+  catch (e) { return bao('Lỗi: ' + e.message, true); }
+  bao(kieu === 'xoa' ? `🧽 LaMa đang xoá watermark ${ds.length} ảnh — chờ chút…`
+                     : `✂ Đang cắt dải watermark ${ds.length} ảnh…`);
+  theoJobWm(job, t => {
+    if (t.loi) return bao('⚠ ' + t.loi, true);
+    bao(`✓ Đã ${kieu === 'xoa' ? 'xoá' : 'cắt'} watermark ${t.so} ảnh — ĐÈ luôn ảnh kho`
+        + ((t.loi_ds || []).length ? ` · ${t.loi_ds.length} tấm không xử được` : ''),
+        (t.loi_ds || []).length > 0);
+    daChonK = new Set(); tai(true);
+  });
+}
+$('#nutWmXoa').onclick = () => xuWmLoat('xoa');
+$('#nutWmCat').onclick = () => xuWmLoat('cat');
+$('#nutNhinLai').onclick = async () => {
+  const r = cheDo === 'video'
+    ? await api('/api/kho-video-nhin-lai', {ids: idsChon()})
+    : await api('/api/kho-nha-nhin-lai', {tep_ds: [...daChonK]});
+  if (r.ok){ bao(`🔄 Mắt máy TO đang nhìn lại ${r.so} mục — vài phút nữa tải lại`); daChonK = new Set(); tai(true); }
+};
+$('#nutLayVe').onclick = async () => {
+  const r = await api('/api/kho-video-lay', {ids: idsChon()});
+  if (r.ok) bao(`📥 Đã cắt ${r.so} đoạn thành clip tay của bài ${r.ma || ''}`);
+  else bao('⚠ ' + (r.loi || 'lỗi'), true);
+  daChonK = new Set(); veThanhLoat();
+};
+$('#nutXoaLoat').onclick = async () => {
+  if (cheDo === 'video'){
+    const r = await api('/api/kho-video-xoa', {ids: idsChon()});
+    if (r.ok){ bao(`✕ Đã xoá ${r.so} đoạn`); daChonK = new Set(); tai(true); }
+    return;
+  }
+  const r = await api('/api/kho-nha-xoa', {tep_ds: [...daChonK]});
+  if (r.ok){
+    hoanGan = r.hoan || [];
+    daChonK = new Set(); tai(true);
+    bao(`✕ Đã xoá ${r.so} ảnh`, false, async () => {
+      const h = await api('/api/kho-nha-hoan', {dong: hoanGan});
+      if (h.ok){ bao(`↩ Đã hoàn ${h.so} ảnh về kho`); tai(true); }
+    });
+  }
+};
+// 🗑 XOÁ MỘT ngay trong cửa soi (anh đặt 11/08) — dùng ĐÚNG hai route xoá của loạt,
+// ảnh có hoàn tác y như xoá loạt; xoá xong đóng soi + vẽ lại lưới
+async function soiXoaMot(){
+  if (dangXoaWm) return bao('⏳ Máy đang vá watermark — chờ xong hẵng xoá', true);
+  if (cheDo === 'video' && soiDangDoan){
+    const i = soiDangDoan.lastIndexOf('::');
+    const r = await api('/api/kho-video-xoa',
+                        {ids: [[soiDangDoan.slice(0, i), parseFloat(soiDangDoan.slice(i + 2))]]});
+    if (!r.ok) return bao('⚠ xoá hỏng', true);
+    $('#soi').style.display = 'none'; $('#soiVid').pause();
+    daChonK.delete(soiDangDoan); tai(true);
+    return bao('🗑 Đã xoá đoạn khỏi kho video');
+  }
+  if (!soiDangTep) return;
+  const tep = soiDangTep;
+  const r = await api('/api/kho-nha-xoa', {tep_ds: [tep]});
+  if (!r.ok) return bao('⚠ xoá hỏng', true);
+  $('#soi').style.display = 'none';
+  daChonK.delete(tep); tai(true);
+  const hoan = r.hoan || [];
+  bao('🗑 Đã xoá 1 ảnh khỏi kho', false, async () => {
+    const h = await api('/api/kho-nha-hoan', {dong: hoan});
+    if (h.ok){ bao('↩ Đã hoàn ảnh về kho'); tai(true); }
+  });
+}
+$('#soiXoa').onclick = e => { e.stopPropagation(); soiXoaMot(); };
+$('#nutChonTrang').onclick = () => {
+  const tat = [...document.querySelectorAll('#luoi .o')].map(o => o.dataset.id);
+  const du = tat.every(t => daChonK.has(t));
+  tat.forEach(t => du ? daChonK.delete(t) : daChonK.add(t));
+  veThanhLoat();
+};
+$('#nutBoChon').onclick = () => { daChonK = new Set(); veThanhLoat(); };
+
+// ── nạp + tìm sống + chế độ ──────────────────────────────────────────────────
+async function tai(moi){
+  if (moi){ trang = 0; $('#luoi').innerHTML = ''; dsHien = []; }
+  const dau = cheDo === 'video' ? '/api/kho-video-ds' : '/api/kho-nha-ds';
+  const r = await api(dau + '?q=' + encodeURIComponent($('#oTim').value)
+    + '&loc=' + $('#oLoc').value + '&trang=' + trang);
+  tong = r.tong;
+  if (r.dang_tai) bao('⏳ Có video đang tải + cắt cảnh nền — lát bấm Tải lại');
+  dsHien = dsHien.concat(r.ds || []);
+  $('#luoi').insertAdjacentHTML('beforeend', (r.ds || []).map(oHtml).join(''));
+  gan(); veThanhLoat();
+  const da = document.querySelectorAll('#luoi .o').length;
+  $('#dem').textContent = `${da}/${tong}`;
+  $('#nutThem').style.display = da < tong ? '' : 'none';
+  $('#xoaTim').style.display = $('#oTim').value ? '' : 'none';
+  // ngăn 📥 CHỜ GẮN NHÃN (ảnh extension tải tay 10/08 khuya) — có tấm chờ là nút quét hiện
+  const soCho = r.so_cho_nhan || 0;
+  const nq = $('#nutQuetNhan');
+  nq.style.display = (cheDo === 'anh' && soCho) ? '' : 'none';
+  if (soCho) nq.textContent = `📥 ${soCho} chờ nhãn — quét`;
+}
+$('#nutQuetNhan').onclick = async () => {
+  const r = await api('/api/kho-nha-quet-nhan', {});
+  bao(r.dang_chay ? '⏳ Máy đang gắn nhãn dở loạt trước — chờ xong tự nối tiếp'
+                  : '👁 Mắt máy đang nhận diện + gắn nhãn nền — vài phút nữa bấm Tải lại');
+};
+function datCheDo(cd){
+  cheDo = cd; daChonK = new Set(); trang = 0;
+  $('#cdAnh').className = cd === 'anh' ? 'chinh' : '';
+  $('#cdVideo').className = cd === 'video' ? 'chinh' : '';
+  $('#oLink').style.display = $('#nutTaiVideo').style.display = cd === 'video' ? '' : 'none';
+  $('#nutLayVe').style.display = cd === 'video' ? '' : 'none';
+  tai(true);
+}
+$('#cdAnh').onclick = () => datCheDo('anh');
+$('#cdVideo').onclick = () => datCheDo('video');
+$('#oTim').addEventListener('input', () => {       // GÕ LÀ LỌC (anh chê phải Enter)
+  clearTimeout(henTim); henTim = setTimeout(() => tai(true), 350);
+});
+$('#xoaTim').onclick = () => { $('#oTim').value = ''; tai(true); };
+$('#oLoc').onchange = () => tai(true);
+$('#coO').oninput = () => {
+  document.documentElement.style.setProperty('--co', $('#coO').value + 'px');
+  document.documentElement.style.setProperty('--cao',
+    Math.round($('#coO').value * 0.7) + 'px');
+};
+$('#nutThem').onclick = () => { trang++; tai(false); };
+// TỰ NẠP khi cuộn tới đáy (10/08) — nút "Xem thêm" giữ làm dự phòng
+let dangNap = false;
+new IntersectionObserver(async ents => {
+  if (ents[0].isIntersecting && $('#nutThem').style.display !== 'none' && !dangNap){
+    dangNap = true;
+    trang++;
+    await tai(false);
+    dangNap = false;
+  }
+}, {rootMargin: '600px'}).observe($('#nutThem'));
+$('#nutTaiVideo').onclick = async () => {
+  const u = $('#oLink').value.trim();
+  if (!u.startsWith('http')) return bao('Dán link video vào ô trước đã', true);
+  const r = await api('/api/kho-video-tai', {url: u});
+  if (r.ok){ $('#oLink').value = ''; bao('⬇ Máy đang tải + cắt + gắn nhãn nền — lát bấm Tải lại'); }
+  else bao('⚠ ' + (r.loi || 'lỗi'), true);
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape'){
+    if ($('#suaHop').style.display === 'flex'){ $('#suaHop').style.display = 'none'; return; }
+    if ($('#soi').style.display === 'flex'){
+      if (cropMode){ tatCrop(); return; }          // đang cắt: Esc chỉ huỷ khung cắt
+      $('#soi').style.display = 'none'; $('#soiVid').pause(); return;
+    }
+    if (dangDau) thaDau();
+  }
+  // Delete/Backspace khi đang PHÓNG TO = xoá tấm đó (anh đặt 11/08); không bắt khi
+  // đang gõ trong ô nhập nào đó
+  if ((e.key === 'Delete' || e.key === 'Backspace')
+      && $('#soi').style.display === 'flex'
+      && !e.target.matches?.('input, textarea')){
+    e.preventDefault(); soiXoaMot();
+  }
+});
+// ── CẮT LOGO trong cửa soi (anh hỏi 10/08) — pattern kéo chuẩn: move/up ở
+// document, toạ độ kẹp về mép ảnh, kéo quá tay ăn đến mép ─────────────────────
+let cropMode = false, cropKeo = null, cropBox = null, soiDangTep = null, soiDangDoan = null;
+function _rectSoi(){                               // rect ẢNH, hoặc rect VIDEO THẬT (contain)
+  if (soiDangTep) return $('#soiAnh').getBoundingClientRect();
+  const v = $('#soiVid'), r = v.getBoundingClientRect();
+  const vw = v.videoWidth || 16, vh = v.videoHeight || 9;
+  const s = Math.min(r.width / vw, r.height / vh);
+  const w = vw * s, h = vh * s;
+  const x = r.left + (r.width - w) / 2, y = r.top + (r.height - h) / 2;
+  return {left: x, top: y, width: w, height: h, right: x + w, bottom: y + h};
+}
+const _kepSoi = (x, y) => {
+  const r = _rectSoi();
+  return [Math.max(r.left, Math.min(x, r.right)), Math.max(r.top, Math.min(y, r.bottom))];
+};
+let cropKieu = 'cat';          // 'cat' = cắt logo / 'wm' = xoá watermark (10/08)
+function batCrop(kieu){
+  if (!soiDangTep && !soiDangDoan) return;
+  cropKieu = kieu === 'wm' ? 'wm' : 'cat';
+  cropMode = true; cropKeo = cropBox = null;
+  if (soiDangDoan) $('#soiVid').pause();
+  $('#cropLop').style.display = 'block';
+  $('#cropKhung').style.display = 'none';
+  bao(cropKieu === 'wm' ? '🧽 Kéo chọn VÙNG WATERMARK CẦN XOÁ — Enter xoá thử · Esc huỷ'
+    : soiDangTep ? '✂ Kéo chọn VÙNG GIỮ — Enter cắt · Esc huỷ'
+                 : '✂ Kéo chọn VÙNG GIỮ của đoạn — Enter LƯU khung · Esc huỷ');
+}
+function tatCrop(){
+  cropMode = false; cropKeo = cropBox = null;
+  $('#cropLop').style.display = 'none';
+  $('#cropKhung').style.display = 'none';
+}
+$('#soiCrop').onclick = e => { e.stopPropagation(); cropMode ? tatCrop() : batCrop(); };
+$('#cropLop').addEventListener('mousedown', e => {
+  e.preventDefault();
+  const [x, y] = _kepSoi(e.clientX, e.clientY);
+  cropKeo = {x, y}; cropBox = null;
+});
+document.addEventListener('mousemove', e => {
+  if (!cropKeo) return;
+  const [x, y] = _kepSoi(e.clientX, e.clientY);
+  cropBox = {x: Math.min(cropKeo.x, x), y: Math.min(cropKeo.y, y),
+             w: Math.abs(x - cropKeo.x), h: Math.abs(y - cropKeo.y)};
+  const k = $('#cropKhung');
+  k.style.display = 'block';
+  k.style.left = cropBox.x + 'px'; k.style.top = cropBox.y + 'px';
+  k.style.width = cropBox.w + 'px'; k.style.height = cropBox.h + 'px';
+});
+document.addEventListener('mouseup', () => { cropKeo = null; });
+async function catLogo(){
+  if (!cropBox || cropBox.w < 20 || cropBox.h < 20)
+    return bao('Chưa chọn vùng — kéo chuột trên ảnh trước', true);
+  const r0 = $('#soiAnh').getBoundingClientRect();
+  const r = await api('/api/kho-nha-crop', {tep: soiDangTep,
+    x: (cropBox.x - r0.left) / r0.width, y: (cropBox.y - r0.top) / r0.height,
+    w: cropBox.w / r0.width, h: cropBox.h / r0.height});
+  if (!r.ok) return bao('⚠ ' + (r.loi || 'cắt hỏng'), true);
+  tatCrop();
+  $('#soiAnh').src = '/kho-nha-anh/' + encodeURIComponent(soiDangTep) + '?t=' + Date.now();
+  $('#soiCropHoan').style.display = '';
+  const m = timDong(soiDangTep);
+  if (m){ m.kich_thuoc = r.kich_thuoc;
+    const o = document.querySelector(`#luoi .o[data-id="${CSS.escape(soiDangTep)}"]`);
+    if (o) o.querySelector('img.anh').src = $('#soiAnh').src; }
+  bao('✂ Đã cắt — ảnh trong kho THAY LUÔN bản mới · ↩ Hoàn cắt nếu chưa ưng');
+}
+$('#soiCropHoan').onclick = async e => {
+  e.stopPropagation();
+  const r = await api('/api/kho-nha-crop-hoan', {tep: soiDangTep});
+  if (!r.ok) return bao('⚠ ' + (r.loi || ''), true);
+  $('#soiAnh').src = '/kho-nha-anh/' + encodeURIComponent(soiDangTep) + '?t=' + Date.now();
+  const o = document.querySelector(`#luoi .o[data-id="${CSS.escape(soiDangTep)}"]`);
+  if (o) o.querySelector('img.anh').src = $('#soiAnh').src;
+  $('#soiCropHoan').style.display = 'none';
+  bao('↩ Đã hoàn về ảnh gốc');
+};
+// 🧽 XOÁ WATERMARK bằng LaMa local (anh duyệt 10/08 — CÓ CỬA DUYỆT): máy chỉ sinh bản
+// THỬ; anh nhìn trước/sau ngay trong cửa soi rồi mới quyết Thay hay giữ gốc.
+let dangXoaWm = false;   // chặn bấm chồng — 2 LaMa song song từng làm SẬP máy (10/08)
+let vungWmCuoi = null;   // vùng vừa xoá — để nút 🔁 Vá đặc chạy lại không bắt kéo lại
+async function xoaWmThu(kieu){
+  if (dangXoaWm) return bao('⏳ Máy đang vá một vùng — chờ xong đã rồi hẵng xoá tiếp', true);
+  let vung;
+  if (kieu === 'dac' && vungWmCuoi){
+    vung = vungWmCuoi;                             // vá lại đúng vùng cũ, kiểu đặc
+  } else {
+    if (!cropBox || cropBox.w < 10 || cropBox.h < 10)
+      return bao('Chưa chọn vùng — kéo chuột quanh watermark trước', true);
+    const r0 = $('#soiAnh').getBoundingClientRect();
+    vung = [{x: +((cropBox.x - r0.left) / r0.width).toFixed(4),
+             y: +((cropBox.y - r0.top) / r0.height).toFixed(4),
+             w: +(cropBox.w / r0.width).toFixed(4),
+             h: +(cropBox.h / r0.height).toFixed(4)}];
+  }
+  vungWmCuoi = vung;
+  const tep = soiDangTep;
+  tatCrop();
+  dangXoaWm = true;
+  $('#soiWm').disabled = $('#soiWmDac').disabled = true;
+  let job;
+  try { ({job} = await api('/api/xoa-wm', {tep, vung, kieu: kieu || 'tu'})); }
+  catch (e) { dangXoaWm = false; $('#soiWm').disabled = $('#soiWmDac').disabled = false;
+              return bao('Lỗi: ' + e.message, true); }
+  bao(kieu === 'dac' ? '🔁 Vá ĐẶC cả ô — vài giây…' : '🧽 LaMa đang vá vùng xoá — vài giây…');
+  const nhip = setInterval(async () => {
+    let t;
+    try { t = await api('/api/dung/' + job); }
+    catch (e) { clearInterval(nhip); dangXoaWm = false;
+                $('#soiWm').disabled = $('#soiWmDac').disabled = false; return; }
+    if (!t.xong) return;
+    clearInterval(nhip);
+    dangXoaWm = false; $('#soiWm').disabled = $('#soiWmDac').disabled = false;
+    if (!t.ok) return bao('⚠ Xoá hỏng: ' + (t.loi || ''), true);
+    // TỰ THAY LUÔN (anh đổi 11/08: "lưu/enter thì tự động thay luôn ảnh cũ") — bỏ bước
+    // ✔ Thay thủ công. An toàn vì bản gốc vẫn giữ nguyên, ↩ Hoàn xoá lúc nào cũng được;
+    // còn vết mờ thì 🔁 Vá đặc chạy tiếp ngay trên bản đã thay (vùng đã nhớ vungWmCuoi).
+    const rc = await api('/api/xoa-wm-chot', {tep});
+    if (!rc.ok) return bao('⚠ Vá xong nhưng thay hỏng: ' + (rc.loi || ''), true);
+    if (soiDangTep === tep)
+      $('#soiAnh').src = '/kho-nha-anh/' + encodeURIComponent(tep) + '?t=' + Date.now();
+    const o = document.querySelector(`#luoi .o[data-id="${CSS.escape(tep)}"]`);
+    if (o) o.querySelector('img.anh').src =
+      '/kho-nha-anh/' + encodeURIComponent(tep) + '?t=' + Date.now();
+    $('#soiWmDac').style.display = $('#soiWmHoan').style.display = '';
+    bao('✔ Đã xoá watermark và THAY luôn ảnh kho · còn vết? 🔁 Vá đặc · đổi ý? ↩ Hoàn xoá');
+  }, 1500);
+}
+$('#soiWmDac').onclick = e => { e.stopPropagation(); xoaWmThu('dac'); };
+$('#soiWm').onclick = e => { e.stopPropagation(); cropMode ? tatCrop() : batCrop('wm'); };
+$('#soiWmChot').onclick = async e => {
+  e.stopPropagation();
+  const r = await api('/api/xoa-wm-chot', {tep: soiDangTep});
+  if (!r.ok) return bao('⚠ ' + (r.loi || 'thay hỏng'), true);
+  $('#soiAnh').src = '/kho-nha-anh/' + encodeURIComponent(soiDangTep) + '?t=' + Date.now();
+  const o = document.querySelector(`#luoi .o[data-id="${CSS.escape(soiDangTep)}"]`);
+  if (o) o.querySelector('img.anh').src = $('#soiAnh').src;
+  $('#soiWmChot').style.display = $('#soiWmBo').style.display =
+    $('#soiWmDac').style.display = 'none';
+  $('#soiWmHoan').style.display = '';
+  bao('✔ Đã thay — ảnh trong kho giờ là bản sạch watermark · ↩ Hoàn xoá nếu đổi ý');
+};
+$('#soiWmBo').onclick = e => {
+  e.stopPropagation();
+  $('#soiAnh').src = '/kho-nha-anh/' + encodeURIComponent(soiDangTep) + '?t=' + Date.now();
+  $('#soiWmChot').style.display = $('#soiWmBo').style.display =
+    $('#soiWmDac').style.display = 'none';
+  bao('✕ Giữ nguyên ảnh gốc');
+};
+$('#soiWmHoan').onclick = async e => {
+  e.stopPropagation();
+  const r = await api('/api/xoa-wm-hoan', {tep: soiDangTep});
+  if (!r.ok) return bao('⚠ ' + (r.loi || ''), true);
+  $('#soiAnh').src = '/kho-nha-anh/' + encodeURIComponent(soiDangTep) + '?t=' + Date.now();
+  const o = document.querySelector(`#luoi .o[data-id="${CSS.escape(soiDangTep)}"]`);
+  if (o) o.querySelector('img.anh').src = $('#soiAnh').src;
+  $('#soiWmHoan').style.display = 'none';
+  bao('↩ Đã hoàn về bản trước khi xoá watermark');
+};
+
+// ✂ KHUNG NÉ LOGO cho ĐOẠN VIDEO (10/08): lưu {x,y,w,h} vào sổ đoạn — lấy về bài
+// là tự cắt vùng này thành clip tay sạch
+async function luuKhungV(){
+  if (!cropBox || cropBox.w < 15 || cropBox.h < 15)
+    return bao('Chưa chọn vùng — kéo chuột trên hình trước', true);
+  const r0 = _rectSoi();
+  const kh = {x: +((cropBox.x - r0.left) / r0.width).toFixed(4),
+              y: +((cropBox.y - r0.top) / r0.height).toFixed(4),
+              w: +(cropBox.w / r0.width).toFixed(4), h: +(cropBox.h / r0.height).toFixed(4)};
+  const i = soiDangDoan.lastIndexOf('::');
+  const r = await api('/api/kho-video-sua',
+    {ids: [[soiDangDoan.slice(0, i), parseFloat(soiDangDoan.slice(i + 2))]], khung: kh});
+  if (!r.ok) return bao('⚠ lỗi lưu khung', true);
+  tatCrop();
+  const m = timDong(soiDangDoan);
+  if (m) m.khung = kh;
+  $('#soiKhungVBo').style.display = '';
+  bao('✂ Đã LƯU khung né logo — lấy đoạn về bài là tự cắt vùng này');
+}
+$('#soiKhungV').onclick = e => { e.stopPropagation(); cropMode ? tatCrop() : batCrop(); };
+$('#soiKhungVBo').onclick = async e => {
+  e.stopPropagation();
+  const i = soiDangDoan.lastIndexOf('::');
+  await api('/api/kho-video-sua',
+    {ids: [[soiDangDoan.slice(0, i), parseFloat(soiDangDoan.slice(i + 2))]], khung: null});
+  const m = timDong(soiDangDoan);
+  if (m) delete m.khung;
+  $('#soiKhungVBo').style.display = 'none';
+  bao('✕ Đã bỏ khung của đoạn');
+};
+document.addEventListener('keydown', e => {
+  if ($('#soi').style.display !== 'flex' || (!soiDangTep && !soiDangDoan)) return;
+  if (cropMode){
+    if (e.key === 'Enter'){ e.preventDefault();
+      soiDangTep ? (cropKieu === 'wm' ? xoaWmThu() : catLogo()) : luuKhungV(); return; }
+    if (e.key === 'Escape'){ e.preventDefault(); tatCrop(); return; }
+  }
+  if (e.key === 'c' || e.key === 'C'){ e.preventDefault(); cropMode ? tatCrop() : batCrop(); }
+  if ((e.key === 'w' || e.key === 'W') && soiDangTep){
+    e.preventDefault(); cropMode ? tatCrop() : batCrop('wm');
+  }
+  // ←/→ chuyển tấm NGAY trong cửa soi (anh đặt 10/08 — cắt logo hàng loạt liền tay);
+  // đang kéo crop thì thôi, mũi tên để yên cho việc chọn vùng
+  if (!cropMode && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')){
+    e.preventDefault(); chuyenSoi(e.key === 'ArrowRight' ? 1 : -1);
+  }
+});
+
+// ── BỘ GÕ TIẾNG VIỆT (vụ nhãn "ninh"/"đấu"/"động" 10/08 khuya): Enter bấm lúc IME
+// còn đang ghép chữ cuối ("an ninh" — "ninh" chưa chốt) mà handler đã thêm nhãn + xoá
+// ô thì IME chèn lại phần dở thành nhãn rác. Chặn ở CAPTURE: Enter khi đang compose
+// không được rơi xuống bất kỳ handler nào — đó là Enter CHỐT CHỮ, không phải lệnh.
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.isComposing || e.keyCode === 229)) e.stopPropagation();
+}, true);
+
+// ── Ô NHẬP SẠCH (anh đặt 10/08): Esc trong ô đang có chữ = XOÁ TRẮNG ngay (bắt ở
+// capture để Esc chưa kịp đóng hộp/thả dấu); ô trống thì Esc trả về hành vi cũ.
+// Tắt autocomplete để trình duyệt không gợi lại giá trị cũ đè lên tay anh.
+document.querySelectorAll('input, textarea').forEach(o => o.autocomplete = 'off');
+document.addEventListener('keydown', e => {
+  const o = e.target;
+  if (e.key !== 'Escape' || !o.matches || !o.matches('input, textarea') || !o.value) return;
+  e.preventDefault(); e.stopPropagation();
+  o.value = '';
+  o.dispatchEvent(new Event('input', {bubbles: true}));  // các bộ lọc gõ-là-lọc tự cập nhật
+}, true);
+
+napTheCt();
+tai(true);
+</script>
+<script src="/menu.js"></script>
+</body>
+</html>

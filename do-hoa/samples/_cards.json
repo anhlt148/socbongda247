@@ -1,0 +1,68 @@
+[
+ {
+  "type": "versus",
+  "accent": "#e11d2a",
+  "out": "/Users/letuananh/bo-do-hoa-bongda/samples/1_versus.png",
+  "title": "Chung kết trong mơ",
+  "left": {
+   "name": "Brazil",
+   "value": "3",
+   "flag": "br"
+  },
+  "right": {
+   "name": "Anh",
+   "value": "2",
+   "flag": "gb-eng",
+   "win": true
+  }
+ },
+ {
+  "type": "stat",
+  "accent": "#1d9bf0",
+  "out": "/Users/letuananh/bo-do-hoa-bongda/samples/2_stat.png",
+  "label": "Bàn thắng mùa này",
+  "value": "36",
+  "note": "Kỷ lục một mùa Ngoại hạng Anh"
+ },
+ {
+  "type": "leaderboard",
+  "accent": "#e11d2a",
+  "out": "/Users/letuananh/bo-do-hoa-bongda/samples/3_leaderboard.png",
+  "title": "Vua phá lưới",
+  "rows": [
+   {
+    "name": "Haaland",
+    "value": 36,
+    "highlight": true
+   },
+   {
+    "name": "Salah",
+    "value": 25
+   },
+   {
+    "name": "Kane",
+    "value": 23
+   }
+  ]
+ },
+ {
+  "type": "timeline",
+  "accent": "#e11d2a",
+  "out": "/Users/letuananh/bo-do-hoa-bongda/samples/4_timeline.png",
+  "title": "Hành trình sự nghiệp Haaland",
+  "points": [
+   {
+    "year": "2020",
+    "caption": "Ghi bàn như máy ở Dortmund"
+   },
+   {
+    "year": "2022",
+    "caption": "Cập bến Man City giá 60 triệu £"
+   },
+   {
+    "year": "2023",
+    "caption": "Cú ăn ba lịch sử + 36 bàn"
+   }
+  ]
+ }
+]

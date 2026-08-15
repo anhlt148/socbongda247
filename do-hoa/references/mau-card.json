@@ -1,0 +1,16 @@
+[
+ {"type":"versus","accent":"#e11d2a","out":"/private/tmp/claude-501/cardtest/1_versus.png",
+  "title":"World Cup — bảng vàng",
+  "left":{"name":"Brazil","value":"5","flag":"br"},
+  "right":{"name":"Na Uy","value":"0","flag":"no","win":true}},
+ {"type":"stat","accent":"#1d9bf0","out":"/private/tmp/claude-501/cardtest/2_stat.png",
+  "label":"Bàn thắng","value":"36","note":"Kỷ lục một mùa Ngoại hạng Anh của Haaland"},
+ {"type":"leaderboard","accent":"#e11d2a","out":"/private/tmp/claude-501/cardtest/3_leader.png",
+  "title":"Đua Giày Vàng World Cup",
+  "rows":[{"name":"Messi","value":8},{"name":"Haaland","value":7,"highlight":true},{"name":"Mbappé","value":7}]},
+ {"type":"timeline","accent":"#e11d2a","out":"/private/tmp/claude-501/cardtest/4_timeline.png",
+  "title":"Na Uy — cơn ác mộng của người Anh",
+  "points":[{"year":"1981","caption":"Thắng Anh 2-1, Lillelien"},{"year":"1993","caption":"Loại Anh khỏi World Cup 1994"},{"year":"2026","caption":"Tái đấu tại Miami"}]},
+ {"type":"title","accent":"#e11d2a","out":"/private/tmp/claude-501/cardtest/5_title.png",
+  "kicker":"Bóng đá Na Uy","title":"LẦN ĐẦU TIÊN TRONG 100 NĂM","subtitle":"Na Uy bước vào tứ kết World Cup"}
+]

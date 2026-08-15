@@ -1,0 +1,1440 @@
+#!/usr/bin/env python3
+"""TRẠM DUYỆT TÀI NGUYÊN — cửa người số 2 của kênh Sóc Bóng Đá 247.
+
+Việc của trạm: bày lời bình ra TỪNG CÂU theo đúng thứ tự kể, mỗi câu một ô ảnh, để anh
+quyết định ảnh nào vào câu nào. Xong bấm DUYỆT, trạm tự sinh đủ thứ cho xưởng dựng.
+
+Vì sao có trạm này (sổ dự án 04/08):
+  · Trước đó việc chọn ảnh làm bằng cách SỬA TAY danh sách trong `chon_anh.py` — muốn đổi
+    một tấm phải mở mã nguồn. Không phải cách để chạy 3–5 video mỗi ngày.
+  · "Ảnh phải neo theo CÂU, không theo CẢNH": cảnh cắt theo nhịp 3-4 giây, lời chạy theo câu,
+    hai thứ lệch nhau ngay từ cảnh hai (video Việt Anh: 26 câu / 16 cảnh / 14 ảnh). Xưởng đã
+    đọc `anh/ban-do-cau.json`, nhưng chưa có chỗ nào để NGƯỜI làm ra cái bản đồ ấy. Đây là chỗ đó.
+  · Ảnh gom tự động phần lớn là NGƯỜI KHÁC (số 18 áo trắng là Hai Long, không phải Việt Anh).
+    Máy không soi được số áo — nên khâu này là khâu của người, và trạm phải bày cho dễ soi.
+
+Ba thứ trạm sinh ra khi anh bấm DUYỆT:
+  ① `anh/chon/NN.jpg`         — ảnh đã chọn, đánh số theo mạch kể (xưởng đọc)
+  ② `anh/ban-do-cau.json`     — {chỉ số câu → tên ảnh}, câu chưa khai thì kế thừa câu trước
+  ③ `anh/so-nguon.jsonl`      — sổ nguồn đúng khuôn cổng QC ra đang đọc (`qc_cong_chan.py`)
+  ④ `anh/blueprint.json`      — 8 trường y hệt hệ cũ, để sau muốn ghép hai hệ thì ghép được
+
+Chạy:  python3 tram_tai_nguyen.py [--cong 8756]
+       → http://localhost:8756/
+"""
+import argparse
+import base64
+import glob
+import html
+import json
+import mimetypes
+import os
+import re
+import shutil
+import subprocess
+import sys
+import threading
+import time
+import traceback
+import urllib.parse
+import urllib.request
+from datetime import datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+from PIL import Image
+
+TRAM = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(TRAM))
+sys.path.insert(0, TRAM)
+import duong_dan as DD                                        # noqa: E402
+import gap_anh                                                # noqa: E402
+import goi_y as GY                                            # noqa: E402
+import loc_anh as LOC                                         # noqa: E402
+
+TRANG = os.path.join(TRAM, "tram-tai-nguyen.html")
+TRANG_CHON = os.path.join(TRAM, "tram-chon-anh.html")   # trang chọn ảnh riêng (anh chốt 06/08)
+HANG_DOI = os.path.join(DD.MAY, "hang_doi.jsonl")             # cùng khuôn với hệ cũ
+THU_ANH = ("anh", "anh2")                                     # nơi chứa ảnh ứng viên
+# Nhịp đọc THẬT của giọng Ngọc Huyền ở speed 1.1, đo trên 3 video ngày 04/08 (không phải 265
+# như ước ban đầu). Cùng con số với `viet_loi_binh.py`. Chỉ dùng khi CHƯA có file giọng —
+# có giọng rồi thì đo thẳng bằng ffprobe, chính xác hơn hẳn.
+TIENG_MOT_PHUT = 226
+
+VIEC_JOB = {}                                                 # việc gắp ảnh đang chạy nền
+# Việc anh đang mở trên trạm — tiện ích Chrome hỏi chỗ này để biết gửi ảnh về thư mục nào.
+# GHI RA TỆP chứ không giữ trong bộ nhớ: trạm khởi động lại (em sửa mã, máy ngủ dậy…) mà quên
+# mất việc đang mở thì tiện ích rơi về "việc đầu danh sách" — gửi ảnh nhầm kho, mà nhầm rất
+# im lặng, tới lúc dựng video mới biết.
+DANG_LAM_TEP = os.path.join(DD.MAY, "tram-dang-lam.txt")
+
+
+def _dang_lam(dat=None):
+    if dat is not None:
+        open(DANG_LAM_TEP, "w", encoding="utf-8").write(dat)
+        return dat
+    try:
+        return open(DANG_LAM_TEP, encoding="utf-8").read().strip()
+    except Exception:
+        return ""
+KHOA = threading.Lock()
+
+
+# ── đọc thư mục việc ─────────────────────────────────────────────────────────
+def _tach_cau(loi_binh):
+    """Tách câu Y HỆT `xuong.py:moc_cau` — hai bên lệch một câu là bản đồ ảnh lệch theo."""
+    return [c.strip() for c in re.split(r"(?<=[.!?…])\s+", loi_binh or "") if c.strip()]
+
+
+def _do_dai_giong(viec):
+    g = os.path.join(viec, "giong.mp3")
+    if not os.path.exists(g):
+        return None
+    try:
+        r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                            "-of", "csv=p=0", g], capture_output=True, text=True, timeout=20)
+        return float(r.stdout.strip())
+    except Exception:
+        return None
+
+
+def _moc_cau(cau, tong):
+    """Giây kết thúc từng câu, chia theo tỉ lệ số tiếng — cùng phép tính với xưởng."""
+    tong_tieng = sum(len(c.split()) for c in cau) or 1
+    ra, cong = [], 0
+    for c in cau:
+        cong += len(c.split())
+        ra.append(round(cong / tong_tieng * tong, 2))
+    return ra
+
+
+def _so_anh(viec):
+    """Gom mọi thứ đã biết về từng tấm ảnh: nguồn, kích thước, cờ vàng."""
+    ra = {}
+    p = os.path.join(viec, "anh", "nguon-anh.json")            # sổ của lay_anh (JSON thường)
+    if os.path.exists(p):
+        try:
+            d = json.load(open(p, encoding="utf-8"))
+            for a in d.get("anh", []):
+                ra["anh/" + a["tep"]] = a
+        except Exception:
+            pass
+    p = os.path.join(viec, "anh", "so-gap.jsonl")              # sổ của gap_anh (JSONL)
+    if os.path.exists(p):
+        for dong in open(p, encoding="utf-8"):
+            try:
+                a = json.loads(dong)
+                ra["anh/" + a["tep"]] = a
+            except Exception:
+                pass
+    return ra
+
+
+def _danh_sach_anh(viec):
+    so = _so_anh(viec)
+    try:
+        c_hien = json.load(open(os.path.join(viec, "anh", "cach-hien.json"), encoding="utf-8"))
+    except Exception:
+        c_hien = {}
+    p_lac = os.path.join(viec, "anh", "lac-de.json")
+    lac = {}
+    if os.path.exists(p_lac):
+        try:
+            lac = json.load(open(p_lac, encoding="utf-8"))
+        except Exception:
+            lac = {}
+    ra = []
+    for thu in THU_ANH:
+        for p in sorted(glob.glob(os.path.join(viec, thu, "*.jpg"))):
+            duong = f"{thu}/{os.path.basename(p)}"
+            m = so.get(duong, {})
+            try:
+                w, h = Image.open(p).size
+            except Exception:
+                continue
+            ra.append({"duong": duong, "w": w, "h": h, "ty_le": round(w / h, 2),
+                       "bao": m.get("bao", ""), "url": m.get("url", ""),
+                       "tu_khoa": m.get("tu_khoa", ""), "can_soi": m.get("can_soi", ""),
+                       "dau_nguon": m.get("dau_nguon", ""), "canh_bao": m.get("canh_bao", ""),
+                       "ten_goc": m.get("ten_goc", ""),
+                       "cach_hien": c_hien.get(os.path.basename(p), ""),
+                       "chua_soi": bool(m.get("chua_soi")),
+                       "lac_de": bool(lac.get(os.path.basename(p), {}).get("lac_de")),
+                       "vi_sao_lac": lac.get(os.path.basename(p), {}).get("vi_sao", ""),
+                       "moi": os.path.getmtime(p)})
+    ra.sort(key=lambda a: -a["moi"])                           # ảnh vừa gắp nằm trên đầu
+    return ra
+
+
+def _tim_hop(viec):
+    """Video này đã đóng hộp vào kho thành phẩm trên Drive chưa?
+
+    So bằng TIÊU ĐỀ trong `SO-VIDEO.jsonl`, không so tên thư mục: tên hộp bị cắt còn 44 ký tự
+    nên so chuỗi rất dễ trượt — bản đầu báo "CHƯA vào kho" cho video đã nằm sẵn trong kho
+    (phát hiện 05/08 khi đối chiếu với `don_kho.py`). Sổ mới là chỗ chép đúng tiêu đề.
+    """
+    try:
+        kb = json.load(open(os.path.join(viec, "kich-ban.json"), encoding="utf-8"))
+    except Exception:
+        return ""
+    td = (kb.get("tieu_de") or "").strip().lower()
+    p = os.path.join(DD.KHO_VIDEO, "SO-VIDEO.jsonl")
+    if not td or not os.path.exists(p):
+        return ""
+    for dong in open(p, encoding="utf-8"):
+        try:
+            d = json.loads(dong)
+        except Exception:
+            continue
+        if (d.get("tieu_de") or "").strip().lower() != td:
+            continue
+        hop = d.get("hop") or d.get("ma") or ""
+        if os.path.isdir(os.path.join(DD.KHO_VIDEO, hop)):
+            return hop
+    return ""
+
+
+def _duong_mo(ma, dich):
+    """Thư mục cần mở trong Finder: hộp trong kho thành phẩm, hay thư mục việc trên ổ máy."""
+    viec = os.path.join(DD.VIEC, ma)
+    if dich == "hop":
+        hop = _tim_hop(viec)
+        return os.path.join(DD.KHO_VIDEO, hop) if hop else ""
+    return viec
+
+
+def _tin_video(viec):
+    """Anh hỏi 05/08: "chạy rồi khi nào xong, báo về ở đâu?" — dựng xong lúc 01:24 mà anh không
+    biết, vì trạm chỉ báo bằng dòng chữ nhỏ tự tắt sau 4 giây. Việc chạy 2 phút thì thông báo
+    chớp nhoáng là vô dụng. Từ giờ trạng thái video nằm THƯỜNG TRỰC trên thanh đầu."""
+    p = os.path.join(viec, "video.mp4")
+    if not os.path.exists(p):
+        return {"co": False}
+    # Video xưởng dựng ra nằm trong THƯ MỤC VIỆC trên ổ máy. Nó chỉ sang kho thành phẩm
+    # trên Drive khi chạy `buoc3_xepkho.py` — bước đóng gói 7 tệp để đăng. Anh hỏi 05/08:
+    # "dựng xong lưu ở đâu, không thấy trong kho thành phẩm" — đúng, vì trạm chưa gọi bước đó.
+    hop = _tim_hop(viec)
+    return {"co": True, "mb": round(os.path.getsize(p) / 1e6, 1), "duong": p, "hop": hop,
+            "luc": datetime.fromtimestamp(os.path.getmtime(p)).strftime("%d/%m %H:%M"),
+            "moi_hon_duyet": os.path.getmtime(p) >= os.path.getmtime(
+                os.path.join(viec, "anh", "ban-do-cau.json"))
+            if os.path.exists(os.path.join(viec, "anh", "ban-do-cau.json")) else False}
+
+
+def _nhap(viec):
+    p = os.path.join(viec, "anh", "tram.json")
+    if os.path.exists(p):
+        try:
+            return json.load(open(p, encoding="utf-8"))
+        except Exception:
+            pass
+    return {"ban_do": {}, "ghi_chu": {}, "tu_khoa": {}, "goi_y_xong": False}
+
+
+def _ds_viec():
+    ra = []
+    # Kho việc xếp theo NGÀY (anh chốt 05/08): <ngày>/<video-N-chủ đề>.
+    # Mã việc từ đây là ĐƯỜNG TƯƠNG ĐỐI, có dấu gạch chéo — giao diện phải
+    # encodeURIComponent khi nhét vào URL, nếu không là vỡ đường.
+    for d in sorted(glob.glob(os.path.join(DD.VIEC, "*", "*")), reverse=True):
+        if not os.path.isdir(d):
+            continue
+        kb = os.path.join(d, "kich-ban.json")
+        if not os.path.exists(kb):
+            continue
+        try:
+            k = json.load(open(kb, encoding="utf-8"))
+        except Exception:
+            continue
+        cau = _tach_cau(k.get("loi_binh", ""))
+        nh = _nhap(d)
+        ra.append({
+            "ma": os.path.relpath(d, DD.VIEC), "tieu_de": k.get("tieu_de", ""),
+            "so_cau": len(cau), "da_gan": len(nh.get("ban_do", {})),
+            "so_anh": len(_danh_sach_anh(d)),
+            "co_giong": os.path.exists(os.path.join(d, "giong.mp3")),
+            "da_duyet": os.path.exists(os.path.join(d, "anh", "ban-do-cau.json")),
+            "co_video": os.path.exists(os.path.join(d, "video.mp4")),
+        })
+    return ra
+
+
+def _chi_tiet(ma):
+    viec = os.path.join(DD.VIEC, ma)
+    k = json.load(open(os.path.join(viec, "kich-ban.json"), encoding="utf-8"))
+    cau = _tach_cau(k.get("loi_binh", ""))
+    tong = _do_dai_giong(viec) or round(sum(len(c.split()) for c in cau) / TIENG_MOT_PHUT * 60, 1)
+    moc = _moc_cau(cau, tong)
+    nh = _nhap(viec)
+    ds = []
+    for i, c in enumerate(cau):
+        ds.append({"i": i, "chu": c, "tieng": len(c.split()),
+                   "tu": round(moc[i - 1], 1) if i else 0.0, "den": round(moc[i], 1)})
+    return {"ma": ma, "tieu_de": k.get("tieu_de", ""), "tu_khoa_kb": k.get("tu_khoa", []),
+            # cửa duyệt LỜI gộp vào trạm 06/08 — giao diện cần nguyên văn lời để anh sửa
+            "loi_binh": k.get("loi_binh", ""),
+            "da_duyet_loi": k.get("da_duyet_loi", ""),
+            "nguon_tin": k.get("nguon_tin", ""), "tin_goc": k.get("tin_goc", ""),
+            "tong_giay": round(tong, 1), "giong_that": _do_dai_giong(viec) is not None,
+            "cau": ds, "anh": _danh_sach_anh(viec),
+            "ban_do": nh.get("ban_do", {}), "ghi_chu": nh.get("ghi_chu", {}),
+            "tu_khoa": nh.get("tu_khoa", {}), "goi_y_xong": nh.get("goi_y_xong", False),
+            "the_so": nh.get("the_so", {}),
+            "video": _tin_video(viec),
+            "da_duyet": os.path.exists(os.path.join(viec, "anh", "ban-do-cau.json")),
+            # Gộp hai nút "chốt & dựng" và "dựng lại" làm một (anh chốt 06/08): máy tự biết
+            # bản đồ ảnh có đổi kể từ lần chốt hay không, việc gì bắt anh nhớ mà chọn nút.
+            # Khớp  → dựng thẳng, khỏi chạy lại cổng QC watermark cho mất công.
+            # Lệch → phải chốt lại rồi mới dựng.
+            "chot_khop": _chot_khop(viec, nh.get("ban_do", {}))}
+
+
+def _chot_khop(viec, ban_do):
+    """Bản đồ ảnh đang gán có khớp bản đã chốt lần trước không."""
+    p = os.path.join(viec, "anh", "ban-do-cau.json")
+    if not os.path.exists(p):
+        return False
+    try:
+        chot = json.load(open(p, encoding="utf-8"))
+    except Exception:
+        return False
+    # ban-do-cau.json khai theo {chỉ số câu → tên ảnh}, câu chưa khai thì kế thừa câu trước,
+    # nên chỉ so những câu CÓ khai ở cả hai bên.
+    return {str(k): os.path.basename(str(v)) for k, v in chot.items()} == \
+           {str(k): os.path.basename(str(v)) for k, v in ban_do.items() if v}
+
+
+# ── lưu & duyệt ──────────────────────────────────────────────────────────────
+def _gop_the(cu, moi):
+    """Gộp thẻ số liệu, KHÔNG để trang cũ xoá mất thẻ máy vừa gợi (vá 06/08).
+
+    Chuyện đã xảy ra: anh mở trạm, để đó; máy chạy gợi ý ghi hai thẻ mới vào đĩa; trang đang
+    mở không biết nên vẫn giữ bản cũ trong bộ nhớ, và lần tự lưu kế tiếp nó đè sạch.
+    Cách vá: thẻ mang cờ `goi_y` (máy đề xuất, anh chưa xem) thì KHÔNG cho client xoá —
+    chỉ anh bấm ✕ mới xoá được, mà lúc ấy client gửi kèm cờ `bo_the` cho từng câu.
+    Thẻ anh đã chốt (không còn cờ goi_y) thì client toàn quyền, vì đó là bản anh cầm.
+    """
+    if moi is None:                       # trang cũ không biết trường này → giữ nguyên
+        return cu
+    ra = dict(moi)
+    for k, v in (cu or {}).items():
+        if k not in ra and v.get("goi_y") and not v.get("bo_the"):
+            ra[k] = v                     # thẻ máy gợi mà client chưa biết → giữ lại
+    return ra
+
+
+SO_HOC_TK = os.path.join(DD.MAY, "hoc", "sua-tu-khoa.jsonl")
+SO_TIM_OK = os.path.join(DD.MAY, "hoc", "tim-anh-thanh-cong.jsonl")
+
+
+def _ghi_tim_ok(ma, tu_khoa, so_lay, nguon):
+    """Ghi TỪ KHOÁ ANH GÕ MÀ TÌM RA ẢNH DÙNG ĐƯỢC (anh chốt 06/08 tối).
+
+    Anh phàn nàn: máy gợi từ khoá chưa trúng, anh phải tự gõ tìm lại nhiều. Mỗi lần anh tự
+    tìm rồi LẤY ảnh về là một mẫu vàng — từ khoá đó chứng minh ra ảnh thật. Gom đủ vài chục
+    mẫu là goi_y.py học được kiểu gõ của anh (nó đọc sổ này mỗi lần gợi).
+    Hai nguồn cùng chảy vào đây: ô tìm trên trạm, và extension Sóc (địa chỉ trang Google
+    có sẵn từ khoá trong tham số q)."""
+    tu_khoa = (tu_khoa or "").strip()
+    if not tu_khoa or so_lay <= 0:
+        return
+    os.makedirs(os.path.dirname(SO_TIM_OK), exist_ok=True)
+    with open(SO_TIM_OK, "a", encoding="utf-8") as f:
+        f.write(json.dumps({"luc": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "viec": ma, "tu_khoa": tu_khoa, "so_lay": so_lay,
+                            "nguon": nguon}, ensure_ascii=False) + "\n")
+
+
+def _ghi_hoc_tu_khoa(viec, ma, tk_moi):
+    """Anh sửa từ khoá nào thì ghi lại, để lần sau máy gợi đỡ sai (anh chốt 06/08).
+
+    Anh giữ cửa người ở khâu này — anh muốn tự soi từ khoá trước khi cho tải ảnh. Nhưng cửa
+    người mà máy không học thì mãi mãi nặng như nhau. Ghi lại "máy gợi X, anh đổi thành Y"
+    là cách duy nhất để đến ngày anh gần như không phải sửa nữa.
+
+    Bản máy gợi được đóng băng ở `anh/goi-y-goc.json` ngay lần gợi đầu — không có mốc gốc
+    thì sửa vài lượt là không ai biết máy gợi ra sao nữa.
+    """
+    p_goc = os.path.join(viec, "anh", "goi-y-goc.json")
+    if not os.path.exists(p_goc):
+        return
+    try:
+        goc = json.load(open(p_goc, encoding="utf-8")).get("tu_khoa", {})
+    except Exception:
+        return
+    doi = []
+    for k, v in (tk_moi or {}).items():
+        cu = (goc.get(k) or "").strip()
+        moi = (v or "").strip()
+        if cu and moi and cu != moi:
+            doi.append({"cau": int(k), "may_goi": cu, "anh_sua": moi})
+    if not doi:
+        return
+    os.makedirs(os.path.dirname(SO_HOC_TK), exist_ok=True)
+    with open(SO_HOC_TK, "a", encoding="utf-8") as f:
+        f.write(json.dumps({
+            "luc": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "viec": ma, "so_doi": len(doi), "doi": doi,
+        }, ensure_ascii=False) + "\n")
+
+
+def _luu_nhap(ma, d):
+    viec = os.path.join(DD.VIEC, ma)
+    os.makedirs(os.path.join(viec, "anh"), exist_ok=True)
+    cu = _nhap(viec)
+    ra = {"ban_do": d.get("ban_do", {}), "ghi_chu": d.get("ghi_chu", {}),
+          "tu_khoa": d.get("tu_khoa", {}),
+          # Thẻ số liệu chồng lên cảnh (anh chốt 06/08) — {chỉ số câu: {nhan,so,donvi,dong1,dong2}}
+          "the_so": _gop_the(cu.get("the_so", {}), d.get("the_so")),
+          "goi_y_xong": d.get("goi_y_xong", cu.get("goi_y_xong", False)),
+          "cap_nhat": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    json.dump(ra, open(os.path.join(viec, "anh", "tram.json"), "w", encoding="utf-8"),
+              ensure_ascii=False, indent=1)
+    _ghi_hoc_tu_khoa(viec, ma, ra["tu_khoa"])
+    return ra
+
+
+SO_HOC = os.path.join(DD.MAY, "hoc", "sua-loi.jsonl")
+
+
+def _luu_loi(ma, tieu_de, loi_binh, duyet=False):
+    """Lưu lời bình anh sửa trên trạm — VÀ ghi lại ANH ĐÃ SỬA GÌ.
+
+    Anh chốt 06/08: gộp duyệt lời vào chung trạm này, không dựng trạm riêng.
+
+    Phần ghi lại mới là thứ đáng giá nhất. Skill `soc-content` viết ra bản đầu, anh sửa câu
+    chữ, so hai bản là ra bài học. Trước 06/08 không có trạm nên vòng này ĐỨT hẳn — máy viết
+    bao nhiêu lần cũng không biết mình sai chỗ nào, anh phải sửa đi sửa lại cùng một lỗi.
+
+    Bản máy viết được giữ nguyên ở `kich-ban-goc.json` ngay lần sửa đầu, để về sau còn đối
+    chiếu. Không có mốc gốc thì sửa vài lượt là không ai biết máy viết ra sao nữa.
+    """
+    viec = os.path.join(DD.VIEC, ma)
+    p_kb = os.path.join(viec, "kich-ban.json")
+    if not os.path.exists(p_kb):
+        return {"loi": "chưa có kịch bản cho việc này"}
+    kb = json.load(open(p_kb, encoding="utf-8"))
+
+    p_goc = os.path.join(viec, "kich-ban-goc.json")
+    if not os.path.exists(p_goc):          # lần sửa đầu: đóng băng bản máy viết làm mốc
+        json.dump(kb, open(p_goc, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    goc = json.load(open(p_goc, encoding="utf-8"))
+
+    doi = (tieu_de.strip() != (kb.get("tieu_de") or "").strip()
+           or loi_binh.strip() != (kb.get("loi_binh") or "").strip())
+    if tieu_de.strip():
+        kb["tieu_de"] = tieu_de.strip()
+    kb["loi_binh"] = loi_binh.strip()
+    kb["so_tieng_thuc"] = len(kb["loi_binh"].split())
+    # 258 tiếng/phút — giọng VBee Ngọc Huyền tốc độ 1.1, đo 05/08. Khai một chỗ ở đây thôi.
+    kb["giay_uoc"] = round(kb["so_tieng_thuc"] * 60 / 258, 1)
+    kb["nguoi_sua"] = True
+    if doi:
+        kb.pop("da_soat_chinh_ta", None)   # lời đổi rồi thì kết quả soát cũ hết giá trị
+        # Cụm tô vàng phải SỐNG THEO TÍT MỚI (lỗi 06/08 tối: anh sửa "ĐÁP LẠI BA CHỮ" thành
+        # "ĐÁP LẠI CỰC GỌN", cụm cũ không còn trong tít → cả tít trắng trơn không ai biết vì sao).
+        # So mờ bỏ dấu câu — "HÌNH B," vẫn khớp cụm "HÌNH B".
+        def _sachtu(t):
+            return re.sub(r"^[^\wÀ-ỹ]+|[^\wÀ-ỹ]+$", "", t.upper())
+        tit_tu = [_sachtu(t) for t in kb.get("tieu_de", "").split()]
+        con = []
+        for cum in kb.get("cum_to_vang", []) or []:
+            ct = [_sachtu(x) for x in cum.split()]
+            if ct and any(tit_tu[i:i + len(ct)] == ct
+                          for i in range(len(tit_tu) - len(ct) + 1)):
+                con.append(cum)
+        kb["cum_to_vang"] = con              # rỗng thì bước sau duyệt sẽ chọn lại
+    if duyet:
+        kb["da_duyet_loi"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    json.dump(kb, open(p_kb, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+
+    # Sửa lời thì SỐ CÂU đổi theo — phải dọn bản đồ ảnh cho khớp.
+    # Lỗi 06/08: anh cắt lời từ 24 câu xuống 22, bản đồ vẫn giữ gán cho câu 22 và 23 đã biến
+    # mất, trạm hiện "23/22 câu đã gán" — số đã gán lớn hơn tổng số câu.
+    so_cau = len(_tach_cau(kb["loi_binh"]))
+    nh = _nhap(viec)
+    bo = [k for k in nh.get("ban_do", {}) if int(k) >= so_cau]
+    canh_bao = ""
+    if bo:
+        for k in bo:
+            nh["ban_do"].pop(k, None)
+            nh.get("ghi_chu", {}).pop(k, None)
+            nh.get("tu_khoa", {}).pop(k, None)
+        _luu_nhap(ma, nh)
+        canh_bao = f"lời ngắn lại còn {so_cau} câu — đã bỏ {len(bo)} ảnh gán cho câu không còn nữa"
+
+    if doi or duyet:                        # ghi sổ học — skill soc-content đọc file này
+        os.makedirs(os.path.dirname(SO_HOC), exist_ok=True)
+        with open(SO_HOC, "a", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "luc": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "viec": ma,
+                "tieu_de_may": goc.get("tieu_de", ""),
+                "tieu_de_anh": kb.get("tieu_de", ""),
+                "loi_may": goc.get("loi_binh", ""),
+                "loi_anh": kb.get("loi_binh", ""),
+                "tieng_may": len((goc.get("loi_binh") or "").split()),
+                "tieng_anh": kb["so_tieng_thuc"],
+                "da_duyet": bool(duyet),
+            }, ensure_ascii=False) + "\n")
+    return {"ok": True, "so_tieng": kb["so_tieng_thuc"], "giay_uoc": kb["giay_uoc"],
+            "da_duyet_loi": kb.get("da_duyet_loi", ""), "co_doi": doi,
+            "so_cau": so_cau, "canh_bao": canh_bao}
+
+
+def _tim_san(ma, chi_cau=None, bao_tien=None, chi_thieu=False):
+    """TÌM SẴN ảnh cho từng câu, cache vào anh/ung-vien.json (anh chốt 06/08 tối).
+
+    Nỗi đau: mỗi lượt tìm Google mất ~6 giây, hai chục câu là anh ngồi chờ cả buổi —
+    "mỗi cảnh a phải enter đi tìm soi chờ mất thời gian quá". Nay máy tìm hết MỘT LƯỢT
+    ngay sau Duyệt lời (lúc anh còn đang đọc), trang chọn ảnh mở ra là ứng viên nằm sẵn.
+    Giữ tối đa 40 ứng viên mỗi câu; trùng url giữa các câu thì câu trước giữ, câu sau bỏ
+    (đỡ bày một tấm hai nơi). chi_cau=N để tìm lại RIÊNG một câu (nút Tìm lại).
+    """
+    viec = os.path.join(DD.VIEC, ma)
+    p_uv = os.path.join(viec, "anh", "ung-vien.json")
+    cache = {}
+    if os.path.exists(p_uv):
+        try:
+            cache = json.load(open(p_uv, encoding="utf-8"))
+        except Exception:
+            cache = {}
+    nh = _nhap(viec)
+    tk = {int(k): v for k, v in nh.get("tu_khoa", {}).items() if (v or "").strip()}
+    if chi_cau is not None:
+        tk = {int(chi_cau): tk.get(int(chi_cau), "")} if tk.get(int(chi_cau)) else {}
+    thay = set()
+    if chi_thieu:
+        # Anh chốt 06/08 tối: mở trang chọn giữa chừng thì CHỈ tự tìm cho cảnh CHƯA GÁN
+        # và chưa có ứng viên — cảnh đã gán hay đã có cache thì để yên (muốn thì Tìm lại tay).
+        da_gan = {int(k) for k in nh.get("ban_do", {}) if nh["ban_do"].get(k)}
+        tk = {i: v for i, v in tk.items()
+              if i not in da_gan and not (cache.get(str(i), {}).get("anh"))}
+        for v in cache.values():                 # ảnh đã nằm ở cache cũ thì đừng bày trùng
+            for a in v.get("anh", []):
+                thay.add(a["u"])
+    elif chi_cau is not None:                    # tìm lại 1 câu: đừng coi ảnh câu khác là trùng
+        pass
+    else:
+        cache = {}                               # tìm cả bài: làm mới toàn bộ
+    n, tong = 0, len(tk)
+    for i in sorted(tk):
+        n += 1
+        if bao_tien:
+            bao_tien(f"tìm sẵn ảnh — câu {i + 1} ({n}/{tong})", n, tong)
+        try:
+            r = gap_anh.xem_truoc(tk[i])
+        except Exception as e:
+            cache[str(i)] = {"tu_khoa": tk[i], "anh": [], "loi": str(e)}
+            continue
+        ds = []
+        for a in r.get("anh", []):
+            if a["u"] in thay:
+                continue
+            thay.add(a["u"])
+            ds.append(a)
+            if len(ds) >= 40:
+                break
+        cache[str(i)] = {"tu_khoa": tk[i], "anh": ds, "loi": r.get("loi", ""),
+                         "luc": datetime.now().strftime("%H:%M:%S")}
+    os.makedirs(os.path.dirname(p_uv), exist_ok=True)
+    json.dump(cache, open(p_uv, "w", encoding="utf-8"), ensure_ascii=False)
+    return cache
+
+
+def _chay_tim_san_job(ma_job, ma, chi_cau=None, chi_thieu=False):
+    def bao(buoc, da, tong):
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": False, "buoc": buoc, "da": da, "tong": tong}
+    try:
+        c = _tim_san(ma, chi_cau, bao, chi_thieu)
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": True,
+                                "tong_anh": sum(len(v.get("anh", [])) for v in c.values())}
+    except Exception as e:
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": True, "loi": str(e)}
+
+
+def _chay_kiem_ct(ma_job, ma, tieu_de, loi_binh):
+    """Nút KIỂM CHÍNH TẢ riêng, chạy TRƯỚC khi duyệt (anh chốt 06/08 tối).
+
+    Trước đây soát chính tả nằm sau nút Duyệt — tức anh duyệt một bản CHƯA soát, máy sửa sau
+    lưng anh. Ngược đời. Giờ: anh bấm kiểm → máy lưu bản anh đang gõ, soát (chỉ chính tả và
+    dấu câu, ngữ nghĩa giữ nguyên — luật đã rào ba lớp trong soat_chinh_ta.py), báo kết quả
+    lên màn hình → anh đọc rồi mới bấm Duyệt lời.
+    """
+    viec = os.path.join(DD.VIEC, ma)
+    try:
+        _luu_loi(ma, tieu_de, loi_binh, duyet=False)     # lưu đúng bản anh đang thấy
+        sys.path.insert(0, os.path.expanduser("~/.claude/skills/soc-content/cong-cu"))
+        import soat_chinh_ta
+        r = soat_chinh_ta.soat(viec, ghi=True)
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": True, "loi": r.get("loi", ""),
+                                "co_doi": r.get("co_doi", False),
+                                "da_sua": r.get("da_sua", [])}
+    except Exception as e:
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": True, "loi": str(e), "da_sua": []}
+
+
+def _sau_duyet_loi(ma_job, ma):
+    """Anh bấm Duyệt lời xong thì máy TỰ ĐI TIẾP (anh chốt 06/08).
+
+    Trước đây duyệt xong là dừng, anh phải quay ra bảo Claude "chạy tiếp đi" — như thế thì
+    tự động hoá còn nghĩa gì. Hai việc nối liền:
+      ① soát CHÍNH TẢ — chỉ lỗi gõ, không đụng câu chữ (anh duyệt rồi tức là ưng cách viết)
+      ② gợi từ khoá ảnh cho từng câu, để anh mở phần gán tài nguyên ra là có sẵn
+    """
+    viec = os.path.join(DD.VIEC, ma)
+    ra = {"xong": False, "buoc": "soát chính tả"}
+    with KHOA:
+        VIEC_JOB[ma_job] = dict(ra)
+    tin = []
+    try:
+        kb = json.load(open(os.path.join(viec, "kich-ban.json"), encoding="utf-8"))
+        if kb.get("da_soat_chinh_ta"):
+            raise StopIteration           # anh đã bấm kiểm trước khi duyệt — khỏi soát lại
+        sys.path.insert(0, os.path.expanduser("~/.claude/skills/soc-content/cong-cu"))
+        import soat_chinh_ta
+        r = soat_chinh_ta.soat(viec, ghi=True)
+        if r.get("loi"):
+            tin.append("chính tả: " + r["loi"])
+        elif r.get("co_doi"):
+            tin.append(f"sửa {len(r.get('da_sua', []))} lỗi chính tả")
+        else:
+            tin.append("chính tả sạch")
+    except StopIteration:
+        tin.append("chính tả đã kiểm trước khi duyệt")
+    except Exception as e:
+        tin.append(f"không soát được chính tả: {e}")
+
+    with KHOA:
+        VIEC_JOB[ma_job] = {"xong": False, "buoc": "gợi từ khoá ảnh", "tin": tin}
+    try:
+        r = GY.goi_y(viec)
+        nh = _nhap(viec)
+        tk, gc = dict(nh.get("tu_khoa", {})), dict(nh.get("ghi_chu", {}))
+        # Lời vừa đổi thì từ khoá cũ có thể trỏ sai câu — ghi đè hết cho khớp bản mới.
+        tk.update(r["tu_khoa"])
+        gc.update(r["ghi_chu"])
+        # Đóng băng bản MÁY gợi làm mốc — về sau so với bản anh sửa mới rút được bài học.
+        json.dump({"tu_khoa": r["tu_khoa"], "ghi_chu": r["ghi_chu"],
+                   "luc": datetime.now().strftime("%Y-%m-%d %H:%M:%S")},
+                  open(os.path.join(viec, "anh", "goi-y-goc.json"), "w", encoding="utf-8"),
+                  ensure_ascii=False, indent=1)
+        _luu_nhap(ma, {"ban_do": nh.get("ban_do", {}), "ghi_chu": gc, "tu_khoa": tk,
+                       "goi_y_xong": True})
+        tin.append(f"gợi từ khoá cho {len(r['tu_khoa'])} câu")
+    except Exception as e:
+        tin.append(f"không gợi được từ khoá: {e}")
+
+    # ②b cụm tô vàng rỗng (anh đổi tít làm cụm cũ chết) → chọn lại từ tít mới.
+    # Việc dễ — chọn 1-2 cụm đắt trong MỘT câu — haiku đủ.
+    try:
+        kb = json.load(open(os.path.join(viec, "kich-ban.json"), encoding="utf-8"))
+        if kb.get("tieu_de") and not kb.get("cum_to_vang"):
+            r = subprocess.run(
+                ["claude", "-p", "--model", "claude-haiku-4-5-20251001",
+                 "Tiêu đề video: " + kb["tieu_de"] + "\n\nChọn 1-2 CỤM TỪ nguyên văn trong "
+                 "tiêu đề đáng tô màu nhấn nhất (cụm gây tò mò hoặc cú đấm của tít). Trả về "
+                 "DUY NHẤT JSON: {\"cum\": [\"...\"]} — cụm phải y nguyên chữ trong tiêu đề."],
+                capture_output=True, text=True, timeout=120)
+            m = re.search(r"\{.*\}", r.stdout, re.S)
+            if m:
+                cum = [c for c in json.loads(m.group(0)).get("cum", [])
+                       if c and c.upper() in kb["tieu_de"].upper()][:2]
+                if cum:
+                    kb["cum_to_vang"] = cum
+                    json.dump(kb, open(os.path.join(viec, "kich-ban.json"), "w",
+                                       encoding="utf-8"), ensure_ascii=False, indent=1)
+                    tin.append("chọn lại cụm tô vàng: " + " · ".join(cum))
+    except Exception as e:
+        tin.append(f"không chọn lại được cụm tô vàng: {e}")
+
+    # ③ gợi THẺ SỐ LIỆU — câu nào có con số đáng làm nổi (anh chốt 06/08: phải tự gợi cả
+    # nội dung lẫn vị trí, anh chỉ sửa thêm bớt). Gợi xong đánh cờ "goi_y" để giao diện
+    # hiện khác màu — anh nhìn là biết cái nào máy đề, cái nào mình đã chốt.
+    with KHOA:
+        VIEC_JOB[ma_job] = {"xong": False, "buoc": "gợi thẻ số liệu", "tin": tin}
+    try:
+        sys.path.insert(0, os.path.expanduser("~/.claude/skills/soc-tai-nguyen/cong-cu"))
+        import goi_y_the
+        r = goi_y_the.goi_y(viec, ghi=True)
+        n = len(r.get("the", []))
+        tin.append(f"gợi {n} thẻ số liệu" if n else "không có số nào đáng gắn thẻ")
+    except Exception as e:
+        tin.append(f"không gợi được thẻ: {e}")
+
+    # ④ gợi CARD đồ hoạ — cảnh nào đáng thay ảnh bằng versus/bxh/timeline, RENDER LUÔN
+    # vào kho (anh chốt 06/08 tối: card cũng phải tự gợi theo kịch bản, anh chỉ sửa hoặc bỏ).
+    with KHOA:
+        VIEC_JOB[ma_job] = {"xong": False, "buoc": "gợi card đồ hoạ", "tin": tin}
+    try:
+        sys.path.insert(0, os.path.expanduser("~/.claude/skills/soc-tai-nguyen/cong-cu"))
+        import goi_y_card
+        r = goi_y_card.goi_y(viec, ghi=True)
+        n = len(r.get("da_render", []))
+        tin.append(f"render {n} card đề xuất" if n else "không có cảnh nào đáng dùng card")
+    except Exception as e:
+        tin.append(f"không gợi được card: {e}")
+
+    # ⑤ TÌM SẴN ảnh cho từng câu — bước lâu nhất (~6 giây/câu) nên để cuối; chạy lúc anh
+    # còn đang đọc lời thì thời gian chờ thành thời gian máy (anh chốt 06/08 tối).
+    try:
+        def bao5(buoc, da, tong):
+            with KHOA:
+                VIEC_JOB[ma_job] = {"xong": False, "buoc": buoc, "da": da, "tong": tong,
+                                    "tin": tin}
+        c = _tim_san(ma, None, bao5)
+        tin.append(f"tìm sẵn {sum(len(v.get('anh', [])) for v in c.values())} ảnh ứng viên "
+                   f"cho {len(c)} câu")
+    except Exception as e:
+        tin.append(f"không tìm sẵn được ảnh: {e}")
+
+    with KHOA:
+        VIEC_JOB[ma_job] = {"xong": True, "tin": tin}
+
+
+def _duyet(ma, bo_qua_dau_nguon=False):
+    """Chốt: sinh chon/ + ban-do-cau.json + so-nguon.jsonl + blueprint.json, rồi báo hàng đợi."""
+    viec = os.path.join(DD.VIEC, ma)
+    nh = _nhap(viec)
+    ban_do = {int(k): v for k, v in nh.get("ban_do", {}).items() if v}
+    if not ban_do:
+        return {"ok": False, "loi": "chưa gán ảnh cho câu nào"}
+    if 0 not in ban_do:
+        return {"ok": False, "loi": "câu MỞ (câu 1) chưa có ảnh — cảnh đầu là cảnh giữ người xem"}
+
+    k = json.load(open(os.path.join(viec, "kich-ban.json"), encoding="utf-8"))
+    cau = _tach_cau(k.get("loi_binh", ""))
+    so = _so_anh(viec)
+
+    # ĐÂY LÀ CỔNG WATERMARK THẬT SỰ — anh chốt 05/08 dời về đây.
+    # Ảnh anh chọn tay không bị soi ở cửa nhập nữa (anh đã nhìn tận mắt), nên cổng phải đứng
+    # ở đúng chỗ này: soi những tấm SẮP LÊN HÌNH, ngay trước khi chốt. Chỉ 12–20 tấm nên
+    # nhanh, mà vẫn giữ đúng bài học số 3 của sổ dự án: "phát hiện watermark mà không chặn
+    # thì bằng không" — @nhipcongtruong từng lọt vào một video đã giao.
+    chua_soi = sorted({d for d in ban_do.values()
+                       if so.get(d, {}).get("chua_soi") or "dau_nguon" not in so.get(d, {})})
+    if chua_soi:
+        theo_thu = {}
+        for d in chua_soi:
+            theo_thu.setdefault(d.split("/")[0], []).append(d.split("/")[-1])
+        for thu, tens in theo_thu.items():
+            nhan = gap_anh.soi_watermark(os.path.join(viec, thu), tens)
+            for t, n in nhan.items():
+                so.setdefault(f"{thu}/{t}", {}).update(
+                    {"dau_nguon": n.get("dau_nguon", ""), "can_soi": n.get("can_soi", "")})
+        # ghi lại nhãn vào sổ để lần sau khỏi soi lại
+        p_so = os.path.join(viec, "anh", "so-gap.jsonl")
+        if os.path.exists(p_so):
+            dong = []
+            for l in open(p_so, encoding="utf-8"):
+                try:
+                    x = json.loads(l)
+                    k = "anh/" + x["tep"]
+                    if k in so:
+                        x["dau_nguon"] = so[k].get("dau_nguon", "")
+                        x["can_soi"] = so[k].get("can_soi", "")
+                        x.pop("chua_soi", None)
+                    dong.append(json.dumps(x, ensure_ascii=False) + "\n")
+                except Exception:
+                    dong.append(l)
+            open(p_so, "w", encoding="utf-8").writelines(dong)
+
+    dinh = [(i, d, so[d]["dau_nguon"]) for i, d in sorted(ban_do.items())
+            if so.get(d, {}).get("dau_nguon")]
+    if dinh and not bo_qua_dau_nguon:
+        return {"ok": False, "can_xac_nhan": True,
+                "dinh": [{"cau": i + 1, "anh": d, "doc_duoc": v} for i, d, v in dinh],
+                "loi": f"{len(dinh)} ảnh đang dùng có DẤU NGUỒN của bên khác"}
+
+    # ① chép ảnh vào chon/, đánh số THEO MẠCH KỂ (thứ tự câu), ảnh dùng lại giữ nguyên số
+    ra_chon = os.path.join(viec, "anh", "chon")
+    shutil.rmtree(ra_chon, ignore_errors=True)
+    os.makedirs(ra_chon)
+    danh, ban_do_ten, thieu = {}, {}, []
+    for i in sorted(ban_do):
+        duong = ban_do[i]
+        goc = os.path.join(viec, duong)
+        if not os.path.exists(goc):
+            thieu.append(duong)
+            continue
+        if duong not in danh:
+            ten = f"{len(danh) + 1:02d}.jpg"
+            shutil.copy2(goc, os.path.join(ra_chon, ten))
+            danh[duong] = ten
+        ban_do_ten[str(i)] = danh[duong]
+    if thieu:
+        return {"ok": False, "loi": "thiếu tệp: " + ", ".join(thieu[:4])}
+
+    # ② bản đồ câu → ảnh (xưởng đọc file này)
+    json.dump(ban_do_ten, open(os.path.join(viec, "anh", "ban-do-cau.json"), "w",
+                               encoding="utf-8"), ensure_ascii=False, indent=1)
+
+    # ③ sổ nguồn ĐÚNG KHUÔN cổng QC ra đang đọc: mỗi dòng một tài nguyên, có trường
+    #    `file` và `ket_qua`. Trước bản này `lay_anh` ghi JSON thường nên truyền --so là
+    #    cổng crash (chỗ vênh ghi trong sổ dự án mục 6b). Từ đây sổ do TRẠM ghi, và chỉ ghi
+    #    ảnh NGƯỜI ĐÃ DUYỆT — nên "ĐẠT" ở đây có nghĩa thật: qua cổng watermark VÀ qua mắt người.
+    p_so = os.path.join(viec, "anh", "so-nguon.jsonl")
+    with open(p_so, "w", encoding="utf-8") as f:
+        for duong, ten in danh.items():
+            m = so.get(duong, {})
+            ly_do = []
+            if m.get("can_soi"):
+                ly_do.append("cờ vàng: " + m["can_soi"])
+            if m.get("dau_nguon"):
+                ly_do.append("DẤU NGUỒN: " + m["dau_nguon"] + " — anh xác nhận vẫn dùng")
+            f.write(json.dumps({
+                "file": ten, "goc": duong, "nguon": m.get("bao", "") or "chưa ghi nguồn",
+                "url": m.get("url", ""), "giay_phep": m.get("giay_phep", ""),
+                "chu_doc_duoc": (m.get("dau_nguon") or m.get("can_soi", ""))[:200],
+                "ly_do": ly_do,
+                # Ghi thẳng ĐẠT cho tấm dính dấu nguồn thì cổng QC ra không chặn nữa — nên
+                # phải nói thật là anh đã BỎ QUA, và ghi rõ ai bỏ qua.
+                "ket_qua": "ĐẠT", "bo_qua_dau_nguon": bool(m.get("dau_nguon")),
+                "nguoi_duyet": "Lê Tuấn Anh (trạm tài nguyên)",
+                "luc": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }, ensure_ascii=False) + "\n")
+
+    # ④ blueprint 8 trường — cùng ngôn ngữ với hệ cũ (id, voiceover_text, scene_note,
+    #    search_keywords, resource_type, visual_movement, sfx, estimated_duration)
+    tong = _do_dai_giong(viec) or sum(len(c.split()) for c in cau) / TIENG_MOT_PHUT * 60
+    moc = _moc_cau(cau, tong)
+    ghi_chu, tu_khoa = nh.get("ghi_chu", {}), nh.get("tu_khoa", {})
+    bp, dang = [], None
+    for i, c in enumerate(cau):
+        if i in ban_do:
+            dang = ban_do_ten[str(i)]
+        bp.append({
+            "id": i + 1, "voiceover_text": c, "scene_note": ghi_chu.get(str(i), ""),
+            "search_keywords": tu_khoa.get(str(i), ""),
+            "resource_type": "Ảnh", "visual_movement": "Ken Burns", "sfx": "",
+            "estimated_duration": round(moc[i] - (moc[i - 1] if i else 0), 2),
+            "anh": dang,
+        })
+    json.dump(bp, open(os.path.join(viec, "anh", "blueprint.json"), "w", encoding="utf-8"),
+              ensure_ascii=False, indent=1)
+
+    # Soi trước xem cắt cảnh theo ảnh anh gán thì có tấm nào KHÔNG lên hình được không.
+    # Báo ngay tại đây, đừng để anh xem video xong mới phát hiện thiếu (anh bắt đúng lỗi này
+    # 05/08 ở câu 2 — 7 tấm bị bỏ im lặng).
+    canh_bao = []
+    try:
+        import chuyen_dong as CD
+        tong2 = _do_dai_giong(viec) or sum(len(c.split()) for c in cau) / TIENG_MOT_PHUT * 60
+        _c, bi_gop, qua_dai = CD.chia_nhip_theo_anh(_moc_cau(cau, tong2),
+                                                    {int(k): v for k, v in ban_do_ten.items()},
+                                                    tong2)
+        if bi_gop:
+            canh_bao.append(f"{len(bi_gop)} ảnh KHÔNG lên hình được — câu "
+                            + ", ".join(str(i + 1) for i in bi_gop)
+                            + " quá ngắn (dưới 1 giây) nên bị gộp vào cảnh trước")
+        for b, k in qua_dai:
+            canh_bao.append(f"đoạn {b}s–{k}s ({k - b:.0f} giây) chỉ có MỘT ảnh đứng suốt "
+                            "— nên gán thêm ảnh cho quãng này")
+    except Exception:
+        pass
+
+    _lenh(f"tài nguyên ĐÃ DUYỆT cho {ma} ({len(danh)} ảnh / {len(cau)} câu) — chờ dựng", "trạm")
+    return {"ok": True, "so_anh": len(danh), "so_cau_gan": len(ban_do_ten), "tong_cau": len(cau),
+            "canh_bao": canh_bao,
+            "chon": os.path.join(viec, "anh", "chon")}
+
+
+def _bao_ve(text):
+    """BÁO VỀ ĐÂU khi dựng xong (anh hỏi 05/08 — anh tưởng nó báo vào phiên chat).
+
+    Trạm là một tiến trình web ĐỘC LẬP, không có đường nào nhắn vào phiên Claude đang mở —
+    y như bot Telegram không chen vào phiên đang mở được (sổ dự án mục 3). Nên báo về hai nơi
+    anh THẬT SỰ nhìn thấy khi đang làm việc khác:
+      ① nhóm Telegram "Kênh YTB Sóc bóng đá 247" — nhận được cả trên điện thoại
+      ② thông báo góc màn hình Mac
+    Trên trang trạm thì đã có ô trạng thái video nằm thường trực, không tự tắt.
+    """
+    try:
+        c = json.load(open(DD.BOT_CAU_HINH, encoding="utf-8"))
+        urllib.request.urlopen(urllib.request.Request(
+            f"https://api.telegram.org/bot{c['bot_token']}/sendMessage",
+            data=urllib.parse.urlencode({"chat_id": c["chat_id"], "text": text}).encode(),
+            method="POST"), timeout=15).read()
+    except Exception:
+        pass
+    try:
+        subprocess.run(["osascript", "-e",
+                        f'display notification {json.dumps(text)} with title "Trạm tài nguyên"'],
+                       timeout=10, capture_output=True)
+    except Exception:
+        pass
+
+
+def _chay_loc(ma_job, ma):
+    viec = os.path.join(DD.VIEC, ma)
+    try:
+        kb = json.load(open(os.path.join(viec, "kich-ban.json"), encoding="utf-8"))
+        chu_de = f"{kb.get('tieu_de','')} — {kb.get('tin_goc','')}"
+
+        def tien(x, n):
+            with KHOA:
+                VIEC_JOB[ma_job] = {"xong": False, "buoc": "soi nội dung ảnh",
+                                    "da": x, "tong": n}
+
+        r = LOC.soi(os.path.join(viec, "anh"), chu_de, bao_tien=tien)
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": True, "ok": not r["loi"], "loi": r["loi"],
+                                "da_soi": r["da_soi"], "lac_de": r["lac_de"],
+                                "anh": _danh_sach_anh(viec)}
+    except Exception as e:
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": True, "ok": False, "loi": str(e)}
+
+
+def _chay_dung(ma_job, ma):
+    """Gọi thẳng xưởng dựng video. Trước bản này trạm chỉ GHI LỆNH vào hàng đợi — mà hàng đợi
+    thì chưa có ai đi lấy, nên bấm duyệt xong video không hề được dựng lại. Anh hỏi đúng chỗ
+    đó 05/08. Hàng đợi vẫn giữ (để sau nối bot Telegram), nhưng nó là SỔ GHI VIỆC, không phải
+    đường chạy — đường chạy là hàm này."""
+    viec = os.path.join(DD.VIEC, ma)
+    try:
+        r = subprocess.run([sys.executable, os.path.join(DD.MAY, "xuong.py"), viec],
+                           capture_output=True, text=True, timeout=900, cwd=DD.MAY)
+        ra = (r.stdout or "").strip().splitlines()
+        vid = os.path.join(viec, "video.mp4")
+        with KHOA:
+            VIEC_JOB[ma_job] = {
+                "xong": True, "ok": r.returncode == 0 and os.path.exists(vid),
+                "loi": "" if r.returncode == 0 else (r.stderr or "")[-400:],
+                "nhat_ky": ra[-6:], "video": vid,
+                "nang_mb": round(os.path.getsize(vid) / 1e6, 1) if os.path.exists(vid) else 0}
+        _bao_ve(f"✅ Dựng xong video {ma}\n"
+                f"{round(os.path.getsize(vid) / 1e6, 1)} MB · {ra[-1] if ra else ''}\n"
+                f"Xem ở trạm: http://localhost:8756/video/{ma}"
+                if r.returncode == 0 and os.path.exists(vid)
+                else f"❌ Dựng hỏng video {ma}\n{(r.stderr or '')[-200:]}")
+    except subprocess.TimeoutExpired:
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": True, "ok": False, "loi": "xưởng chạy quá 15 phút"}
+    except Exception as e:
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": True, "ok": False, "loi": str(e)}
+
+
+def _lenh(text, nguon="trạm"):
+    """Hàng đợi lệnh — CÙNG ĐỊNH DẠNG hệ cũ (id/time/text/trang_thai) + thêm trường `nguon`.
+    Trường thêm không làm hỏng bên đọc cũ, mà biết được lệnh từ trạm hay từ bot Telegram."""
+    d = {"id": int(time.time() * 1000), "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+         "text": text, "nguon": nguon, "trang_thai": "pending"}
+    with open(HANG_DOI, "a", encoding="utf-8") as f:
+        f.write(json.dumps(d, ensure_ascii=False) + "\n")
+    return d
+
+
+# ── gắp ảnh chạy nền ─────────────────────────────────────────────────────────
+def _chay_goi_y(ma_job, ma, de_len=False):
+    """Gợi ý từ khoá + ghi chú cho TỪNG CÂU (anh chốt 05/08: trạm mở ra là phải có sẵn).
+
+    de_len=False (chạy tự động lần đầu): chỉ điền vào ô CÒN TRỐNG, không đụng chữ anh đã gõ.
+    de_len=True  (anh bấm "gợi ý lại"): ghi đè hết.
+    """
+    viec = os.path.join(DD.VIEC, ma)
+    try:
+        r = GY.goi_y(viec)
+        nh = _nhap(viec)
+        tk, gc = dict(nh.get("tu_khoa", {})), dict(nh.get("ghi_chu", {}))
+        for k, v in r["tu_khoa"].items():
+            if de_len or not tk.get(k):
+                tk[k] = v
+        for k, v in r["ghi_chu"].items():
+            if de_len or not gc.get(k):
+                gc[k] = v
+        _luu_nhap(ma, {"ban_do": nh.get("ban_do", {}), "ghi_chu": gc, "tu_khoa": tk,
+                       "goi_y_xong": True})
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": True, "loi": r.get("loi", ""), "cach": r["cach"],
+                                "so": len(r["tu_khoa"]), "tu_khoa": tk, "ghi_chu": gc}
+    except Exception as e:
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": True, "loi": f"{e}", "so": 0,
+                                "vet": traceback.format_exc()[-700:]}
+
+
+def _chay_gap(ma_job, ma, cach, doi_so, can):
+    viec = os.path.join(DD.VIEC, ma)
+
+    def bao_tien(xong, tong):
+        """Màn hình đứng im 25 giây thì anh tưởng treo. Cho thấy nó đang soi tới đâu."""
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": False, "buoc": "soi watermark",
+                                "da": xong, "tong": tong}
+
+    try:
+        thu = os.path.join(viec, "anh")
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": False, "buoc": "mở trang + tải ảnh"}
+        r = (gap_anh.tim(doi_so, thu, can, bao_tien=bao_tien) if cach == "tim"
+             else gap_anh.boc_bai(doi_so, thu, can, bao_tien=bao_tien))
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": True, "loi": r.get("loi", ""),
+                                "so": len(r.get("anh", [])),
+                                "anh": _danh_sach_anh(viec)}
+    except Exception as e:
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": True, "loi": f"{e}", "so": 0,
+                                "vet": traceback.format_exc()[-700:]}
+
+
+# ── ảnh nhỏ ──────────────────────────────────────────────────────────────────
+DO_HOA = os.path.join(DD.MAY, "do-hoa")
+
+
+def _tao_card(viec, than):
+    """Render card đồ hoạ NGAY TRONG TRẠM — "chọn card là ra" (anh chốt 06/08 tối).
+
+    Điểm cắm an toàn anh chỉ: render xong bỏ .jpg vào <việc>/anh/ là _danh_sach_anh tự liệt kê,
+    trạm hiện như ảnh thường để gán cho câu — KHÔNG đổi data model.
+    Menu do-hoa/lam_card_soc.py lo phần dịch lựa chọn → spec engine + khổ dọc 9:16 chừa 30%
+    dưới cho khung tiêu đề (config_soc.json). Ở đây chỉ: gói pick → gọi menu → đổi PNG ra JPG
+    (trạm chỉ liệt kê và phục vụ .jpg — _an_toan chặn đuôi khác) → trả danh sách ảnh mới.
+    """
+    import tempfile, shutil, glob as _g
+    canh = int(than.get("canh", 0))
+    pick = {"canh": canh, "loai": than.get("loai")}
+    for k in ("tieu_de", "trai", "phai", "nhan", "so", "ghi_chu", "hang", "moc", "mau"):
+        if k in than and than[k] not in (None, ""):
+            pick[k] = than[k]
+    tam = tempfile.mkdtemp(prefix="card-")
+    try:
+        p_pick = os.path.join(tam, "picks.json")
+        json.dump([pick], open(p_pick, "w", encoding="utf-8"), ensure_ascii=False)
+        r = subprocess.run([sys.executable, os.path.join(DO_HOA, "lam_card_soc.py"),
+                            p_pick, "--ra", tam],
+                           capture_output=True, text=True, timeout=120)
+        png = sorted(_g.glob(os.path.join(tam, "*.png")))
+        if r.returncode != 0 or not png:
+            return {"loi": "render card hỏng: " + (r.stderr or r.stdout or "")[-300:]}
+        ra = os.path.join(viec, "anh", f"card_{canh:02d}.jpg")
+        os.makedirs(os.path.dirname(ra), exist_ok=True)
+        Image.open(png[0]).convert("RGB").save(ra, quality=92)
+        return {"ok": True, "tep": f"anh/card_{canh:02d}.jpg", "anh": _danh_sach_anh(viec)}
+    except subprocess.TimeoutExpired:
+        return {"loi": "render card quá 120 giây"}
+    finally:
+        shutil.rmtree(tam, ignore_errors=True)
+
+
+def _thumb(viec, duong):
+    goc = os.path.join(viec, duong)
+    ra = os.path.join(viec, "anh", "_thumb", duong.replace("/", "__"))
+    os.makedirs(os.path.dirname(ra), exist_ok=True)
+    if os.path.exists(ra) and os.path.getmtime(ra) >= os.path.getmtime(goc):
+        return ra
+    im = Image.open(goc).convert("RGB")
+    im.thumbnail((420, 420), Image.LANCZOS)
+    im.save(ra, quality=82)
+    return ra
+
+
+def _an_toan(duong):
+    """Chỉ cho đi vào đúng hai thư mục ảnh, không cho lùi ra ngoài thư mục việc."""
+    duong = urllib.parse.unquote(duong).lstrip("/")
+    if ".." in duong or duong.startswith("/"):
+        return None
+    thu = duong.split("/")[0]
+    return duong if thu in THU_ANH and duong.endswith(".jpg") else None
+
+
+# ── server ───────────────────────────────────────────────────────────────────
+class Tay(BaseHTTPRequestHandler):
+    server_version = "TramTaiNguyen/1.0"
+
+    def log_message(self, *a):
+        pass
+
+    def _tra(self, ma, kieu, than):
+        if isinstance(than, str):
+            than = than.encode("utf-8")
+        self.send_response(ma)
+        self.send_header("Content-Type", kieu)
+        self.send_header("Content-Length", str(len(than)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Access-Control-Allow-Origin", "*")     # cho tiện ích Chrome gọi vào
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+        self.wfile.write(than)
+
+    def _js(self, d, ma=200):
+        self._tra(ma, "application/json; charset=utf-8",
+                  json.dumps(d, ensure_ascii=False).encode())
+
+    def _tep(self, p):
+        if not os.path.exists(p):
+            return self._tra(404, "text/plain; charset=utf-8", "không thấy tệp")
+        kieu = mimetypes.guess_type(p)[0] or "application/octet-stream"
+        self._tra(200, kieu, open(p, "rb").read())
+
+    def do_GET(self):
+        u = urllib.parse.urlparse(self.path)
+        d, q = u.path, urllib.parse.parse_qs(u.query)
+        try:
+            if d in ("/", "/index.html"):
+                return self._tep(TRANG)
+            if d == "/chon-anh":
+                return self._tep(TRANG_CHON)
+            if d.startswith("/api/ung-vien/"):
+                viec = os.path.join(DD.VIEC, urllib.parse.unquote(d.split("/", 3)[3]))
+                p_uv = os.path.join(viec, "anh", "ung-vien.json")
+                if not os.path.exists(p_uv):
+                    return self._js({})
+                return self._js(json.load(open(p_uv, encoding="utf-8")))
+            if d == "/api/viec":
+                return self._js(_ds_viec())
+            if d == "/api/dang-lam":
+                ma = _dang_lam() or (_ds_viec() or [{}])[0].get("ma", "")
+                try:
+                    k = json.load(open(os.path.join(DD.VIEC, ma, "kich-ban.json"),
+                                       encoding="utf-8"))
+                except Exception:
+                    k = {}
+                return self._js({"ma": ma, "tieu_de": k.get("tieu_de", "")})
+            if d.startswith("/api/kho-moi/"):
+                # Chỉ trả SỐ ẢNH + mốc thời gian mới nhất, không trả cả danh sách — giao diện
+                # hỏi mỗi vài giây nên phải rẻ. Khác số cũ thì giao diện mới đi lấy danh sách.
+                viec = os.path.join(DD.VIEC, urllib.parse.unquote(d.split("/", 3)[3]))
+                ds = [p for t in THU_ANH
+                      for p in glob.glob(os.path.join(viec, t, "*.jpg"))]
+                return self._js({"so": len(ds),
+                                 "moi": max((os.path.getmtime(x) for x in ds), default=0)})
+            if d.startswith("/api/viec/"):
+                return self._js(_chi_tiet(urllib.parse.unquote(d.split("/", 3)[3])))
+            if (d.startswith("/api/gap/") or d.startswith("/api/goi-y/")
+                    or d.startswith("/api/dung/") or d.startswith("/api/loc/")
+                    or d.startswith("/api/xem-truoc/") or d.startswith("/api/lay-chon/")
+                    or d.startswith("/api/tim-loat/")):
+                with KHOA:
+                    return self._js(VIEC_JOB.get(d.split("/", 3)[3], {"xong": False}))
+            if d == "/api/lenh":
+                if not os.path.exists(HANG_DOI):
+                    return self._js([])
+                return self._js([json.loads(x) for x in open(HANG_DOI, encoding="utf-8")][-30:])
+            if d.startswith("/video/"):
+                viec = os.path.join(DD.VIEC, urllib.parse.unquote(d.split("/", 2)[2]))
+                return self._tep(os.path.join(viec, "video.mp4"))
+            if d.startswith("/anh/") or d.startswith("/thumb/"):
+                # Mã việc CÓ dấu gạch chéo từ 05/08 (kho xếp theo ngày: <ngày>/video-N-<mã>),
+                # nên không tách cứng theo dấu gạch chéo thứ ba được nữa — làm thế thì mã việc
+                # bị cắt còn mỗi phần ngày, đường ảnh thừa ra tên thư mục việc, và cổng an toàn
+                # chặn hết. Đó là lý do kho ảnh hiện toàn ô đen ngày 06/08.
+                # Cách đúng: tìm ranh giới ở thư mục ảnh — trước nó là mã việc, sau nó là ảnh.
+                nho = d.startswith("/thumb/")
+                phan = urllib.parse.unquote(d.split("/", 2)[2])
+                vt, thu = -1, None
+                for t in THU_ANH:
+                    i = phan.rfind(f"/{t}/")
+                    if i > vt:
+                        vt, thu = i, t
+                if vt < 0:
+                    return self._tra(400, "text/plain; charset=utf-8", "không thấy thư mục ảnh")
+                ma, duong = phan[:vt], phan[vt + 1:]
+                duong = _an_toan(duong)
+                if not duong:
+                    return self._tra(400, "text/plain; charset=utf-8", "đường dẫn không hợp lệ")
+                viec = os.path.join(DD.VIEC, ma)
+                return self._tep(_thumb(viec, duong) if nho else os.path.join(viec, duong))
+            return self._tra(404, "text/plain; charset=utf-8", "không có đường này")
+        except Exception as e:
+            return self._js({"loi": str(e), "vet": traceback.format_exc()[-600:]}, 500)
+
+    def do_OPTIONS(self):
+        self._tra(204, "text/plain", b"")
+
+    def do_POST(self):
+        d = urllib.parse.urlparse(self.path).path
+        n = int(self.headers.get("Content-Length") or 0)
+        try:
+            than = json.loads(self.rfile.read(n) or b"{}")
+        except Exception:
+            return self._js({"loi": "thân yêu cầu không phải JSON"}, 400)
+        try:
+            if d == "/api/dang-lam":
+                return self._js({"ok": True, "ma": _dang_lam(than.get("ma", ""))})
+            if d == "/api/luu":
+                return self._js(_luu_nhap(than["ma"], than))
+            if d == "/api/tim-san":
+                ma_job = f"t{int(time.time() * 1000)}"
+                with KHOA:
+                    VIEC_JOB[ma_job] = {"xong": False, "buoc": "chuẩn bị"}
+                threading.Thread(target=_chay_tim_san_job, daemon=True,
+                                 args=(ma_job, than["ma"], than.get("cau"),
+                                       bool(than.get("chi_thieu")))).start()
+                return self._js({"job": ma_job})
+            if d == "/api/gan":
+                # gán một ảnh cho một câu — trang chọn ảnh gọi sau khi tải xong
+                viec = os.path.join(DD.VIEC, than["ma"])
+                nh = _nhap(viec)
+                bd = dict(nh.get("ban_do", {}))
+                bd[str(than["cau"])] = than["duong"]
+                nh["ban_do"] = bd
+                _luu_nhap(than["ma"], nh)
+                return self._js({"ok": True, "ban_do": bd})
+            if d == "/api/tao-card":
+                viec = os.path.join(DD.VIEC, than["ma"])
+                return self._js(_tao_card(viec, than))
+            if d == "/api/kiem-chinh-ta":
+                ma_job = f"c{int(time.time() * 1000)}"
+                with KHOA:
+                    VIEC_JOB[ma_job] = {"xong": False, "buoc": "soát chính tả"}
+                threading.Thread(target=_chay_kiem_ct, daemon=True,
+                                 args=(ma_job, than["ma"], than.get("tieu_de", ""),
+                                       than.get("loi_binh", ""))).start()
+                return self._js({"job": ma_job})
+            if d == "/api/luu-loi":
+                r = _luu_loi(than["ma"], than.get("tieu_de", ""),
+                             than.get("loi_binh", ""), bool(than.get("duyet")))
+                # Duyệt lời xong là MÁY TỰ ĐI TIẾP, không chờ ai bảo (anh chốt 06/08).
+                if than.get("duyet") and not r.get("loi"):
+                    ma_job = f"s{int(time.time() * 1000)}"
+                    with KHOA:
+                        VIEC_JOB[ma_job] = {"xong": False, "buoc": "chuẩn bị"}
+                    threading.Thread(target=_sau_duyet_loi, daemon=True,
+                                     args=(ma_job, than["ma"])).start()
+                    r["job_tiep"] = ma_job
+                return self._js(r)
+            if d == "/api/duyet":
+                _luu_nhap(than["ma"], than)
+                return self._js(_duyet(than["ma"], bool(than.get("bo_qua_dau_nguon"))))
+            if d == "/api/lenh":
+                return self._js(_lenh(than.get("text", ""), than.get("nguon", "trạm")))
+            if d == "/api/gap":
+                ma_job = f"g{int(time.time() * 1000)}"
+                with KHOA:
+                    VIEC_JOB[ma_job] = {"xong": False}
+                threading.Thread(target=_chay_gap, daemon=True, args=(
+                    ma_job, than["ma"], than.get("cach", "tim"), than.get("doi_so", ""),
+                    int(than.get("can", 18)))).start()
+                return self._js({"job": ma_job})
+            if d == "/api/tim-loat":
+                # Anh hỏi 05/08: "để lấy đủ ảnh có khi phải gõ tìm 20-30 lần, anh phải tự làm
+                # à?" — không. Trạm đã có sẵn từ khoá cho TỪNG CÂU (Claude gợi ý lúc mở việc),
+                # nên nó tự chạy hết một lượt rồi bày ra MỘT lưới gom theo câu. Anh không gõ
+                # lần nào, chỉ ngồi chọn. Bóc danh sách chứ không tải nên rẻ: ~6 giây một câu.
+                ma_job = f"n{int(time.time() * 1000)}"
+                with KHOA:
+                    VIEC_JOB[ma_job] = {"xong": False, "buoc": "chuẩn bị"}
+                viec = os.path.join(DD.VIEC, than["ma"])
+
+                def chay3(mj=ma_job, v=viec):
+                    try:
+                        nh = _nhap(v)
+                        tk = {int(k): x for k, x in nh.get("tu_khoa", {}).items() if x.strip()}
+                        kb = json.load(open(os.path.join(v, "kich-ban.json"), encoding="utf-8"))
+                        cau = _tach_cau(kb.get("loi_binh", ""))
+                        nhom, thay, n = [], set(), 0
+                        for i in sorted(tk):
+                            n += 1
+                            with KHOA:
+                                VIEC_JOB[mj] = {"xong": False, "buoc": f"tìm “{tk[i][:28]}”",
+                                                "da": n, "tong": len(tk)}
+                            r = gap_anh.xem_truoc(tk[i])
+                            ds = []
+                            for a in r.get("anh", []):
+                                if a["u"] in thay:     # ảnh đã hiện ở câu trước thì thôi,
+                                    continue           # đỡ bày trùng cho anh phải nhìn hai lần
+                                thay.add(a["u"])
+                                ds.append(a)
+                                if len(ds) >= 12:
+                                    break
+                            nhom.append({"cau": i, "chu": cau[i] if i < len(cau) else "",
+                                         "tu_khoa": tk[i], "anh": ds})
+                        with KHOA:
+                            VIEC_JOB[mj] = {"xong": True, "loi": "", "nhom": nhom,
+                                            "tong_anh": sum(len(x["anh"]) for x in nhom)}
+                    except Exception as e:
+                        with KHOA:
+                            VIEC_JOB[mj] = {"xong": True, "loi": str(e), "nhom": []}
+                threading.Thread(target=chay3, daemon=True).start()
+                return self._js({"job": ma_job})
+            if d == "/api/xem-truoc":
+                ma_job = f"x{int(time.time() * 1000)}"
+                with KHOA:
+                    VIEC_JOB[ma_job] = {"xong": False, "buoc": "mở Google, bóc danh sách ảnh"}
+
+                def chay(mj=ma_job, tk=than.get("tu_khoa", "")):
+                    try:
+                        r = gap_anh.xem_truoc(tk)
+                        with KHOA:
+                            VIEC_JOB[mj] = {"xong": True, "loi": r["loi"], "anh": r["anh"]}
+                    except Exception as e:
+                        with KHOA:
+                            VIEC_JOB[mj] = {"xong": True, "loi": str(e), "anh": []}
+                threading.Thread(target=chay, daemon=True).start()
+                return self._js({"job": ma_job})
+            if d == "/api/lay-chon":
+                # Anh đã CHỌN ảnh từ kết quả tìm → từ khoá này ra ảnh thật, ghi sổ học.
+                _ghi_tim_ok(than["ma"], than.get("tu_khoa", ""),
+                            len(than.get("urls", [])), "tram")
+                ma_job = f"c{int(time.time() * 1000)}"
+                with KHOA:
+                    VIEC_JOB[ma_job] = {"xong": False, "buoc": "tải ảnh anh chọn"}
+                viec = os.path.join(DD.VIEC, than["ma"])
+
+                def chay2(mj=ma_job, v=viec, u=than.get("urls", []),
+                          tk=than.get("tu_khoa", "")):
+                    def tien(x, n):
+                        with KHOA:
+                            VIEC_JOB[mj] = {"xong": False, "buoc": "soi watermark",
+                                            "da": x, "tong": n}
+                    try:
+                        r = gap_anh.lay_theo_url(u, os.path.join(v, "anh"), tk, bao_tien=tien)
+                        with KHOA:
+                            VIEC_JOB[mj] = {"xong": True, "loi": r.get("loi", ""),
+                                            "so": len(r.get("anh", [])),
+                                            # url → tệp: giao diện cần cái này để gán ảnh vừa
+                                            # tải vào ĐÚNG câu anh đã chọn nó cho
+                                            "ban_do_url": {a["url"]: "anh/" + a["tep"]
+                                                           for a in r.get("anh", [])},
+                                            "anh": _danh_sach_anh(v)}
+                    except Exception as e:
+                        with KHOA:
+                            VIEC_JOB[mj] = {"xong": True, "loi": str(e), "so": 0}
+                threading.Thread(target=chay2, daemon=True).start()
+                return self._js({"job": ma_job})
+            if d == "/api/loc":
+                ma_job = f"l{int(time.time() * 1000)}"
+                with KHOA:
+                    VIEC_JOB[ma_job] = {"xong": False, "buoc": "soi nội dung ảnh"}
+                threading.Thread(target=_chay_loc, daemon=True,
+                                 args=(ma_job, than["ma"])).start()
+                return self._js({"job": ma_job})
+            if d == "/api/cach-hien":
+                # Máy đoán được ảnh QUÁ NGANG (tỉ lệ ≥2) thì đừng cắt, nhưng KHÔNG đoán được
+                # trong bảng ấy chữ nào đáng đọc. Nên cách hiển thị để NGƯỜI chốt.
+                viec = os.path.join(DD.VIEC, than["ma"])
+                p_ch = os.path.join(viec, "anh", "cach-hien.json")
+                try:
+                    ch = json.load(open(p_ch, encoding="utf-8"))
+                except Exception:
+                    ch = {}
+                ten, kieu = than.get("tep", ""), than.get("kieu", "")
+                if kieu:
+                    ch[ten] = kieu
+                else:
+                    ch.pop(ten, None)               # bỏ chọn = trả về cho máy tự quyết
+                json.dump(ch, open(p_ch, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+                return self._js({"ok": True, "cach_hien": ch})
+            if d == "/api/xoa-nhieu":
+                # Xoá HÀNG LOẠT — kho gắp về cả trăm tấm, vứt từng cái thì mỏi tay.
+                viec = os.path.join(DD.VIEC, than["ma"])
+                nh = _nhap(viec)
+                xong, hong = 0, []
+                for duong in than.get("duongs", []):
+                    d2 = _an_toan(duong)
+                    if not d2:
+                        hong.append(duong)
+                        continue
+                    p2 = os.path.join(viec, d2)
+                    try:
+                        os.path.exists(p2) and os.remove(p2)
+                        th = os.path.join(viec, "anh", "_thumb", d2.replace("/", "__"))
+                        os.path.exists(th) and os.remove(th)
+                        xong += 1
+                    except Exception:
+                        hong.append(duong)
+                    nh["ban_do"] = {k: v for k, v in nh.get("ban_do", {}).items() if v != d2}
+                _luu_nhap(than["ma"], nh)
+                return self._js({"ok": True, "xong": xong, "hong": hong,
+                                 "anh": _danh_sach_anh(viec), "ban_do": nh["ban_do"]})
+            if d == "/api/xoa-anh":
+                # Vứt hẳn tấm rác khỏi kho. Đây là ảnh ứng viên, chưa vào video — xoá là
+                # xoá bản tải về, không đụng gì tới video hay bản đồ câu đã chốt.
+                viec = os.path.join(DD.VIEC, than["ma"])
+                duong = _an_toan(than.get("duong", ""))
+                if not duong:
+                    return self._js({"ok": False, "loi": "đường dẫn không hợp lệ"})
+                p = os.path.join(viec, duong)
+                os.path.exists(p) and os.remove(p)
+                th = os.path.join(viec, "anh", "_thumb", duong.replace("/", "__"))
+                os.path.exists(th) and os.remove(th)
+                nh = _nhap(viec)                    # gỡ khỏi các câu đang gán tấm này
+                nh["ban_do"] = {k: v for k, v in nh.get("ban_do", {}).items() if v != duong}
+                _luu_nhap(than["ma"], nh)
+                return self._js({"ok": True, "anh": _danh_sach_anh(viec),
+                                 "ban_do": nh["ban_do"]})
+            if d == "/api/mo":
+                # Anh chốt 05/08: xếp kho xong phải bấm được là MỞ THẲNG tới thư mục chứa,
+                # đừng bắt đi lần mò trong Finder.
+                p = _duong_mo(than["ma"], than.get("dich", "hop"))
+                if not p or not os.path.isdir(p):
+                    return self._js({"ok": False, "loi": "chưa có thư mục đó"})
+                subprocess.run(["open", p], timeout=15, capture_output=True)
+                return self._js({"ok": True, "duong": p})
+            if d == "/api/xep-kho":
+                viec = os.path.join(DD.VIEC, than["ma"])
+                r = subprocess.run([sys.executable,
+                                    os.path.join(DD.MAY, "buoc3_xepkho.py"), viec],
+                                   capture_output=True, text=True, timeout=600, cwd=DD.MAY)
+                ra = (r.stdout or "").strip().splitlines()
+                ok = r.returncode == 0 and any("✅" in x for x in ra)
+                if ok:
+                    _bao_ve(f"📦 Đã xếp kho: {than['ma']}\n{ra[-1][:160] if ra else ''}")
+                return self._js({"ok": ok, "nhat_ky": ra[-4:],
+                                 "loi": "" if ok else (r.stderr or "\n".join(ra))[-400:]})
+            if d == "/api/dung":
+                ma_job = f"d{int(time.time() * 1000)}"
+                with KHOA:
+                    VIEC_JOB[ma_job] = {"xong": False, "buoc": "xưởng đang dựng (~2 phút)"}
+                threading.Thread(target=_chay_dung, daemon=True,
+                                 args=(ma_job, than["ma"])).start()
+                return self._js({"job": ma_job})
+            if d == "/api/tai-len":
+                # Ảnh anh tự đưa vào (tải từ Facebook cầu thủ, chụp màn hình…). Gửi lên dạng
+                # base64 cho gọn — không phải dựng bộ đọc multipart chỉ để nhận vài tấm ảnh.
+                viec = os.path.join(DD.VIEC, than["ma"])
+                ds = [(t.get("ten", "khong-ten"), base64.b64decode(t["data"]),
+                       t.get("url", ""), t.get("trang", ""))
+                      for t in than.get("tep", [])]
+                if not ds:
+                    return self._js({"loi": "không có tệp nào"}, 400)
+                r = gap_anh.nhan_tep(ds, os.path.join(viec, "anh"))
+                # Trang nguồn là Google thì tham số q chính là TỪ KHOÁ anh đã gõ trong Chrome.
+                # Ghi sổ SAU nhan_tep và chỉ khi ảnh LƯU THÀNH CÔNG (anh dặn 06/08: gõ thì
+                # chưa học vội — lúc đầu có thể gõ trật; LƯU ĐƯỢC ẢNH mới chứng minh từ khoá
+                # đúng). Ảnh hỏng/không đọc được thì lần gắp đó không dạy được gì.
+                if r.get("anh"):
+                    for _, _, _, trang in ds:
+                        if "google." in trang and "q=" in trang:
+                            try:
+                                q = urllib.parse.parse_qs(
+                                    urllib.parse.urlparse(trang).query).get("q", [""])[0]
+                                _ghi_tim_ok(than["ma"], q, len(r["anh"]), "extension")
+                                break
+                            except Exception:
+                                pass
+                r["anh_kho"] = _danh_sach_anh(viec)
+                return self._js(r)
+            if d == "/api/goi-y":
+                ma_job = f"y{int(time.time() * 1000)}"
+                with KHOA:
+                    VIEC_JOB[ma_job] = {"xong": False}
+                threading.Thread(target=_chay_goi_y, daemon=True,
+                                 args=(ma_job, than["ma"], bool(than.get("de_len")))).start()
+                return self._js({"job": ma_job})
+            return self._tra(404, "text/plain; charset=utf-8", "không có đường này")
+        except Exception as e:
+            return self._js({"loi": str(e), "vet": traceback.format_exc()[-600:]}, 500)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--cong", type=int, default=8756)
+    a = ap.parse_args()
+    if not os.path.isdir(DD.VIEC):
+        sys.exit(f"DỪNG — không thấy thư mục việc {DD.VIEC}")
+    n = len(_ds_viec())
+    print(f"TRẠM DUYỆT TÀI NGUYÊN · {n} thư mục việc · http://localhost:{a.cong}/")
+    print("   Ctrl-C để tắt")
+    ThreadingHTTPServer(("127.0.0.1", a.cong), Tay).serve_forever()
+
+
+if __name__ == "__main__":
+    main()

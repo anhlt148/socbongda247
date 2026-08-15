@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Chọn ảnh — Sóc Bóng Đá 247</title>
+<!-- TRANG CHỌN ẢNH RIÊNG (anh chốt 06/08 tối): trước đây là lớp phủ đè lên trạm — chật,
+     không có đường đi vào đi ra. Nay là một trang thật: trạm bấm Tìm là SANG đây, chọn ảnh
+     lấy về kho xong bấm "Về trạm" là QUAY LẠI đúng việc đang làm. Kho bên trạm tự làm mới
+     mỗi 4 giây nên ảnh lấy ở đây tự hiện bên đó, không phải truyền tay. -->
+<style>
+  :root{--nen:#161010;--tam:#221816;--vien:#3a2b26;--chu:#f2e9e4;--mo:#b9a89f;
+        --cam:#e8632e;--tham:#c9364a;--vang:#f5c02c}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--nen);color:var(--chu);height:100vh;overflow:hidden;
+       display:flex;flex-direction:column;
+       font:15px/1.5 -apple-system,"SF Pro Text","Segoe UI",Roboto,sans-serif}
+  header{background:linear-gradient(100deg,#2a1512,#1a0f14);border-bottom:1px solid var(--vien);
+         padding:8px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  h1{font-size:14px;margin:0;font-weight:800;white-space:nowrap}
+  h1 span{color:var(--vang)}
+  button{font:inherit;font-size:13px;cursor:pointer;border:0;border-radius:7px;padding:6px 11px;
+         background:#33231e;color:var(--chu)}
+  button:hover{filter:brightness(1.25)}
+  button.chinh{background:linear-gradient(100deg,var(--cam),var(--tham));font-weight:600}
+  button.vang{background:var(--vang);color:#241a00;font-weight:700}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  input{font:inherit;background:#100b0a;color:var(--chu);border:1px solid var(--vien);
+        border-radius:7px;padding:6px 10px}
+  #oTim{flex:1;min-width:200px}
+  .tien-do{font-size:12.5px;color:var(--mo)}
+  main{flex:1 1 auto;min-height:0;display:flex;overflow:hidden}
+  /* dải CẢNH bên trái (anh chốt 06/08 tối): bấm cảnh nào là lớp ảnh cảnh đó hiện ra */
+  #dsCanh{width:330px;min-width:330px;overflow-y:auto;border-right:1px solid var(--vien);
+          padding:10px 8px 80px}
+  .canh{padding:7px 9px;border-radius:9px;margin-bottom:5px;cursor:pointer;
+        border:1px solid transparent;font-size:13.5px;line-height:1.45}
+  .canh:hover{background:#221712}
+  .canh.dang{background:#2c1d16;border-color:var(--cam)}
+  .canh .so{color:var(--vang);font-weight:700}
+  .canh .tk{color:var(--mo);font-size:11px;white-space:nowrap;overflow:hidden;
+            text-overflow:ellipsis}
+  .canh .da-gan{float:right;color:#7fc98f}
+  #vungAnh{flex:1;overflow-y:auto;padding:12px 14px 80px}
+  .luoi{display:grid;gap:10px;
+        grid-template-columns:repeat(auto-fill,minmax(var(--co,280px),1fr))}
+  .o{position:relative;border-radius:10px;overflow:hidden;border:2px solid var(--vien);
+     background:var(--tam);cursor:pointer}
+  .o img{width:100%;height:var(--cao,180px);object-fit:cover;display:block;background:#000}
+  .o .th{font-size:11px;color:var(--mo);padding:4px 6px;white-space:nowrap;
+         overflow:hidden;text-overflow:ellipsis}
+  .o.chon{border-color:var(--vang)}
+  .o.duoi{opacity:.5}
+  .o.duoi:hover{opacity:1}
+  .o .tich{position:absolute;top:6px;left:6px;width:26px;height:26px;border-radius:7px;
+           background:#000a;color:#fff;font:800 14px/26px sans-serif;text-align:center}
+  .o.chon .tich{background:var(--vang);color:#241a00}
+  .o .hd{position:absolute;top:6px;right:6px;font-size:10.5px;font-weight:800;
+         border-radius:5px;padding:2px 7px;background:#1e6b3a;color:#d8ffe6}
+  .o .hd.kem{background:#7a5a1e;color:#ffe9b8}
+  .o .to{position:absolute;bottom:30px;right:6px;width:26px;height:26px;border-radius:7px;
+         background:#000a;display:none;text-align:center;line-height:26px}
+  .o:hover .to{display:block}
+  #phong{position:fixed;inset:0;background:#000e;z-index:90;display:none;
+         align-items:center;justify-content:center;padding:24px;cursor:zoom-out}
+  #phong.mo{display:flex}
+  .p-nut{position:absolute;top:50%;transform:translateY(-50%);z-index:6;width:46px;height:64px;
+    font-size:26px;background:#000b;color:#fff;border:1px solid #4a3c36;border-radius:10px;cursor:pointer}
+  .p-nut:hover{border-color:#FFD400}
+  #pChan{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:6;
+    display:flex;gap:10px;align-items:center;background:#000b;padding:8px 12px;border-radius:10px}
+  .o .cropdau{position:absolute;top:5px;left:5px;background:#FFD400;color:#241a00;
+    font-size:11px;font-weight:800;border-radius:5px;padding:1px 6px}
+  #phong img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
+  .rong{color:#6b5c53;padding:40px;text-align:center}
+  #bao{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#2c1d16;
+       border:1px solid var(--vien);border-radius:10px;padding:10px 18px;display:none;
+       max-width:80vw;z-index:99;white-space:pre-line}
+  #bao.loi{border-color:var(--tham)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>CHỌN <span>ẢNH</span></h1>
+  <input id="oTim" placeholder="từ khoá tìm ảnh — Enter để tìm">
+  <button id="nutTim" class="chinh">🔎 Tìm</button>
+  <span class="tien-do">Cỡ</span>
+  <input type="range" id="coO" min="120" max="420" step="20" value="180" style="width:110px">
+  <button id="nutHienDuoi"></button>
+  <button id="nutBoChon">Bỏ chọn</button>
+  <button id="nutTimLai" title="Tìm lại ảnh cho cảnh đang mở bằng từ khoá trong ô">🔄 Tìm lại</button>
+  <button id="nutLay" class="vang" disabled>Lấy 0 tấm về kho</button>
+  <button id="nutVe" title="Quay lại trạm, đúng việc đang làm (Esc)">← Về trạm</button>
+</header>
+
+<main>
+  <div id="dsCanh"><div class="rong" style="padding:16px">đang nạp cảnh…</div></div>
+  <div id="vungAnh">
+    <div class="tien-do" id="tinTrang" style="margin-bottom:8px">—</div>
+    <div class="luoi" id="luoi"><div class="rong">Bấm một cảnh bên trái — ứng viên đã tìm sẵn.</div></div>
+  </div>
+</main>
+
+<div id="phong">
+  <div id="pChu" style="position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:6;
+    background:#000c;padding:10px 16px;border-radius:10px;max-width:74vw;font-size:15px;
+    line-height:1.5;display:none"></div>
+  <button id="pTruoc" class="p-nut" style="left:14px" title="Ảnh trước (phím ←)">‹</button>
+  <img id="phongAnh" alt="">
+  <button id="pSau" class="p-nut" style="right:14px" title="Ảnh sau (phím →)">›</button>
+  <div id="pChan">
+    <button id="pCrop" title="CROP: kéo chuột chọn vùng GIỮ LẠI để né watermark — ảnh sẽ được CẮT đúng vùng này khi lấy về kho (phím C, Enter chốt vùng)">✂ Crop (C)</button>
+    <button id="pBoCrop" style="display:none" title="Bỏ vùng cắt đã ghi cho ảnh này — lấy về sẽ giữ nguyên ảnh gốc">✂ Bỏ vùng cắt</button>
+    <!-- 🧽 ghi vùng xoá WM (anh đặt 11/08): ảnh còn ở web, máy vá LaMa lúc LẤY VỀ -->
+    <button id="pWm" title="XOÁ WATERMARK: khoanh vùng chữ/logo cần xoá — khi lấy về máy tự vá lại nền bằng LaMa, giữ nguyên khuôn hình (phím W, Enter chốt vùng)">🧽 Xoá WM (W)</button>
+    <button id="pBoWm" style="display:none" title="Bỏ vùng xoá watermark đã ghi cho ảnh này">🧽 Bỏ vùng xoá</button>
+    <span id="pMota" style="color:#9a8c83;font-size:12.5px"></span>
+  </div>
+  <div id="pCropLop" style="position:absolute;inset:0;display:none;cursor:crosshair;z-index:5">
+    <div id="pCropKhung" style="position:fixed;border:2px solid var(--vang,#FFD400);
+      box-shadow:0 0 0 9999px rgba(0,0,0,.55);display:none;pointer-events:none"></div>
+  </div>
+</div>
+<div id="bao"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const qs = new URLSearchParams(location.search);
+const ma = qs.get('viec') || '';
+let dl = null;                 // chi tiết việc: danh sách câu + bản đồ ảnh đã gán
+let uv = {};                   // cache ứng viên tìm sẵn {cau: {tu_khoa, anh, luc}}
+let dangCau = null;            // cảnh đang mở lớp ảnh
+// Ô PHỤ đích (anh chốt 11/08): trạm bấm 🔎 ở cảnh phụ thì sang đây kèm &phan=, tấm chọn
+// cuối gán vào ĐÚNG ô phụ đó thay vì đè ảnh chính. Chuyển sang cảnh khác là bỏ đích.
+let dangPhan = qs.get('phan') !== null ? +qs.get('phan') : null;
+let ungVien = [], daChon = new Set(), hienDuoi = false, oTro = null, henBao = null;
+
+// tiếng TING báo hiệu (anh đặt 09/08 tối, đồng bộ với trạm kho) — WebAudio 2 nốt
+let _ctxTing = null;
+function ting(xau){
+  try{
+    _ctxTing = _ctxTing || new (window.AudioContext || window.webkitAudioContext)();
+    if (_ctxTing.state === 'suspended') _ctxTing.resume();
+    const t0 = _ctxTing.currentTime;
+    [[xau ? 440 : 880, 0], [xau ? 330 : 1320, 0.09]].forEach(([f, tre]) => {
+      const o = _ctxTing.createOscillator(), g = _ctxTing.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t0 + tre);
+      g.gain.exponentialRampToValueAtTime(0.12, t0 + tre + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + tre + 0.35);
+      o.connect(g); g.connect(_ctxTing.destination);
+      o.start(t0 + tre); o.stop(t0 + tre + 0.4);
+    });
+  }catch(e){}
+}
+function bao(t, loi){
+  const b = $('#bao');
+  b.textContent = t; b.className = loi ? 'loi' : ''; b.style.display = 'block';
+  ting(loi);
+  clearTimeout(henBao); henBao = setTimeout(() => b.style.display = 'none', loi ? 8000 : 4000);
+}
+async function api(d, than){
+  const r = await fetch(d, than ? {method: 'POST',
+    headers: {'Content-Type': 'application/json'}, body: JSON.stringify(than)} : {});
+  return r.json();
+}
+function veTram(){ location.href = '/?viec=' + encodeURIComponent(ma); }
+$('#nutVe').onclick = veTram;
+
+$('#coO').oninput = () => {
+  const v = +$('#coO').value;
+  document.documentElement.style.setProperty('--cao', v + 'px');
+  document.documentElement.style.setProperty('--co', Math.round(v * 1.55) + 'px');
+};
+$('#coO').oninput();
+
+// ── dải CẢNH bên trái ────────────────────────────────────────────────────────
+function veCanh(){
+  if (!dl) return;
+  $('#dsCanh').innerHTML = dl.cau.map(c => {
+    const co = uv[c.i] && uv[c.i].anh && uv[c.i].anh.length;
+    const giay = c.den - c.tu;
+    return `<div class="canh ${c.i === dangCau ? 'dang' : ''}" data-i="${c.i}">
+      <span class="so">${c.i + 1}</span>
+      <span style="color:#FFD400;font-size:12px">${giay.toFixed(1)}s</span>
+      ${dl.ban_do && dl.ban_do[c.i] ? '<span class="da-gan">✓ đã gán</span>' : ''}
+      ${giay > 6 ? '<span style="color:#ffb347;font-size:11px">⏳ dài — chọn 2-3 tấm, tấm thừa thành ảnh phụ</span>' : ''}
+      ${(c.chu || '').replace(/</g, '&lt;')}
+      <div class="tk">${co ? co + ' ứng viên sẵn · ' : '⚠️ chưa tìm sẵn · '}${
+        (uv[c.i] && uv[c.i].tu_khoa) || ''}</div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('.canh').forEach(e =>
+    e.onclick = () => chonCanh(+e.dataset.i));
+}
+
+// ── KHO NHÀ (anh chốt 10/08): ảnh sạch đã gắn nhãn từ các bài trước, tra code thuần
+// — bày TRƯỚC kết quả Google, lấy về đi nguyên luồng cũ (URL nội bộ của trạm)
+async function tronKhoNha(q){
+  if (!q || !q.trim()) return;
+  try {
+    const ds = await (await fetch('/api/kho-nha?q=' + encodeURIComponent(q.trim()))).json();
+    if (!Array.isArray(ds) || !ds.length) return;
+    const daCo = new Set(ungVien.map(a => a.u));
+    // u (để LẤY) mang ?ma= cho sổ đã-dùng; u_hien (để BÀY lưới) thì KHÔNG — bày ảnh
+    // chưa phải là dùng ảnh (tự bắt 10/08: 30 tấm bày lưới thành 30 lượt "đã dùng" ảo)
+    const them = ds.filter(m => !daCo.has(location.origin + m.u + '?ma=' + encodeURIComponent(ma)))
+      .map(m => ({u: location.origin + m.u + '?ma=' + encodeURIComponent(ma),
+                  u_hien: location.origin + m.u,
+                  w: m.w, h: m.h, ty_le: m.h ? +(m.w / m.h).toFixed(2) : 0,
+                  du_net: true, kho_nha: true, mo_ta: m.mo_ta, chu_the: m.chu_the}));
+    if (them.length){
+      ungVien = them.concat(ungVien);
+      ve();
+      bao(`🏠 ${them.length} ảnh KHO NHÀ khớp từ khoá — bày đầu lưới, đã sạch watermark`);
+    }
+  } catch (e) {}
+}
+
+function chonCanh(i){
+  if (dangCau !== null && i !== dangCau) chotChonHienTai();   // rời cảnh = chốt lựa chọn cảnh đó
+  // đổi sang cảnh KHÁC là bỏ đích ô phụ (đích chỉ đúng cho cảnh trạm vừa gửi sang)
+  if (dangCau !== null && i !== dangCau) dangPhan = null;
+  dangCau = i;
+  const c = uv[i] || {};
+  // đích ô phụ: ưu tiên TỪ KHOÁ RIÊNG của ô phụ (anh chốt 11/08)
+  const tkPhu = dangPhan !== null
+    ? ((dl && dl.tu_khoa_phu && (dl.tu_khoa_phu[i] || {})[dangPhan]) || '')
+    : '';
+  $('#oTim').value = tkPhu || c.tu_khoa || '';
+  ungVien = (c.anh || []).slice();
+  tronKhoNha($('#oTim').value);
+  daChon = new Set();
+  const dat = ungVien.filter(a => a.du_net).length;
+  const ten_dich = dangPhan !== null
+    ? `Cảnh phụ ${i + 1}${String.fromCharCode(98 + dangPhan)}` : `Cảnh ${i + 1}`;
+  $('#tinTrang').textContent = ungVien.length
+    ? `${ten_dich} · ${dat} đạt chuẩn / ${ungVien.length} tìm sẵn lúc ${c.luc || '?'} — ` +
+      (dangPhan !== null
+        ? 'chọn ảnh rồi ENTER: tấm cuối gán vào Ô PHỤ này'
+        : 'chọn ảnh rồi gõ ENTER: tấm cuối thành ảnh cảnh, tự sang cảnh kế')
+    : `${ten_dich} chưa có ứng viên — sửa từ khoá rồi bấm 🔄 Tìm lại`;
+  veCanh(); ve();
+}
+
+// ── lưới ảnh ─────────────────────────────────────────────────────────────────
+function ve(){
+  const ds = ungVien.filter(a => hienDuoi || a.du_net);
+  $('#nutHienDuoi').textContent = hienDuoi ? 'Ẩn ảnh dưới chuẩn' : 'Hiện ảnh dưới chuẩn';
+  $('#nutLay').textContent = dangCau === null
+    ? `Lấy ${daChon.size} tấm về kho`
+    : dangPhan !== null
+    ? `Lấy ${daChon.size} tấm · gán tấm cuối cho cảnh phụ ${dangCau + 1}${String.fromCharCode(98 + dangPhan)}`
+    : `Lấy ${daChon.size} tấm · gán tấm cuối cho cảnh ${dangCau + 1}`;
+  $('#nutLay').disabled = !daChon.size;
+  // nút gộp chọn/bỏ tất cả (anh đặt 08/08): chưa đủ thì "chọn cả", đủ rồi thì "bỏ chọn"
+  $('#nutBoChon').textContent = ds.length && daChon.size >= ds.length
+    ? '✕ Bỏ chọn tất cả' : `☑ Chọn cả ${ds.length} tấm`;
+  $('#nutBoChon').disabled = !ds.length;
+  if (!ds.length){
+    $('#luoi').innerHTML = '<div class="rong">Không có ảnh nào' +
+      (ungVien.length ? ' đạt chuẩn — bấm "Hiện ảnh dưới chuẩn"' : '') + '.</div>';
+    return;
+  }
+  $('#luoi').innerHTML = ds.map(a => {
+    const i = ungVien.indexOf(a);
+    return `<div class="o ${daChon.has(i) ? 'chon' : ''} ${a.du_net ? '' : 'duoi'}" data-i="${i}">
+      <img src="${(a.u_hien || a.u).replace(/"/g, '&quot;')}" loading="lazy" referrerpolicy="no-referrer"
+           onerror="this.closest('.o').style.display='none'">
+      <div class="tich">${daChon.has(i) ? [...daChon].indexOf(i) + 1 : ''}</div>
+      <div class="hd ${a.du_net ? '' : 'kem'}">${a.du_net ? 'HD' : 'nhỏ'}</div>
+      ${cropChon[a.u] ? '<div class="cropdau" title="đã ghi vùng cắt — lấy về kho sẽ tự cắt">✂</div>' : ''}
+      ${wmChon[a.u] ? '<div class="cropdau" style="left:auto;right:5px;background:#8858c9;color:#fff" title="đã ghi vùng xoá watermark — lấy về máy tự vá">🧽</div>' : ''}
+      ${a.kho_nha ? '<div class="hd" style="top:26px;background:#2e5c2e" title="ảnh KHO NHÀ — đã sạch watermark, đã qua duyệt bài trước">🏠</div>' : ''}
+      <div class="to" title="xem to (hoặc rê chuột + Space)">🔍</div>
+      <div class="th">${a.kho_nha ? '🏠 ' + (a.mo_ta || a.chu_the || 'kho nhà').slice(0, 40) + '<br>' : ''}${a.w}×${a.h} · ${a.ty_le}</div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('.o').forEach(e => {
+    e.onmouseenter = () => { oTro = e; };
+    e.onclick = ev => {
+      if (ev.target.closest('.to')){
+        moPhong(dsHien().findIndex(x => x.i === +e.closest('.o').dataset.i)); return;
+      }
+      const i = +e.dataset.i;
+      daChon.has(i) ? daChon.delete(i) : daChon.add(i);
+      ve();
+    };
+  });
+}
+$('#nutHienDuoi').onclick = () => { hienDuoi = !hienDuoi; ve(); };
+$('#nutBoChon').onclick = () => {
+  // toggle: chưa chọn đủ → chọn TẤT CẢ ảnh đang hiển thị (theo thứ tự lưới,
+  // ảnh ẩn dưới chuẩn không tính); đủ rồi → bỏ sạch (anh đặt 08/08)
+  const hien = ungVien.map((a, i) => (hienDuoi || a.du_net) ? i : -1).filter(i => i >= 0);
+  daChon = (daChon.size >= hien.length && hien.length) ? new Set() : new Set(hien);
+  ve();
+};
+// ── phóng to: tiến/lùi + CROP-vùng trước khi lấy (anh đặt 09/08) ─────────────
+// wmChon: vùng XOÁ WATERMARK ghi sẵn (anh đặt 11/08) — ảnh còn ở web chưa tải về nên
+// LaMa chưa chạy được; ghi vùng ở đây, lúc LẤY VỀ máy tự vá rồi mới nhập ảnh vào bài.
+// pKieu: khung kéo dùng CHUNG cho hai việc — 'crop' chọn vùng GIỮ, 'wm' khoanh vùng XOÁ.
+let phongI = null, cropChon = {}, wmChon = {}, pKieu = 'crop',
+    pCropMode = false, pBox = null, pKeo = null;
+const dsHien = () => ungVien.map((a, i) => ({a, i})).filter(x => hienDuoi || x.a.du_net);
+function vePChu(){
+  // nội dung CẢNH ĐANG FOCUS hiện ngay trong cửa phóng (anh đặt 09/08): người duyệt
+  // lướt ảnh là đối chiếu được ảnh với lời, không phải thoát ra nhìn cột trái
+  const e = $('#pChu');
+  if (dangCau == null || !dl || !dl.cau[dangCau]){ e.style.display = 'none'; return; }
+  const c = dl.cau[dangCau];
+  e.style.display = '';
+  e.innerHTML = `<b style="color:var(--vang)">Cảnh ${dangCau + 1}</b>`
+    + ` · ${(c.den - c.tu).toFixed(1)}s — ${(c.chu || '').replace(/</g, '&lt;')}`;
+}
+function moPhong(k){
+  const ds = dsHien();
+  if (!ds.length) return;
+  phongI = Math.max(0, Math.min(k, ds.length - 1));
+  const {a} = ds[phongI];
+  vePChu();
+  $('#phongAnh').src = a.u_hien || a.u;            // phóng to = XEM, chưa phải dùng
+  $('#phong').classList.add('mo');
+  tatPCrop();
+  $('#pBoCrop').style.display = cropChon[a.u] ? '' : 'none';
+  $('#pBoWm').style.display = wmChon[a.u] ? '' : 'none';
+  $('#pMota').textContent = `${phongI + 1}/${ds.length} · ${a.w}×${a.h}`
+    + (cropChon[a.u] ? ' · ✂ ĐÃ GHI vùng cắt' : '')
+    + (wmChon[a.u] ? ' · 🧽 ĐÃ GHI vùng xoá WM' : '');
+}
+function dongPhongChon(){
+  tatPCrop(); phongI = null;
+  $('#phong').classList.remove('mo'); $('#phongAnh').src = '';
+}
+function batPCrop(kieu){
+  pKieu = kieu === 'wm' ? 'wm' : 'crop';
+  pCropMode = true; pBox = null; pKeo = null;
+  $('#pCropLop').style.display = 'block';
+  $('#pCropKhung').style.display = 'none';
+  bao(pKieu === 'wm'
+    ? '🧽 Kéo chuột khoanh VÙNG WATERMARK CẦN XOÁ — Enter ghi vùng · Esc huỷ. Máy vá khi LẤY VỀ'
+    : 'CROP: kéo chuột chọn VÙNG GIỮ — Enter ghi vùng · Esc huỷ. Ảnh sẽ được cắt khi LẤY VỀ KHO');
+}
+function tatPCrop(){
+  pCropMode = false; pBox = null; pKeo = null;
+  $('#pCropLop').style.display = 'none';
+  $('#pCropKhung').style.display = 'none';
+}
+const _kepP = (x, y) => {
+  const r = $('#phongAnh').getBoundingClientRect();
+  return [Math.max(r.left, Math.min(x, r.right)), Math.max(r.top, Math.min(y, r.bottom))];
+};
+$('#pCropLop').addEventListener('mousedown', e => {
+  e.preventDefault(); e.stopPropagation();
+  const [x, y] = _kepP(e.clientX, e.clientY);
+  pKeo = {x, y}; pBox = null;
+});
+// move + up bắt ở DOCUMENT (anh bắt 09/08 bên trạm kho: kéo QUÁ TAY ra ngoài lớp là
+// mất dấu chuột, khung đứng im). _kepP kẹp toạ độ nên trượt tận đâu cũng chỉ ăn ĐẾN MÉP ảnh.
+document.addEventListener('mousemove', e => {
+  if (!pKeo) return;
+  const [x, y] = _kepP(e.clientX, e.clientY);
+  pBox = {x: Math.min(pKeo.x, x), y: Math.min(pKeo.y, y),
+          w: Math.abs(x - pKeo.x), h: Math.abs(y - pKeo.y)};
+  const k = $('#pCropKhung');
+  k.style.display = 'block';
+  k.style.left = pBox.x + 'px'; k.style.top = pBox.y + 'px';
+  k.style.width = pBox.w + 'px'; k.style.height = pBox.h + 'px';
+});
+document.addEventListener('mouseup', () => { pKeo = null; });
+function chotPCrop(){
+  // vùng WM cho phép khoanh bé (chữ mờ góc ảnh chỉ vài chục px) — crop thì vẫn ≥20
+  const san = pKieu === 'wm' ? 8 : 20;
+  if (!pBox || pBox.w < san || pBox.h < san)
+    return bao('Chưa chọn vùng — kéo chuột trên ảnh trước', true);
+  const ds = dsHien(); if (phongI == null || !ds[phongI]) return;
+  const a = ds[phongI].a;
+  const r0 = $('#phongAnh').getBoundingClientRect();
+  const bx = {x: (pBox.x - r0.left) / r0.width, y: (pBox.y - r0.top) / r0.height,
+              w: pBox.w / r0.width, h: pBox.h / r0.height};
+  if (pKieu === 'wm'){
+    wmChon[a.u] = bx;
+    tatPCrop();
+    $('#pBoWm').style.display = '';
+    $('#pMota').textContent = `${phongI + 1}/${ds.length} · ${a.w}×${a.h} · 🧽 ĐÃ GHI vùng xoá WM`;
+    ve();
+    return bao('🧽 Đã ghi vùng xoá watermark — lấy về là máy tự vá rồi mới nhập ảnh');
+  }
+  cropChon[a.u] = bx;
+  tatPCrop();
+  $('#pBoCrop').style.display = '';
+  $('#pMota').textContent = `${phongI + 1}/${ds.length} · ${a.w}×${a.h} · ✂ ĐÃ GHI vùng cắt`;
+  ve();
+  bao('✂ Đã ghi vùng cắt — tấm này khi lấy về kho sẽ được cắt đúng vùng anh chọn');
+}
+$('#pCrop').onclick = e => { e.stopPropagation(); pCropMode ? tatPCrop() : batPCrop('crop'); };
+$('#pWm').onclick = e => { e.stopPropagation(); pCropMode ? tatPCrop() : batPCrop('wm'); };
+$('#pBoCrop').onclick = e => {
+  e.stopPropagation();
+  const ds = dsHien(); if (phongI == null || !ds[phongI]) return;
+  delete cropChon[ds[phongI].a.u];
+  $('#pBoCrop').style.display = 'none';
+  ve();
+  bao('Đã bỏ vùng cắt — lấy về sẽ giữ nguyên ảnh gốc');
+};
+$('#pBoWm').onclick = e => {
+  e.stopPropagation();
+  const ds = dsHien(); if (phongI == null || !ds[phongI]) return;
+  delete wmChon[ds[phongI].a.u];
+  $('#pBoWm').style.display = 'none';
+  ve();
+  bao('Đã bỏ vùng xoá watermark');
+};
+$('#pTruoc').onclick = e => { e.stopPropagation(); moPhong(phongI - 1); };
+$('#pSau').onclick = e => { e.stopPropagation(); moPhong(phongI + 1); };
+$('#phong').onclick = e => {
+  if (e.target.closest('button') || pCropMode) return;
+  dongPhongChon();
+};
+
+// ── tìm ─────────────────────────────────────────────────────────────────────
+// theo dõi một job (tim-san hoặc xem-truoc) tới khi xong
+function theoJob(url, job, henGiay, roi, im){
+  const han = Date.now() + henGiay * 1000;
+  const nhip = setInterval(async () => {
+    let t; try { t = await api(url + job); }
+    catch (e){ clearInterval(nhip); return roi({loi: 'mất liên lạc'}); }
+    if (!t.xong){
+      if (t.buoc && !im) $('#tinTrang').textContent = '⏳ ' + t.buoc +
+        (t.tong ? ` (${t.da}/${t.tong})` : '');
+      if (Date.now() > han){ clearInterval(nhip); roi({loi: 'quá lâu'}); }
+      return;
+    }
+    clearInterval(nhip); roi(t);
+  }, 1500);
+}
+
+// tìm TỰ DO bằng ô trên đầu (không đụng cache)
+async function tim(tk){
+  if (!tk || !tk.trim()) return bao('Chưa nhập từ khoá', true);
+  const n = $('#nutTim'); n.disabled = true; n.textContent = '🔎 đang tìm…';
+  let job;
+  try { ({job} = await api('/api/xem-truoc', {ma, tu_khoa: tk.trim()})); }
+  catch (e){ n.disabled = false; n.textContent = '🔎 Tìm'; return bao(e.message, true); }
+  theoJob('/api/xem-truoc/', job, 120, t => {
+    n.disabled = false; n.textContent = '🔎 Tìm';
+    if (t.loi) return bao('Tìm hỏng — ' + t.loi, true);
+    ungVien = (t.anh || []).slice(); daChon = new Set();
+    tronKhoNha(tk);
+    const dat = ungVien.filter(a => a.du_net).length;
+    $('#tinTrang').textContent = `${dat} đạt chuẩn / ${ungVien.length} tấm` +
+      (dangCau !== null ? ` — tấm chọn cuối gán cho cảnh ${dangCau + 1}` : '');
+    ve();
+  });
+}
+$('#nutTim').onclick = () => tim($('#oTim').value);
+// Bộ gõ tiếng Việt: Enter lúc IME đang ghép chữ là Enter CHỐT CHỮ, không phải lệnh
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.isComposing || e.keyCode === 229)) e.stopPropagation();
+}, true);
+$('#oTim').addEventListener('keydown', e => { if (e.key === 'Enter') tim($('#oTim').value); });
+
+// TÌM LẠI cho cảnh đang mở — chạy tim-san riêng cảnh đó, cập nhật cả cache
+$('#nutTimLai').onclick = async () => {
+  if (dangCau === null) return bao('Chọn một cảnh bên trái trước đã', true);
+  const tk = $('#oTim').value.trim();
+  if (tk && (!uv[dangCau] || uv[dangCau].tu_khoa !== tk)){
+    // anh sửa từ khoá trong ô → lưu vào trạm trước rồi mới tìm (sổ học cũng nhờ đó mà ghi).
+    // CHỈ gửi tu_khoa — server kế thừa phần còn lại. Bản cũ gửi kèm cả ban_do nó vừa nạp
+    // được, nạp hụt (trạm đang khởi động lại) là đè trắng 20 câu anh gán — vụ 16:44 07/08.
+    const nh = await api('/api/viec/' + encodeURIComponent(ma));
+    if (dangPhan !== null){                        // đang nhắm Ô PHỤ → lưu ngăn RIÊNG
+      const tkp = Object.assign({}, nh.tu_khoa_phu);
+      tkp[dangCau] = Object.assign({}, tkp[dangCau], {[dangPhan]: tk});
+      await api('/api/luu', {ma, tu_khoa_phu: tkp});
+      if (dl) dl.tu_khoa_phu = tkp;
+    } else {
+      const tuk = Object.assign({}, nh.tu_khoa); tuk[dangCau] = tk;
+      await api('/api/luu', {ma, tu_khoa: tuk});
+    }
+  }
+  const n = $('#nutTimLai'); n.disabled = true;
+  const {job} = await api('/api/tim-san',
+    dangPhan !== null ? {ma, cau: dangCau, tu_khoa: tk} : {ma, cau: dangCau});
+  theoJob('/api/dung/', job, 180, async t => {
+    n.disabled = false;
+    if (t.loi) return bao('Tìm lại hỏng — ' + t.loi, true);
+    uv = await api('/api/ung-vien/' + encodeURIComponent(ma));
+    chonCanh(dangCau);
+    bao('🔄 Đã tìm lại xong.');
+  });
+};
+
+// ── lấy về kho + GÁN tấm cuối ────────────────────────────────────────────────
+// ── CHỐT lựa chọn: lấy về kho + GÁN TẤM CUỐI, chạy NỀN ──────────────────────
+// Anh chốt 06/08 tối (dặn lại 07/08): KHÔNG bắt bấm nút — chuyển sang cảnh khác hoặc gõ
+// Enter là chốt luôn lựa chọn của cảnh đang mở; Enter còn tự nhảy xuống cảnh kế tiếp.
+// Chốt chạy nền để anh sang cảnh mới làm tiếp ngay, không phải ngồi chờ tải + soi watermark.
+function layVaGanNen(cau, urls, cuoi, tk, phan){
+  const crops = {}, wms = {};
+  urls.forEach(u => { if (cropChon[u]) crops[u] = cropChon[u];
+                      if (wmChon[u]) wms[u] = wmChon[u]; });
+  api('/api/lay-chon', {ma, urls, tu_khoa: tk, crops, wms}).then(({job}) =>
+    theoJob('/api/lay-chon/', job, 240, async t => {
+      if (t.loi) return bao(`Cảnh ${cau + 1}: tải hỏng — ` + t.loi, true);
+      // ĐÍCH LÀ Ô PHỤ (trạm bấm 🔎 ở cảnh phụ, anh chốt 11/08): tấm cuối vào đúng ô đó,
+      // ảnh chính của câu giữ nguyên; các tấm còn lại chỉ nằm kho chờ anh gán tiếp
+      if (phan !== null && phan !== undefined && t.ban_do_url && t.ban_do_url[cuoi]){
+        await api('/api/gan-phu',
+                  {ma, cau, phan, gia_tri: t.ban_do_url[cuoi]});
+        veCanh();
+        return bao(`✓ Cảnh phụ ${cau + 1}${String.fromCharCode(98 + phan)}: `
+                   + `lấy ${t.so} tấm · tấm cuối đã gán vào ô phụ.`);
+      }
+      if (t.ban_do_url && t.ban_do_url[cuoi]){
+        await api('/api/gan', {ma, cau, duong: t.ban_do_url[cuoi]});
+        if (dl) dl.ban_do = Object.assign({}, dl.ban_do || {}, {[cau]: t.ban_do_url[cuoi]});
+        // các tấm NGOÀI tấm cuối → ẢNH PHỤ của câu (anh chốt 07/08): cảnh dài quá 6s
+        // xưởng tự tách thành cảnh con 3-4s chạy lần lượt chính → phụ, hết cảnh đơ
+        const phu = urls.filter(u => u !== cuoi).map(u => t.ban_do_url[u]).filter(Boolean);
+        if (phu.length) await api('/api/gan-phu', {ma, cau, ds: phu});
+        veCanh();
+        bao(`✓ Cảnh ${cau + 1}: lấy ${t.so} tấm · tấm cuối là ảnh chính`
+            + (phu.length ? ` · ${phu.length} tấm thành ảnh phụ (cảnh dài tự tách)` : '') + `.`);
+      } else {
+        bao(`Cảnh ${cau + 1}: lấy ${t.so} tấm về kho (không gán được tấm cuối).`, true);
+      }
+    }, true)
+  ).catch(e => bao('Lỗi chốt cảnh ' + (cau + 1) + ' — ' + e.message, true));
+}
+
+function chotChonHienTai(){
+  if (!daChon.size) return false;
+  const thuTu = [...daChon];                       // Set giữ đúng thứ tự anh bấm
+  const urls = thuTu.map(i => ungVien[i].u);
+  if (dangCau === null){
+    // CHƯA chọn cảnh → chỉ LẤY VỀ KHO, không gán (nút vẫn ghi vậy mà trước đây bị
+    // chặn im — dò ra 10/08 khi test luồng kho nhà)
+    const crops = {}, wms = {};
+    urls.forEach(u => { if (cropChon[u]) crops[u] = cropChon[u];
+                        if (wmChon[u]) wms[u] = wmChon[u]; });
+    api('/api/lay-chon', {ma, urls, tu_khoa: $('#oTim').value, crops, wms}).then(({job}) =>
+      theoJob('/api/lay-chon/', job, 240, t => {
+        if (t.loi) return bao('Tải hỏng — ' + t.loi, true);
+        bao(`✓ Đã lấy ${t.so} tấm về kho ảnh của bài.`);
+      }, true)
+    ).catch(e => bao('Lỗi lấy về kho — ' + e.message, true));
+    daChon = new Set();
+    ve();
+    return true;
+  }
+  const cuoi = ungVien[thuTu[thuTu.length - 1]].u; // TẤM CHỌN CUỐI = ảnh của cảnh
+  layVaGanNen(dangCau, urls, cuoi, $('#oTim').value, dangPhan);
+  daChon = new Set();
+  ve();
+  return true;
+}
+$('#nutLay').onclick = chotChonHienTai;
+
+// ── phím tắt ─────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.matches?.('input')) return;   // phím bắn từ document không có .matches
+  // ↑/↓ chuyển CẢNH liền mạch không rời bàn phím (anh duyệt 10/08) — ngoài cửa phóng
+  if (!$('#phong').classList.contains('mo')
+      && (e.key === 'ArrowDown' || e.key === 'ArrowUp') && dl && dl.cau.length){
+    e.preventDefault();
+    const moi = Math.max(0, Math.min(dl.cau.length - 1,
+      (dangCau === null ? 0 : dangCau) + (e.key === 'ArrowDown' ? 1 : -1)));
+    chonCanh(moi);
+    document.querySelectorAll('#dsCanh .canh')[moi]
+      ?.scrollIntoView({block: 'nearest'});
+    return;
+  }
+  if ($('#phong').classList.contains('mo')){
+    if (pCropMode){
+      if (e.key === 'Escape'){ e.preventDefault(); tatPCrop(); return; }
+      if (e.key === 'Enter'){ e.preventDefault(); chotPCrop(); return; }
+    }
+    if (e.key === 'ArrowRight'){ e.preventDefault(); moPhong(phongI + 1); return; }
+    if (e.key === 'ArrowLeft'){ e.preventDefault(); moPhong(phongI - 1); return; }
+    if (e.key === 'c' || e.key === 'C'){ e.preventDefault(); pCropMode ? tatPCrop() : batPCrop('crop'); return; }
+    if (e.key === 'w' || e.key === 'W'){ e.preventDefault(); pCropMode ? tatPCrop() : batPCrop('wm'); return; }
+    if (e.key === 'Enter'){
+      // Enter ngay trong cửa phóng (anh đặt 09/08): tấm ĐANG PHÓNG thành ảnh của cảnh
+      // (các tấm đã tick trước đó thành ảnh phụ) → tự sang cảnh kế, hiện luôn lời cảnh mới
+      e.preventDefault();
+      const ds = dsHien();
+      if (phongI != null && ds[phongI]){
+        daChon.delete(ds[phongI].i);               // đưa về CUỐI danh sách chọn
+        daChon.add(ds[phongI].i);                  // → thành ảnh CHÍNH của cảnh
+      }
+      chotChonHienTai();
+      if (dangCau !== null && dl && dl.cau[dangCau + 1]){
+        chonCanh(dangCau + 1);
+        if (dsHien().length){
+          moPhong(0);
+          bao(`→ Cảnh ${dangCau + 1}: chọn tiếp trong ${dsHien().length} ứng viên`);
+        } else {
+          dongPhongChon();
+          bao('Cảnh kế chưa có ứng viên sẵn — gõ từ khoá tìm rồi phóng to chọn tiếp');
+        }
+      } else {
+        dongPhongChon();
+        bao('Hết cảnh — ← Về trạm để dựng.');
+      }
+      return;
+    }
+    if (e.key === 'Escape' || e.key === ' '){ e.preventDefault(); dongPhongChon(); }
+    return;
+  }
+  if (e.key === ' ' && oTro){
+    e.preventDefault();
+    moPhong(dsHien().findIndex(x => x.i === +oTro.dataset.i));
+    return;
+  }
+  if (e.key === 'Enter'){
+    e.preventDefault();
+    chotChonHienTai();                             // không chọn gì thì chỉ nhảy cảnh
+    if (dangCau !== null && dl && dl.cau[dangCau + 1]) chonCanh(dangCau + 1);
+    else bao('Hết cảnh — ← Về trạm để dựng.');
+    return;
+  }
+  if (e.key === 'Escape'){ e.preventDefault(); veTram(); }
+});
+
+// ── nạp ban đầu ──────────────────────────────────────────────────────────────
+(async () => {
+  if (!ma){ $('#tinTrang').textContent = 'Thiếu mã việc — mở trang này từ trạm.'; return; }
+  [dl, uv] = await Promise.all([
+    api('/api/viec/' + encodeURIComponent(ma)),
+    api('/api/ung-vien/' + encodeURIComponent(ma)),
+  ]);
+  veCanh();
+  const cau0 = qs.get('cau'), tk0 = qs.get('tk');
+  if (cau0 !== null && dl.cau[+cau0]) chonCanh(+cau0);
+  else if (tk0){
+    $('#oTim').value = tk0;
+    tronKhoNha(tk0);        // KHO NHÀ hiện NGAY — không bắt chờ Google (anh chốt 10/08)
+    tim(tk0);
+  }
+  else if (dl.cau.length) chonCanh(0);
+
+  // Đang làm dở giữa chừng (anh chốt 06/08 tối): cảnh nào CHƯA GÁN và chưa có ứng viên thì
+  // máy tự đi tìm ngay khi mở trang — chạy nền, anh cứ duyệt các cảnh đã sẵn trong lúc chờ.
+  // Cảnh đã gán rồi thì không đụng: muốn đổi thì anh bấm 🔄 Tìm lại tay như thường.
+  const thieu = dl.cau.filter(c =>
+    !(dl.ban_do && dl.ban_do[c.i]) && !(uv[c.i] && uv[c.i].anh && uv[c.i].anh.length)
+    && (dl.tu_khoa && (dl.tu_khoa[c.i] || '').trim()));
+  if (thieu.length){
+    bao(`Máy đang tự tìm ảnh cho ${thieu.length} cảnh chưa gán — anh cứ duyệt các cảnh đã sẵn.`);
+    const {job} = await api('/api/tim-san', {ma, chi_thieu: true});
+    theoJob('/api/dung/', job, 60 + thieu.length * 15, async t => {
+      if (t.loi) return bao('Tìm nền hỏng — ' + t.loi, true);
+      uv = await api('/api/ung-vien/' + encodeURIComponent(ma));
+      veCanh();
+      if (dangCau !== null && (!ungVien.length)) chonCanh(dangCau);
+      bao(`✓ Đã tìm sẵn xong cho ${thieu.length} cảnh chưa gán.`);
+    });
+  }
+})();
+</script>
+<script src="/menu.js"></script>
+</body>
+</html>

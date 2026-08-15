@@ -1,0 +1,458 @@
+#!/usr/bin/env python3
+"""XƯỞNG — nối cả dây thành một lệnh: kịch bản → giọng → ảnh → dựng → video hoàn chỉnh.
+
+Khác `dung_video.py` (viết cứng cho đúng một video PVF): mọi thứ ở đây đều là THAM SỐ,
+đọc từ `kich-ban.json` trong thư mục việc. Một lệnh chạy được cho bất kỳ tin nào.
+
+Vì sao chia nhịp bằng TỈ LỆ SỐ TIẾNG chứ không chạy whisper: giọng máy đọc đều nhịp, nên
+thời gian một câu tỉ lệ gần đúng với số tiếng của nó (sai số đo được ±0,2 giây). Mốc câu
+chỉ dùng để CHỌN CHỖ CẮT CẢNH — sai vài phần mười giây không ai thấy, mà tiết kiệm được
+một lượt chạy whisper cho mỗi video (luật: code trước, model sau).
+
+  python3 xuong.py viec/2026-08-04-b2e7e1
+"""
+import glob, json, os, random, re, subprocess, sys, time
+import urllib.request
+from PIL import Image, ImageDraw
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import duong_dan as DD
+import chuyen_dong
+
+DD.bat_buoc_du()
+TPL = DD.nap_template()
+W, H = TPL.CANVAS["W"], TPL.CANVAS["H"]
+L, MAU = TPL.LAYOUT, TPL.MAU
+FPS = 30
+ANH_CAO = int(H * L["anh_cao_ty_le"])
+ANH_DAY = int(H * 0.745)
+ANH_TOP = ANH_DAY - ANH_CAO
+
+# Cung nhạc theo giọng tin. Mặc định "cang_thang" — hợp tin thi đấu/kịch tính nhất.
+CUNG_NHAC = {
+    "thang": "chien_thang", "thua": "bi_trang", "chan_thuong": "bi_trang",
+    "cang": "cang_thang", "ke": "tu_su", "mo": "mo_dau", "dinh": "cao_trao",
+}
+
+
+# ── GIỌNG ────────────────────────────────────────────────────────────────────
+def _env():
+    e = {}
+    for line in open(DD.VBEE_ENV):
+        line = line.strip()
+        if "=" in line and not line.startswith("#"):
+            k, v = line.split("=", 1)
+            e[k] = v.strip().strip('"')
+    return e
+
+
+def doc_giong(text, out):
+    """Gọi VBee Ngọc Huyền. API chạy bất đồng bộ: gửi xong phải hỏi lại tới khi có link."""
+    e = _env()
+    app_id, key = e.get("VBEE_APP_ID"), e.get("VBEE_API_KEY")
+    base = e.get("VBEE_BASE_URL", "https://vbee.vn/api/v1").rstrip("/")
+    if not (app_id and key):
+        sys.exit("DỪNG — thiếu khoá VBee trong " + DD.VBEE_ENV)
+    payload = {"voice_code": DD.GIONG_MA, "input_text": text, "app_id": app_id,
+               "audio_type": "mp3", "bitrate": 128, "speed_rate": str(DD.GIONG_TOC_DO),
+               "callback_url": "https://webhook.site/00000000-0000-0000-0000-000000000000"}
+    req = urllib.request.Request(base + "/tts", data=json.dumps(payload).encode(),
+                                 headers={"Authorization": f"Bearer {key}",
+                                          "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=40) as r:
+        d = json.load(r)
+    res = d.get("result") or d.get("data") or {}
+    link = res.get("audio_link") or d.get("audio_link")
+    rid = res.get("request_id") or d.get("request_id")
+    for _ in range(30):
+        if link:
+            break
+        time.sleep(2)
+        pu = urllib.request.Request(base + f"/tts/{rid}",
+                                    headers={"Authorization": f"Bearer {key}"})
+        with urllib.request.urlopen(pu, timeout=30) as r:
+            dd = json.load(r)
+        rr = dd.get("result") or dd.get("data") or {}
+        link = rr.get("audio_link")
+    if not link:
+        sys.exit("DỪNG — VBee không trả file giọng")
+    tho = out + ".tho.mp3"
+    urllib.request.urlretrieve(link, tho)
+    # nén động + chuẩn độ to: giọng đọc trên điện thoại phải đều, không lúc to lúc nhỏ
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", tho, "-af",
+                    "equalizer=f=180:t=q:w=1:g=2.5,equalizer=f=2600:t=q:w=1.4:g=2,"
+                    "equalizer=f=5200:t=q:w=1.2:g=3,"
+                    "acompressor=threshold=-20dB:ratio=3:attack=5:release=90,"
+                    "loudnorm=I=-15:TP=-1.5:LRA=9", out], check=True)
+    os.remove(tho)
+    return out
+
+
+def do_dai(f):
+    r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                        "-of", "csv=p=0", f], capture_output=True, text=True)
+    return float(r.stdout.strip())
+
+
+def _nhap_tram(viec):
+    """Đọc bản nháp trạm ghi (bản đồ ảnh, ghi chú, từ khoá, thẻ số liệu).
+
+    Trạm ghi ở `anh/tram.json`. Xưởng chỉ cần đọc — thiếu file thì coi như chưa khai gì,
+    đừng để cả mẻ dựng chết chỉ vì một video anh chưa đụng tới trên trạm.
+    """
+    p = os.path.join(viec, "anh", "tram.json")
+    if not os.path.exists(p):
+        return {}
+    try:
+        return json.load(open(p, encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+# ── NHỊP ─────────────────────────────────────────────────────────────────────
+def moc_cau(loi_binh, tong):
+    """Ước giây kết thúc từng câu theo tỉ lệ số tiếng — đủ chính xác để chọn chỗ cắt."""
+    cau = [c.strip() for c in re.split(r"(?<=[.!?…])\s+", loi_binh) if c.strip()]
+    tong_tieng = sum(len(c.split()) for c in cau) or 1
+    mocs, cong = [], 0
+    for c in cau:
+        cong += len(c.split())
+        mocs.append(round(cong / tong_tieng * tong, 2))
+    return mocs
+
+
+# ── LỚP PHỦ TĨNH ─────────────────────────────────────────────────────────────
+def lam_overlay(tieu_de, nhan, ra):
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    y_khoi = int(H * L["hoa_den_ty_le"]) + 26
+    img.alpha_composite(TPL._lop_gradient(W, H, y_khoi))
+    img.alpha_composite(TPL._lop_hoa_van_san(W, H))
+
+    d = ImageDraw.Draw(img)
+    x_chu = L["le_trai"] + L["thanh_doc_rong"] + L["thanh_doc_cach_chu"]
+    rong = W - x_chu - L["le_phai"]
+    cao_cho_phep = H - L["le_duoi"] - y_khoi
+    font, dong, size = TPL._fit_tieu_de(d, tieu_de.upper(), rong, cao_cho_phep)
+    if size < L["title_size_min"]:
+        sys.exit(f"DỪNG — tiêu đề dài quá, phải co xuống {size}px (sàn {L['title_size_min']}). "
+                 f"Rút gọn tiêu đề rồi chạy lại.")
+    buoc = int(size * L["dong_cach"])
+    # Tô vàng theo TỪ trên TOÀN tiêu đề rồi mới chia dòng (dùng chung bộ đã vá trong template
+    # 06/08). Bản cũ tô theo từng dòng — cụm vắt qua hai dòng là trắng hết, và lỗi này đã vá
+    # ở render() nhưng xưởng có hàm vẽ RIÊNG nên lọt: lần thứ ba bệnh "một logic hai bản"
+    # (hồ sơ văn phong 2 nơi → nhịp đọc 2 con số → giờ vẽ tít 2 chỗ). Vẽ tít giờ dùng
+    # _danh_dau_tu/_gop_manh của template — sửa luật tô là sửa MỘT chỗ.
+    nhan_tu = TPL._danh_dau_tu(tieu_de.upper(), [h.upper() for h in nhan])
+    y, k = y_khoi, 0
+    for ln in dong:
+        tu_dong = ln.split()
+        x = x_chu
+        for txt, la_nhan in TPL._gop_manh(tu_dong, nhan_tu[k:k + len(tu_dong)]):
+            d.text((x, y), txt, font=font, fill=MAU["chu_nhan"] if la_nhan else MAU["chu"])
+            x += d.textlength(txt, font=font)
+        k += len(tu_dong)
+        y += buoc
+    # thanh dọc neo cứng theo số dòng chuẩn (anh chốt 06/08), không co theo tít ngắn dài
+    cao_thanh = L.get("thanh_doc_dong", 4) * buoc
+    d.rounded_rectangle([L["le_trai"], y_khoi + 6, L["le_trai"] + L["thanh_doc_rong"],
+                         y_khoi + cao_thanh],
+                        radius=L["thanh_doc_rong"] // 2, fill=MAU["thanh_doc"])
+    lg = Image.open(DD.LOGO).convert("RGBA").resize((int(W * 0.115),) * 2, Image.LANCZOS)
+    img.alpha_composite(lg, (L["le_trai"] - 28, 54))
+    TPL._ve_watermark(img, DD.KENH)
+    img.save(ra)
+    return ra, len(dong), size
+
+
+# ── DỰNG ─────────────────────────────────────────────────────────────────────
+def xep_anh(ds_anh, so_canh, seed=7, theo_thu_tu=False):
+    """Rải ảnh cho các cảnh: dùng hết ảnh có, không để hai cảnh liền nhau trùng ảnh.
+
+    theo_thu_tu=True khi ảnh đã được người CHỌN và đánh số theo mạch kể — lúc đó tuyệt
+    đối không xáo, vì ảnh số 1 là nhân vật của câu hook, ảnh cuối là ảnh của câu chốt.
+    """
+    if not ds_anh:
+        sys.exit("DỪNG — không có ảnh nào để dựng")
+    if theo_thu_tu:
+        return [ds_anh[i % len(ds_anh)] for i in range(so_canh)]
+    rnd = random.Random(seed)
+    kho = list(ds_anh)
+    rnd.shuffle(kho)
+    ra, i = [], 0
+    while len(ra) < so_canh:
+        if i >= len(kho):
+            rnd.shuffle(kho)
+            if kho[0] == ra[-1] and len(kho) > 1:
+                kho[0], kho[1] = kho[1], kho[0]
+            i = 0
+        ra.append(kho[i]); i += 1
+    return ra
+
+
+def xep_clip(so_canh, ty_le=0.30, seed=11):
+    """Chọn cảnh nào dùng CLIP thay ảnh — chuẩn kênh 70-30 ảnh-video (anh chốt).
+
+    Ba luật: cảnh đầu luôn là ẢNH (hook phải là người thật, đúng nhân vật của tin);
+    không hai clip liền nhau (mắt cần điểm nghỉ); cảnh cuối cũng để ảnh cho câu chốt.
+    """
+    rnd = random.Random(seed)
+    ung_vien = list(range(1, max(so_canh - 1, 2)))
+    rnd.shuffle(ung_vien)
+    chon = []
+    for i in ung_vien:
+        if len(chon) >= round(so_canh * ty_le):
+            break
+        if all(abs(i - c) > 1 for c in chon):
+            chon.append(i)
+    return sorted(chon)
+
+
+def kho_clip():
+    """Clip được phép chèn — CHỈ lấy từ hai ngăn ĐÃ DUYỆT, không lấy kho thô.
+
+    Bài học 04/08 (anh loại mẻ hai): kho stock Mixkit tải về 9 clip thì cả 9 đều lạc —
+    sân tập nghiệp dư, cổ động viên Nhật/Brazil ngồi phòng khách, một clip là người tập
+    tạ, sân vận động thì ở London. Clip bóng đá chung chung KHÔNG dùng được cho tin
+    tuyển quốc gia: người xem nhận ra ngay đó không phải trận đang nói.
+    Muốn dùng clip thì phải là footage ĐÚNG TRẬN, hoặc stock đã có người xem và duyệt.
+    """
+    ds = sorted(glob.glob(os.path.join(DD.VIDEO_TRAN, "*.mp4")))
+    ds += sorted(glob.glob(os.path.join(DD.VIDEO_STOCK,
+                                        "da-duyet", "*.mp4")))
+    return ds
+
+
+def dung(viec):
+    kb = json.load(open(os.path.join(viec, "kich-ban.json")))
+    if not kb.get("dat"):
+        sys.exit(f"DỪNG — kịch bản chưa đạt: {kb.get('ly_do_khong_dat') or kb.get('loi')}")
+    tmp = os.path.join(viec, "dung"); os.makedirs(tmp, exist_ok=True)
+
+    # ① giọng
+    giong = os.path.join(viec, "giong.mp3")
+    if not os.path.exists(giong):
+        print("  đọc giọng VBee…")
+        doc_giong(kb["loi_binh"], giong)
+    tong = do_dai(giong) + 0.55           # chừa đuôi cho câu chốt không bị cụt
+    print(f"  giọng {tong:.1f}s")
+
+    # ② NHỊP CẮT — ảnh anh gán quyết định chỗ cắt (anh chốt 05/08), không phải đồng hồ
+    cau_moc = moc_cau(kb["loi_binh"], tong)
+    ban_do = {}
+    p_bd = os.path.join(viec, "anh", "ban-do-cau.json")
+    if os.path.exists(p_bd):
+        ban_do = {int(k): v for k, v in json.load(open(p_bd)).items()}
+    canh, bi_gop, qua_dai = (chuyen_dong.chia_nhip_theo_anh(cau_moc, ban_do, tong)
+                             if ban_do else (None, [], []))
+    if canh:
+        print(f"  {len(canh)} cảnh cắt THEO ẢNH ĐÃ GÁN "
+              f"({len(ban_do)} câu có ảnh riêng), nhịp {len(canh)/(tong/60):.0f} cắt/phút")
+        if bi_gop:
+            print(f"  ⚠️  {len(bi_gop)} ảnh KHÔNG lên hình — câu {[i+1 for i in bi_gop]} "
+                  f"quá ngắn (dưới 1 giây) nên phải gộp vào cảnh trước")
+        for b, k in qua_dai:
+            print(f"  ⚠️  {b}s–{k}s ({k-b:.1f} giây) chỉ có MỘT ảnh — nên gán thêm ảnh cho đoạn này")
+    else:
+        canh = chuyen_dong.chia_nhip(cau_moc, tong, seed=hash(viec) % 999)
+        print(f"  {len(canh)} cảnh, nhịp {len(canh)/(tong/60):.0f} cắt/phút")
+
+    # ③ ảnh — ưu tiên thư mục "chon" nếu người đã lọc tay
+    thu_chon = os.path.join(viec, "anh", "chon")
+    chon_tay = os.path.isdir(thu_chon) and bool(glob.glob(os.path.join(thu_chon, "*.jpg")))
+    kho_anh = sorted(glob.glob(os.path.join(thu_chon, "*.jpg"))) if chon_tay else \
+              sorted(glob.glob(os.path.join(viec, "anh", "a*.jpg")))
+    print(f"  {len(kho_anh)} ảnh" + (" (chọn tay, giữ nguyên thứ tự)" if chon_tay else ""))
+    xep = xep_anh(kho_anh, len(canh), theo_thu_tu=chon_tay)
+
+    # ③b cảnh nào dùng clip video
+    clips_kho = kho_clip()
+    vi_tri_clip = xep_clip(len(canh)) if clips_kho else []
+    rnd_c = random.Random(viec)
+    rnd_c.shuffle(clips_kho)
+
+    # ③c BẢN ĐỒ CÂU → ẢNH (cách chữa dứt bệnh "nói người này, hiện người kia")
+    #
+    # Ảnh phải neo vào CÂU chứ không vào CẢNH. Cảnh cắt theo nhịp 3-4 giây, lời chạy theo
+    # câu — hai thứ này lệch nhau ngay từ cảnh thứ hai, nên xếp ảnh theo thứ tự cảnh thì
+    # tới giữa video là trượt hẳn. Anh bắt đúng lỗi này 04/08: câu nói Việt Anh đánh đầu
+    # mà hiện ảnh hai cầu thủ khác tranh chấp.
+    #
+    # Ảnh nào đặt vào câu nào là quyết định của NGƯỜI ở trạm duyệt tài nguyên, engine chỉ
+    # thi hành đúng bản đồ. Claude không nhận diện cầu thủ qua khuôn mặt — chỗ dựa là số áo,
+    # tên in trên lưng áo, màu áo, bối cảnh sân và chú thích ảnh của báo.
+    # Cách hiển thị NGƯỜI chọn cho từng ảnh (cắt đầy khung / vừa khung / trượt đọc).
+    # Anh nêu 05/08: bảng tỷ số ngang lấy về mà xưởng cắt mất hai bên nên vô dụng.
+    cach_hien = {}
+    p_ch = os.path.join(viec, "anh", "cach-hien.json")
+    if os.path.exists(p_ch):
+        try:
+            cach_hien = json.load(open(p_ch, encoding="utf-8"))
+        except Exception:
+            cach_hien = {}
+
+    if ban_do:
+        thu = os.path.join(viec, "anh", "chon")
+        xep, dang = [], None
+        for (b, k) in canh:
+            # lấy ảnh theo câu MỞ cảnh, không theo điểm giữa: cảnh giờ mở đúng tại câu anh
+            # gán ảnh, nên lấy ở giữa là lại trượt sang câu sau (đúng lỗi vừa sửa).
+            i_cau = next((i for i, m in enumerate(cau_moc) if b < m), len(cau_moc) - 1)
+            for i in range(i_cau, -1, -1):          # câu chưa khai thì kế thừa câu trước
+                if i in ban_do:
+                    dang = ban_do[i]; break
+            xep.append(os.path.join(thu, dang) if dang else kho_anh[0])
+        dung_that = len({os.path.basename(x) for x in xep})
+        print(f"  ảnh neo theo câu · {dung_that}/{len(set(ban_do.values()))} ảnh anh chọn LÊN HÌNH")
+    elif chon_tay:
+        xep, k = [], 0
+        for i in range(len(canh)):
+            if i in vi_tri_clip and clips_kho:
+                xep.append(None)
+            else:
+                xep.append(kho_anh[k % len(kho_anh)]); k += 1
+
+    # ④ lớp phủ
+    overlay, sd, cx = lam_overlay(kb["tieu_de"], kb.get("cum_to_vang", []),
+                                  os.path.join(tmp, "overlay.png"))
+    print(f"  tiêu đề {sd} dòng, cỡ {cx}px")
+
+    # ⑤ CHỌN KIỂU CHUYỂN ĐỘNG TRƯỚC, cân cho cả video rồi mới render
+    #
+    # Chọn theo hình dáng từng ảnh là đúng cho từng cảnh, nhưng gom cả video lại thì hỏng:
+    # kho ảnh bóng đá gần như toàn ảnh ngang nên cả video chạy ngang 100%, nhìn một lúc là
+    # đơn điệu (anh chốt 05/08: không kiểu nào được quá 65%).
+    ds_ty, ds_kieu = [], []
+    for i, anh in enumerate(xep):
+        rieng = cach_hien.get(os.path.basename(anh or ""))   # người đã chỉ định thì tôn trọng
+        if i in vi_tri_clip and clips_kho:
+            ds_ty.append(1.0); ds_kieu.append("clip"); continue
+        try:
+            w, h = Image.open(anh).size
+        except Exception:
+            w, h = 16, 9
+        ds_ty.append(w / max(h, 1))
+        ds_kieu.append(rieng or chuyen_dong.chon_kieu(w, h, W, ANH_CAO))
+    from collections import Counter as _C
+    print("  soi kiểu: " + " · ".join(f"{k}×{n}" for k, n in _C(ds_kieu).most_common())
+          + "   (ảnh: " + ", ".join(f"{os.path.basename(a or '?')}={ds_kieu[i]}"
+                                    for i, a in enumerate(xep[:6])) + " …)")
+    ds_kieu, loi_can = chuyen_dong.can_bang_kieu(ds_kieu, ds_ty)
+    if loi_can:
+        print(f"  {loi_can}")
+    # HƯỚNG chuyển động rải theo cả video: không lặp liền kề, dùng đều các hướng.
+    # Anh chốt 05/08: video nào cũng zoom-vào-từ-tâm rồi trượt-trái-sang-phải, lặp qua hàng
+    # trăm video, là dấu vân tay quá dễ nhận — nền tảng đọc ra "máy làm" ngay.
+    ds_huong = chuyen_dong.rai_huong(ds_kieu, seed=hash(viec) % 99991)
+
+    clips, kieus, dem_clip = [], [], 0
+    for i, ((b, k), anh) in enumerate(zip(canh, xep)):
+        out = os.path.join(tmp, f"c{i:02d}.mp4")
+        if i in vi_tri_clip and clips_kho:
+            src = clips_kho[dem_clip % len(clips_kho)]; dem_clip += 1
+            ki = chuyen_dong.render_clip(src, out, W, H, ANH_CAO, ANH_TOP, k - b, FPS,
+                                         seed=i * 31 + 5)
+        else:
+            ki = chuyen_dong.render_canh(anh, out, W, H, ANH_CAO, ANH_TOP, k - b, FPS,
+                                         kieu=ds_kieu[i], seed=i * 17 + 3,
+                                         huong=ds_huong[i])
+        clips.append(out); kieus.append(ki)
+    TEN_HUONG = {"trai_phai": "→", "phai_trai": "←", "cheo_xuong": "↘", "cheo_len": "↗",
+                 "vao": "+", "ra": "−", "duoi_len": "↑"}
+    print("  nhịp hình: " + " · ".join(
+        f"{i+1}:{'▶' if ds_kieu[i] == 'clip' else ('d' if ds_kieu[i] == 'dungdoc' else ds_kieu[i][0])}"
+        f"{TEN_HUONG.get(ds_huong[i], '')}"
+        for i in range(len(kieus))) + f"   ({dem_clip}/{len(canh)} cảnh là clip)")
+    import collections as _c
+    _d = _c.Counter(h for h in ds_huong if h)
+    print("  hướng: " + " · ".join(f"{TEN_HUONG.get(h, h)}{n}" for h, n in sorted(_d.items())))
+
+    # đường dẫn TUYỆT ĐỐI: ffmpeg concat giải đường tương đối theo thư mục chứa list.txt,
+    # không theo thư mục đang đứng — ghi tương đối là hỏng ngay
+    with open(os.path.join(tmp, "list.txt"), "w") as f:
+        for c in clips:
+            f.write(f"file '{os.path.abspath(c)}'\n")
+    ghep = os.path.join(tmp, "ghep.mp4")
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0",
+                    "-i", os.path.join(tmp, "list.txt"), "-c", "copy", ghep], check=True)
+
+    # ⑥ nhạc nền theo cung cảm xúc
+    cung = kb.get("cung_nhac") or "cang_thang"
+    ds_nhac = sorted(glob.glob(os.path.join(DD.NHAC, cung, "*.mp3"))) or \
+              sorted(glob.glob(os.path.join(DD.NHAC, "*", "*.mp3")))
+    nhac = random.Random(viec).choice(ds_nhac)
+
+    final = os.path.join(viec, "video.mp4")
+    # -loop 1 cho lớp phủ: biến ảnh tĩnh thành LUỒNG liên tục. Không có nó thì lớp phủ chỉ
+    # có đúng một frame, hết frame là hết — và bất kỳ thay đổi thuộc tính nào giữa chừng
+    # cũng thổi bay tiêu đề với logo. -t phía dưới cắt đúng độ dài nên loop không tràn.
+    # ── THẺ SỐ LIỆU chồng lên cảnh (anh chốt 06/08) ──────────────────────────────────
+    # Anh khai trên trạm "câu nào hiện thẻ gì"; ở đây vẽ ra rồi chồng đúng đoạn câu ấy được
+    # đọc. Trước đây thẻ viết cứng trong dung_short_v5.py cho mỗi video sân PVF — không dùng
+    # lại được cho tin khác.
+    nhap_the, loc_the, so_dau_vao = [], "", 4
+    the_khai = _nhap_tram(viec).get("the_so", {})
+    if the_khai:
+        sys.path.insert(0, os.path.join(DD.DRIVE, "cong-cu"))
+        try:
+            import the_so_lieu as TSL
+            for k in sorted(the_khai, key=int):
+                i = int(k)
+                if i >= len(cau_moc):
+                    continue                       # câu đã biến mất sau khi anh sửa lời
+                t = the_khai[k]
+                p = os.path.join(tmp, f"the{i:02d}.png")
+                TSL.lam_the(t.get("nhan", ""), t.get("so", ""), t.get("donvi", ""),
+                            t.get("dong1", ""), t.get("dong2", ""), p)
+                tu = cau_moc[i - 1] if i else 0.0
+                den = cau_moc[i]
+                # -loop 1 BẮT BUỘC: ảnh tĩnh không lặp thì chỉ có ĐÚNG MỘT khung hình,
+                # overlay hiện một phần nghìn giây rồi tắt — nhìn như thẻ không chạy.
+                # Đây đúng là lỗi đã ghi trong sổ với lớp phủ tiêu đề, em lặp lại 06/08.
+                nhap_the += ["-loop", "1", "-framerate", str(FPS), "-i", p]
+                loc_the += (f"[{so_dau_vao}]format=rgba,"
+                            f"fade=t=in:st={tu:.2f}:d=0.35:alpha=1,"
+                            f"fade=t=out:st={max(den - 0.35, tu):.2f}:d=0.35:alpha=1[the{i}];")
+                so_dau_vao += 1
+        except Exception as e:
+            print(f"  ⚠️  không dựng được thẻ số liệu: {e}")
+            nhap_the, loc_the = [], ""
+
+    # chồng lần lượt từng thẻ lên luồng hình
+    nhanh = "[0:v][1:v]overlay=0:0:eof_action=repeat,setsar=1"
+    if loc_the:
+        nhanh += "[v0];"
+        ds = [int(k) for k in sorted(the_khai, key=int) if int(k) < len(cau_moc)]
+        for n, i in enumerate(ds):
+            tu = cau_moc[i - 1] if i else 0.0
+            den = cau_moc[i]
+            vao, ra_ = f"[v{n}]", ("[vout]" if n == len(ds) - 1 else f"[v{n+1}]")
+            nhanh += (f"{vao}[the{i}]overlay=(W-w)/2:"
+                      f"'930+40*(1-min((t-{tu:.2f})/0.35,1))':"
+                      f"enable='between(t,{tu:.2f},{den:.2f})'{ra_};")
+        nhanh = nhanh.rstrip(";")
+    else:
+        nhanh += "[vout]"
+
+    fc = (f"{loc_the}{nhanh};"
+          f"[2:a]adelay=120|120,volume=1.3,alimiter=limit=0.95[voice];"
+          f"[3:a]atrim=0:{tong},volume=0.11,afade=t=out:st={max(tong-2.5,0):.2f}:d=2.5[bgm];"
+          f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=0[aout]")
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", ghep,
+                    "-loop", "1", "-framerate", str(FPS), "-i", overlay,
+                    "-i", giong, "-i", nhac, *nhap_the, "-filter_complex", fc,
+                    "-map", "[vout]", "-map", "[aout]", "-t", f"{tong}",
+                    "-c:v", "libx264", "-preset", "slow", "-crf", "20", "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", final], check=True)
+    d = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_format", "-show_streams",
+                                   "-of", "json", final], capture_output=True, text=True).stdout)
+    v = [s for s in d["streams"] if s["codec_type"] == "video"][0]
+    print(f"  XONG → {final}")
+    print(f"  {v['width']}x{v['height']} · {float(d['format']['duration']):.1f}s · "
+          f"{int(d['format']['size'])/1e6:.1f} MB · nhạc {cung}")
+    return final
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        sys.exit("dùng: xuong.py <thư mục việc>")
+    dung(DD.tim_viec(sys.argv[1]))
