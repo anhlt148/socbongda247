@@ -561,3 +561,24 @@
 - **Cổng ⑥ `tang_windows()`**: nạp thử 11 module trong môi trường giả (chặn fcntl/pwd/grp/termios). Bắt ngay lỗi thứ tự import trong trạm.
 - **Đo**: 11/11 nạp được · trạm thật trên Mac vẫn chạy · ghi sổ có khoá đúng cả hai môi trường · `kiem_tram.py --sau` ĐẠT HẾT.
 - **CÒN CHƯA THỬ THẬT trên Windows**: bộ cài `cai-windows.ps1`, Task Scheduler, extension Chrome, ffmpeg/yt-dlp qua winget, và LaMa (xoá watermark) — venv `~/.cache/lama-venv` chưa có nhánh Windows, chức năng này sẽ mất bên đó.
+
+## 15/08/2026 — extension tự báo khi chạy bản cũ
+
+**Sửa gì:** `tram/extension/nen.js` gửi `?ext=<phiên bản manifest>` mỗi lượt hỏi
+`/api/dang-lam`; route ấy trong `tram/tram_tai_nguyen.py` đọc `tram/extension/manifest.json`
+rồi trả `ext_moi` + `ext_cu`; extension thấy `ext_cu` thì bật thông báo nhắc bấm ⟳ Tải lại.
+
+**Vì sao:** anh hỏi "sau này extension vẫn update cập nhật được chứ?". Extension nạp kiểu
+"giải nén" — `git pull` về file mới nhưng Chrome giữ bản đã nạp cho tới khi bấm ⟳. Lỗi
+ÂM THẦM: trông vẫn chạy, chỉ thiếu đúng tính năng vừa thêm. Máy phụ ở xa, không ai soi được.
+
+**Đụng đâu:** `nen.js` (1 chỗ gọi), route `/api/dang-lam` (1 chỗ), `HUONG-DAN-MAY-MOI.md`
+mục D, cổng ⑧l trong `kiem_tram.py`.
+
+**Đã kiểm:** gọi thật `?ext=1.3` → báo cũ ⚠ CÓ; `?ext=1.4` → ✅ đúng bản.
+`kiem_tram.py --sau` ĐẠT HẾT.
+
+**Vấp lại bẫy cũ (lần 4):** chèn khối mới bằng cách khớp chuỗi mà không xét khối đang
+mở — khối ⑧l rơi vào GIỮA lời gọi `_bao(...)` của phím tắt, thành SyntaxError. Luật:
+chèn xong phải `ast.parse` NGAY, và mốc chèn nên là chuỗi KẾT THÚC một câu lệnh
+(dòng có `)` đóng), không phải dòng mở.

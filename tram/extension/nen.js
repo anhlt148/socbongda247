@@ -40,9 +40,19 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 async function viecDangLam() {
-  const r = await fetch(`${TRAM}/api/dang-lam`);
+  // Gửi kèm PHIÊN BẢN extension (anh hỏi 15/08: "sau này extension vẫn cập nhật
+  // được chứ?"). Extension nạp kiểu "giải nén" thì `git pull` về file mới, nhưng
+  // Chrome vẫn chạy bản đã nạp cho tới khi bấm ⟳ Tải lại — quên là dùng bản cũ mà
+  // không ai biết. Nay trạm so với manifest trong kho và nhắc nếu lệch.
+  const pb = chrome.runtime.getManifest().version;
+  const r = await fetch(`${TRAM}/api/dang-lam?ext=${encodeURIComponent(pb)}`);
   if (!r.ok) throw new Error("trạm không trả lời");
   const d = await r.json();
+  if (d.ext_cu) {
+    bao("Extension đang chạy bản cũ",
+        `Máy có bản ${d.ext_moi}, Chrome đang chạy ${pb}. `
+        + "Mở chrome://extensions rồi bấm ⟳ Tải lại.");
+  }
   if (!d.ma) throw new Error("trạm chưa mở việc nào");
   return d;
 }

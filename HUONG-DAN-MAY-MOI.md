@@ -121,6 +121,21 @@ Ra dòng **"✅ ĐẠT HẾT"** là cài xong. Có dòng ❌ thì chụp màn h�
 | Trạm không mở được | `schtasks /Run /TN SocBongDa247-Tram` |
 | Lấy bản nâng cấp mới của anh | `cd $env:USERPROFILE\socbongda247; git pull` |
 
+### Nhận bản nâng cấp — **hai phần, đừng quên phần hai**
+
+```powershell
+cd $env:USERPROFILE\socbongda247; git pull; schtasks /End /TN SocBongDa247-Tram; schtasks /Run /TN SocBongDa247-Tram
+```
+
+Lệnh trên lo phần **trạm**. Còn **extension Chrome** thì `git pull` đã kéo file mới về ổ,
+nhưng Chrome vẫn chạy bản nó nạp lúc trước cho tới khi được bảo nạp lại. Đây là lỗi âm
+thầm: trông vẫn chạy bình thường, chỉ thiếu đúng cái tính năng vừa thêm.
+
+Cách nạp lại: `chrome://extensions` → tìm ô **Sóc Bóng Đá 247** → bấm **⟳** (Tải lại).
+
+Không cần nhớ. Trạm tự so phiên bản: extension chạy bản cũ thì hiện thông báo
+*"Extension đang chạy bản cũ — máy có bản X, Chrome đang chạy Y"* ngay lần gắp ảnh kế tiếp.
+
 ---
 
 ## E. HAI ĐIỀU KHÔNG ĐƯỢC LÀM

@@ -568,3 +568,29 @@ Skill kiến trúc sư — bản đồ hệ + 50 KB bài học — sống trên 
 **Cách kiểm KHÔNG cần máy kia**: dựng thư mục chứa `fcntl.py` chỉ có một dòng `raise ImportError`, đặt đầu `PYTHONPATH`, rồi nạp thử mọi module. Đúng cái Windows sẽ làm. Nay thành tầng ⑥ của `kiem_tram.py` — và nó bắt được ngay một lỗi mới em vừa tạo (dùng `NT` ở dòng 51, import ở dòng 56).
 
 **Luật**: 'chạy được trên hệ khác' KHÔNG được kết luận bằng đọc mã. Phải nạp thử trong môi trường giả — rẻ, nhanh, và là bằng chứng thật.
+
+## Thứ gì được NẠP MỘT LẦN thì phải tự báo khi lệch bản (15/08/2026)
+
+**Bệnh:** máy phụ `git pull` xong, mã mới nằm sẵn trên ổ, nhưng extension Chrome vẫn chạy
+bản cũ. Không báo lỗi, không đỏ chỗ nào — chỉ là tính năng vừa thêm không có. Người ngồi
+máy đó báo "em làm theo hướng dẫn mà không thấy gì", còn mình soi mã thì mã đúng.
+
+**Gốc:** extension nạp kiểu "giải nén" — Chrome đọc file MỘT LẦN lúc nạp rồi giữ trong bộ
+nhớ. Cùng họ với mọi thứ nạp-một-lần: tiến trình trạm đang chạy (sửa .py không ăn cho tới
+khi restart), skill đã nạp vào phiên, cấu hình đọc lúc khởi động.
+
+**Cách phòng:** thứ nào nạp-một-lần thì phải **tự khai phiên bản mình đang chạy** cho phía
+còn lại so. Ở đây: `nen.js` gửi `chrome.runtime.getManifest().version` kèm mỗi lượt hỏi
+trạm; trạm đọc `manifest.json` trên ổ, lệch thì trả cờ `ext_cu` và extension bật thông báo.
+Rẻ (ăn ké lượt gọi đã có sẵn), không cần ai nhớ. Cổng ⑧l canh cả hai vế.
+
+## Chèn khối mã phải neo vào dòng ĐÓNG, không neo vào dòng MỞ (15/08/2026 — vấp lần 4)
+
+**Bệnh:** khối kiểm mới rơi vào giữa lời gọi `_bao(khai == xuly, "...",` — dòng mốc trông
+như một câu lệnh hoàn chỉnh nhưng thật ra là dòng ĐẦU của lời gọi nhiều dòng. Kết quả:
+SyntaxError, bộ kiểm chết ngay dòng nạp.
+
+**Gốc:** khớp chuỗi không nhìn thấy khối. Cùng họ với bẫy thụt lề đã ghi trước đó.
+
+**Cách phòng:** neo mốc chèn vào dòng có dấu `)` đóng (kết thúc câu lệnh), và **`ast.parse`
+ngay trong cùng lệnh chèn** — đừng đợi tới lúc chạy bộ kiểm mới biết.

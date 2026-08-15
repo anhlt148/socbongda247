@@ -3970,7 +3970,22 @@ class Tay(BaseHTTPRequestHandler):
                                        encoding="utf-8"))
                 except Exception:
                     k = {}
-                return self._js({"ma": ma, "tieu_de": k.get("tieu_de", "")})
+                # PHIÊN BẢN EXTENSION (anh hỏi 15/08). Extension nạp kiểu "giải
+                # nén": `git pull` về file mới nhưng Chrome vẫn chạy bản đã nạp cho
+                # tới khi bấm ⟳ Tải lại. Đây là lỗi ÂM THẦM — mọi thứ trông vẫn
+                # chạy, chỉ là thiếu tính năng vừa thêm. Nay so ngay tại cửa
+                # extension vốn đã gọi, không tốn thêm lượt nào.
+                ext = (q.get("ext", [""])[0] or "").strip()
+                ext_moi = ""
+                try:
+                    ext_moi = str(json.load(open(
+                        os.path.join(TRAM, "extension", "manifest.json"),
+                        encoding="utf-8")).get("version", ""))
+                except Exception:
+                    pass
+                return self._js({"ma": ma, "tieu_de": k.get("tieu_de", ""),
+                                 "ext_moi": ext_moi,
+                                 "ext_cu": bool(ext and ext_moi and ext != ext_moi)})
             if d == "/api/dong-ho":
                 # ⏱ ĐỒNG HỒ SẢN XUẤT (anh đặt 14/08) — trạm hỏi mỗi vài giây để vẽ ô
                 # góc màn hình. Trả mốc THÔ + tổng kết; đếm từng giây do trình duyệt lo,

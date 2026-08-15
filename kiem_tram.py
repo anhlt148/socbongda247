@@ -759,6 +759,16 @@ def tang_extension():
          if khai != xuly else "")
     _bao("chrome.commands.onCommand" in nen, "có người nghe phím tắt (onCommand)")
 
+    # ⑧l EXTENSION BÁO KHI CHẠY BẢN CŨ (anh hỏi 15/08: "sau này extension vẫn cập
+    #    nhật được chứ?"). Extension nạp kiểu "giải nén": git pull về file mới mà
+    #    Chrome vẫn chạy bản đã nạp cho tới khi bấm ⟳ Tải lại — lỗi ÂM THẦM, trông
+    #    vẫn chạy nhưng thiếu đúng tính năng vừa thêm.
+    _bao("chrome.runtime.getManifest().version" in nen and "ext=" in nen,
+         "extension gửi phiên bản của nó lên trạm")
+    _bao('"ext_cu"' in open(os.path.join(TRAM, "tram_tai_nguyen.py"),
+                            encoding="utf-8").read(),
+         "trạm so phiên bản, nhắc khi extension chạy bản cũ")
+
     # ⑧b mục menu chuột phải khai ↔ xử lý
     menu = set(re.findall(r'id:\s*"([a-z0-9-]+)"', nen))
     clicked = nen.split("contextMenus.onClicked", 1)[-1]
