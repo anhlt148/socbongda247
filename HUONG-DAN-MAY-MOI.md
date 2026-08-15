@@ -31,8 +31,14 @@ Cấp một **khoá chỉ đọc, chỉ mở đúng kho này**:
 2. **Token name**: `may-windows-soc`
 3. **Expiration**: 1 year (hoặc No expiration nếu ngại nhớ gia hạn)
 4. **Repository access** → **Only select repositories** → chọn **`socbongda247`**
-5. **Permissions** → **Repository permissions** → **Contents** → đổi sang **Read-only**
-   *(chỉ mục này thôi, không cấp thêm gì)*
+5. Kéo xuống khối **Permissions** — nó **trống**, ghi *"No repository permissions added yet"*.
+   Đây là chỗ hay tắc, vì GitHub bắt tự thêm quyền vào:
+   - bấm **+ Add permissions** (góc phải khối đó)
+   - gõ `Contents` → chọn nó
+   - đổi ô quyền cạnh **Contents** thành **Read-only**
+
+   GitHub tự thêm kèm **Metadata: Read-only** — quyền bắt buộc đi cùng, cứ để nguyên.
+   Ngoài hai mục này thì **không cấp thêm gì**.
 6. Bấm **Generate token** → **chép chuỗi `github_pat_…`**
 
 Chuỗi này **chỉ hiện một lần**. Chép ngay, đưa cho máy Windows qua đường riêng
