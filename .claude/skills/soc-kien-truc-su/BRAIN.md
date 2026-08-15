@@ -551,3 +551,20 @@ Skill kiến trúc sư — bản đồ hệ + 50 KB bài học — sống trên 
 **Luật**: thứ nào MÔ TẢ code (kiến trúc, bài học, nhật ký thay đổi, hướng dẫn cài) thì phải nằm TRONG kho mã, không phải ở kho tài liệu riêng. Chúng đổi cùng nhịp với mã; tách ra là chắc chắn lệch. Thứ ở ngoài chỉ nên là DỮ LIỆU (ảnh, video, sổ học của từng máy).
 
 **Kèm theo**: `CLAUDE.md` ở gốc kho là cửa vào — Claude Code tự đọc đầu mỗi phiên. Viết nó như viết cho người mới đến làm ca đêm: hệ là gì, cấm làm gì, làm xong phải kiểm gì.
+
+## Rà 'chạy được trên hệ khác' phải rà cả MODULE, không riêng LỆNH (15/08)
+
+**Bệnh**: em báo xong bộ cài Windows. Anh hỏi lại 'đã ổn chưa', rà thật thì TRẠM KHÔNG KHỞI ĐỘNG NỔI — 6 tệp `import fcntl`, module chỉ có trên Unix, ImportError ngay dòng đầu.
+
+**Gốc**: em rà `open`, `osascript`, `launchctl` — tức LỆNH hệ điều hành — rồi kết luận 'hệ khá sạch'. Quên mất lớp sâu hơn: **module Python chỉ có trên một hệ** (fcntl, pwd, grp, termios, msvcrt, winreg). Lệnh thiếu thì mất một chức năng; module thiếu thì CHẾT NGAY LÚC NẠP.
+
+**Danh sách phải rà khi mang hệ sang nền khác**:
+1. module chỉ-một-hệ (`import fcntl` …) ← chết ngay lúc nạp
+2. lệnh hệ điều hành (`open`, `pgrep`, `osascript`)
+3. đường dẫn ghi cứng (`/tmp`, `/Volumes`, `~/.local/bin/…`)
+4. cách chạy nền (launchd ↔ Task Scheduler)
+5. mã hoá tên tệp (NFD trên macOS ↔ NFC)
+
+**Cách kiểm KHÔNG cần máy kia**: dựng thư mục chứa `fcntl.py` chỉ có một dòng `raise ImportError`, đặt đầu `PYTHONPATH`, rồi nạp thử mọi module. Đúng cái Windows sẽ làm. Nay thành tầng ⑥ của `kiem_tram.py` — và nó bắt được ngay một lỗi mới em vừa tạo (dùng `NT` ở dòng 51, import ở dòng 56).
+
+**Luật**: 'chạy được trên hệ khác' KHÔNG được kết luận bằng đọc mã. Phải nạp thử trong môi trường giả — rẻ, nhanh, và là bằng chứng thật.

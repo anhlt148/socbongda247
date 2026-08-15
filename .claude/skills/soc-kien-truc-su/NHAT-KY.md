@@ -554,3 +554,10 @@
 - **Chuyển skill soc-kien-truc-su VÀO kho** `.claude/skills/` — trước sống trên Drive, máy khác kéo mã về là mất sạch BRAIN 50 KB + KIEN-TRUC + NHAT-KY. Nay git giữ lịch sử bài học luôn. Symlink `~/.claude/skills/soc-kien-truc-su` trỏ NGƯỢC vào kho; bản Drive đổi tên `.CHUYEN-VAO-REPO-15-08` để không còn hai nguồn.
 - **Đã thử thật**: clone sang /tmp như máy trắng → đủ 8 tệp, 0 khoá lọt, 7 MB.
 - Cổng ⑧k canh đủ 8 tệp. `kiem_tram.py --sau` ĐẠT HẾT.
+
+## 15/08 — GỠ CHẶN CỨNG Windows
+- **Mới `nen_tang.py`**: `khoa_ghi` (fcntl↔msvcrt), `tim_claude`, `thu_muc_tam`, `dang_chay`.
+- Thay ở 11 tệp: bỏ hết `import fcntl`, gom 10 chỗ ghi cứng đường claude về một nguồn, `/tmp` → `thu_muc_tam()`, `chuan_ten.py` bỏ 2 đường `/Volumes`.
+- **Cổng ⑥ `tang_windows()`**: nạp thử 11 module trong môi trường giả (chặn fcntl/pwd/grp/termios). Bắt ngay lỗi thứ tự import trong trạm.
+- **Đo**: 11/11 nạp được · trạm thật trên Mac vẫn chạy · ghi sổ có khoá đúng cả hai môi trường · `kiem_tram.py --sau` ĐẠT HẾT.
+- **CÒN CHƯA THỬ THẬT trên Windows**: bộ cài `cai-windows.ps1`, Task Scheduler, extension Chrome, ffmpeg/yt-dlp qua winget, và LaMa (xoá watermark) — venv `~/.cache/lama-venv` chưa có nhánh Windows, chức năng này sẽ mất bên đó.
