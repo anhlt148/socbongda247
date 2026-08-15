@@ -22,9 +22,9 @@
   .num:first-of-type{border-top:0}
   .num label{font-size:13px}
   .num .ph{display:block;color:var(--mo);font-size:11.5px;margin-top:1px}
-  input[type=number],select{background:#0b0908;color:var(--chu);border:1px solid var(--vien);
+  input[type=text],input:not([type]),input[type=number],select{background:#0b0908;color:var(--chu);border:1px solid var(--vien);
     border-radius:7px;padding:5px 7px;font-size:13px;width:100%}
-  input[type=number]:focus,select:focus{outline:2px solid var(--vang);outline-offset:-1px}
+  input[type=text]:focus,input:not([type]):focus,input[type=number]:focus,select:focus{outline:2px solid var(--vang);outline-offset:-1px}
   .giua{text-align:center;color:var(--mo)}
   button{background:#241d1a;color:var(--chu);border:1px solid var(--vien);border-radius:8px;
          padding:7px 13px;font-size:13px;cursor:pointer}
@@ -132,31 +132,34 @@
     <div class="ghi" id="danhGia"></div>
   </div>
 
-  <div style="display:flex;gap:9px;margin-bottom:30px">
-    <h2>💻 Máy này</h2>
-    <p class="giai">Đường dẫn <b>riêng của máy này</b> — không dùng chung với người khác.
-      Kho tài nguyên thì nên trỏ vào Drive để cả nhà cùng bồi; thư mục việc để trên ổ
-      trong cho nhanh và khỏi giẫm chân nhau. Đổi xong phải <b>khởi động lại trạm</b>.</p>
-    <div class="hang">
-      <label>Người làm (đặt tên hộp thành phẩm, để nhiều người khỏi trùng)
-        <input id="m_nguoi" placeholder="vd: anhlt · tam · quang"></label>
-    </div>
-    <div class="hang">
-      <label>📁 Thư mục VIỆC — bài đang làm, nặng, giữ trên ổ trong
-        <input id="m_viec" placeholder="để trống = máy tự dò"></label>
-    </div>
-    <div class="hang">
-      <label>🏠 KHO TÀI NGUYÊN — ảnh/video/nhãn, nên trỏ vào Drive để DÙNG CHUNG
-        <input id="m_kho_tai_nguyen" placeholder="để trống = máy tự dò"></label>
-    </div>
-    <div class="hang">
-      <label>☁️ Thư mục DRIVE của kênh — nơi dồn thành phẩm cả nhà
-        <input id="m_drive" placeholder="để trống = máy tự dò"></label>
-    </div>
-    <div id="mBao" style="margin:6px 0;font-size:13px"></div>
-    <button id="mLuu" style="padding:8px 16px;background:#332a26;color:#f4efe9;border:0;
-      border-radius:8px;cursor:pointer;margin-bottom:14px">💻 Lưu đường dẫn máy này</button>
+  <h2>💻 Máy này</h2>
+  <p class="giai">Đường dẫn <b>riêng của máy này</b>, không dùng chung với người khác.
+    Kho tài nguyên nên trỏ vào Drive để cả nhà cùng bồi; thư mục việc để trên ổ trong
+    cho nhanh và khỏi giẫm chân nhau. Đổi xong phải <b>khởi động lại trạm</b>.</p>
+  <div class="num" style="grid-template-columns:1fr 1fr">
+    <label>Người làm
+      <span class="ph">đặt tên hộp thành phẩm — nhiều người khỏi trùng</span></label>
+    <input id="m_nguoi" placeholder="vd: anhlt · tam · quang">
+  </div>
+  <div class="num" style="grid-template-columns:1fr 1fr">
+    <label>📁 Thư mục VIỆC
+      <span class="ph">bài đang làm, nặng — giữ trên ổ trong máy</span></label>
+    <input id="m_viec" placeholder="để trống = máy tự dò">
+  </div>
+  <div class="num" style="grid-template-columns:1fr 1fr">
+    <label>🏠 Kho TÀI NGUYÊN
+      <span class="ph">ảnh · video · nhãn — trỏ vào Drive để DÙNG CHUNG</span></label>
+    <input id="m_kho_tai_nguyen" placeholder="để trống = máy tự dò">
+  </div>
+  <div class="num" style="grid-template-columns:1fr 1fr">
+    <label>☁️ Thư mục DRIVE của kênh
+      <span class="ph">nơi dồn thành phẩm của cả nhà</span></label>
+    <input id="m_drive" placeholder="để trống = máy tự dò">
+  </div>
+  <p id="mBao" class="giai" style="min-height:18px"></p>
+  <button id="mLuu">💻 Lưu đường dẫn máy này</button>
 
+  <div style="display:flex;gap:9px;margin-bottom:30px">
     <button class="chinh" id="luu">💾 Lưu cấu hình</button>
     <button id="lai">↩ Trả về mặc định</button>
     <button id="thuLai">↻ Xem lại</button>
