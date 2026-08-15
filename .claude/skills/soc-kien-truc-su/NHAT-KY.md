@@ -582,3 +582,34 @@ mục D, cổng ⑧l trong `kiem_tram.py`.
 mở — khối ⑧l rơi vào GIỮA lời gọi `_bao(...)` của phím tắt, thành SyntaxError. Luật:
 chèn xong phải `ast.parse` NGAY, và mốc chèn nên là chuỗi KẾT THÚC một câu lệnh
 (dòng có `)` đóng), không phải dòng mở.
+
+## 15/08/2026 — máy Windows không đọc được kho: kho RIÊNG TƯ
+
+**Anh báo:** máy Windows dán link GitHub vào Claude Code thì chỉ thấy 404; phiên bên
+đó đề xuất tải ZIP qua Drive, hoặc đổi kho sang Public 5 giây rồi đổi lại.
+
+**Gốc:** kho `anhlt148/socbongda247` là PRIVATE. GitHub trả 404 cho người không có
+quyền (giả vờ kho không tồn tại) nên lỗi trông rất khó hiểu.
+
+**Lỗi nặng hơn của em:** chính bộ cài "một dòng" `irm raw.githubusercontent.com/... | iex`
+CŨNG đọc kho riêng tư — tức hướng dẫn cài Windows em viết 15/08 CHƯA BAO GIỜ chạy được,
+mà em vẫn báo "đã ổn để chạy máy kia". Tài liệu cài đặt là mã chạy trên máy người khác;
+không thử được thì phải có cổng canh giả định của nó.
+
+**Không chọn hai đường kia:** ZIP qua Drive thì máy phụ mất hẳn `git pull` (mỗi lần nâng
+cấp lại ZIP tay). Public dù 5 giây cũng đủ cho bot crawl (GitHub có luồng sự kiện công
+khai realtime) và kho có BRAIN 50 KB + nhật ký nội bộ.
+
+**Đã làm:** đường khoá đọc — fine-grained PAT chỉ repo này, Contents Read-only.
+- `cai-windows.ps1`: bước 2 mới lấy khoá ($T · $env:SOC_GH_TOKEN · hỏi), THỬ khoá qua
+  api.github.com trước khi clone, cất vào Windows Credential Manager bằng
+  `git credential approve` (không nhét vào .git/config), đường dự phòng có lau khoá.
+- `capnhat.ps1` MỚI: nâng cấp một lệnh, lo đủ ba phần (mã · trạm · extension), kiểm
+  việc đang chạy trước khi restart, in diff, chạy bộ kiểm.
+- `HUONG-DAN-MAY-MOI.md` mục A2 mới: từng bước tạo khoá + cách thu hồi.
+- README + CLAUDE.md: lệnh cài mang khoá; README nói rõ dán link cho phiên chưa có
+  quyền thì chỉ thấy 404.
+- `kiem_tram.py` tầng ⑦ `tang_may_phu()` — 11 mục canh bộ cài + ba tài liệu.
+
+**Đã kiểm:** `kiem_tram.py --sau` ĐẠT HẾT. **CHƯA thử thật trên máy Windows** (không
+cài được pwsh trên Mac — thiếu mật khẩu sudo), nên cú pháp PowerShell chỉ mới rà mắt.

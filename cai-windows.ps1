@@ -2,9 +2,13 @@
 #  CÀI HỆ SÓC BÓNG ĐÁ 247 TRÊN MÁY WINDOWS  —  anh chốt 15/08/2026
 #
 #  Chạy MỘT LẦN trên máy mới. Mở PowerShell (chuột phải > Run as Administrator)
-#  rồi dán nguyên dòng này:
+#  rồi dán nguyên dòng này — THAY chuỗi khoá bằng khoá anh Tuấn Anh đưa:
 #
-#      irm https://raw.githubusercontent.com/anhlt148/socbongda247/main/cai-windows.ps1 | iex
+#      $T='github_pat_...'; irm -Headers @{Authorization="Bearer $T"} https://raw.githubusercontent.com/anhlt148/socbongda247/main/cai-windows.ps1 | iex
+#
+#  KHO NÀY RIÊNG TƯ. Không có khoá thì cả dòng lệnh trên lẫn `git clone` đều bị
+#  GitHub từ chối (404 — nó giả vờ như kho không tồn tại). Khoá là loại CHỈ ĐỌC,
+#  chỉ mở đúng kho này, anh thu hồi lúc nào cũng được.
 #
 #  Hoặc nếu đã tải mã về rồi:  .\cai-windows.ps1
 #
@@ -50,20 +54,59 @@ foreach ($g in $goi) {
 $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
             [Environment]::GetEnvironmentVariable("Path", "User")
 
-# ── 2. MÃ NGUỒN ──────────────────────────────────────────────────────────────
-Buoc 2 "Kéo mã về $NHA"
+# ── 2. KHOÁ ĐỌC KHO + MÃ NGUỒN ──────────────────────────────────────────────────────────────
+# Kho RIÊNG TƯ nên phải có khoá đọc. Lấy khoá theo ba đường, đường nào có trước
+# thì dùng: biến $T trong dòng lệnh dán · biến môi trường · hỏi thẳng người dùng.
+Buoc 2 "Khoá đọc kho mã"
+$KEY = ""
+if ($T)                          { $KEY = $T }
+elseif ($env:SOC_GH_TOKEN)       { $KEY = $env:SOC_GH_TOKEN }
+elseif (-not (Test-Path "$NHA\.git")) {
+    Write-Host "    Dán khoá đọc kho (anh Tuấn Anh đưa, dạng github_pat_...):"
+    $KEY = Read-Host "    khoá"
+}
+
+if ($KEY) {
+    # Hỏi GitHub xem khoá có thật mở được kho này không — SAI THÌ BÁO NGAY, đừng
+    # để tới lúc clone mới lăn ra 404 khó hiểu.
+    try {
+        $tt = Invoke-RestMethod -Uri "https://api.github.com/repos/anhlt148/socbongda247" `
+              -Headers @{ Authorization = "Bearer $KEY"; "User-Agent" = "soc-cai" }
+        Xong "khoá đúng — mở được kho $($tt.full_name)"
+    } catch {
+        Chet "Khoá không mở được kho. Nhờ anh Tuấn Anh cấp lại khoá CHỈ ĐỌC cho kho socbongda247."
+    }
+    # Gửi khoá vào KHO KHOÁ của Windows, không nhét vào địa chỉ kho. Nhét vào địa
+    # chỉ thì khoá nằm chình ình trong .git\config dạng chữ trần, và lộ ra mỗi
+    # lần chạy `git remote -v`.
+    git config --global credential.helper manager 2>$null
+    $nap = "protocol=https`nhost=github.com`nusername=x-access-token`npassword=$KEY`n"
+    $nap | git credential approve 2>$null
+    Xong "đã cất khoá vào kho khoá Windows — lần sau git pull khỏi hỏi lại"
+}
+
+Buoc 3 "Kéo mã về $NHA"
 if (Test-Path "$NHA\.git") {
     git -C $NHA pull --ff-only | Out-Null
     Xong "đã có sẵn — vừa cập nhật bản mới nhất"
 } else {
-    git clone $KHO $NHA | Out-Null
-    Xong "đã kéo về"
+    git clone $KHO $NHA 2>$null | Out-Null
+    if (-not (Test-Path "$NHA\.git")) {
+        # Kho khoá không ăn (máy thiếu Git Credential Manager) — kéo bằng địa chỉ
+        # có khoá, xong LAU địa chỉ lại cho sạch ngay.
+        if (-not $KEY) { Chet "Không kéo được mã và cũng không có khoá. Chạy lại kèm khoá đọc." }
+        git clone "https://x-access-token:$KEY@github.com/anhlt148/socbongda247.git" $NHA | Out-Null
+        git -C $NHA remote set-url origin $KHO
+        Xong "đã kéo về (đường dự phòng) — địa chỉ kho đã lau sạch khoá"
+    } else {
+        Xong "đã kéo về"
+    }
 }
 python -m pip install --quiet --upgrade pip pillow numpy 2>$null
 Xong "thư viện Python (pillow · numpy)"
 
-# ── 3. CLAUDE ────────────────────────────────────────────────────────────────
-Buoc 3 "Claude Code"
+# ── 4. CLAUDE ────────────────────────────────────────────────────────────────
+Buoc 4 "Claude Code"
 if (Get-Command claude -ErrorAction SilentlyContinue) { Xong "đã có" }
 else {
     npm install -g @anthropic-ai/claude-code 2>$null | Out-Null
@@ -72,9 +115,9 @@ else {
 }
 Nhac "Lát nữa mở PowerShell gõ 'claude' rồi đăng nhập bằng tài khoản của anh."
 
-# ── 4. THƯ MỤC VÀ ĐƯỜNG DẪN ─────────────────────────────────────────────────
+# ── 5. THƯ MỤC VÀ ĐƯỜNG DẪN ─────────────────────────────────────────────────
 # Ổ chứa việc: ưu tiên ổ D (thường là ổ dữ liệu), không có thì dùng C.
-Buoc 4 "Thư mục làm việc"
+Buoc 5 "Thư mục làm việc"
 $o = if (Test-Path "D:\") { "D:" } else { $env:USERPROFILE }
 $viec = "$o\socbongda247\viec"
 New-Item -ItemType Directory -Force -Path $viec, $CH | Out-Null
@@ -100,9 +143,9 @@ if ($drive) { $cauHinh["drive"] = $drive }
 $cauHinh | ConvertTo-Json | Set-Content -Encoding UTF8 "$CH\may.json"
 Xong "đã ghi cấu hình máy: $CH\may.json"
 
-# ── 5. KHOÁ ─────────────────────────────────────────────────────────────────
+# ── 6. HAI TỆP KHOÁ ─────────────────────────────────────────────────────────────────
 # Khoá KHÔNG nằm trong kho code (lỡ đưa lên là lộ vĩnh viễn). Chép tay từ máy anh.
-Buoc 5 "Hai tệp khoá — phải chép tay từ máy chính"
+Buoc 6 "Hai tệp khoá — phải chép tay từ máy chính"
 $thieu = @()
 if (-not (Test-Path "$CH\telebot.json"))                 { $thieu += "$CH\telebot.json" }
 if (-not (Test-Path "$env:USERPROFILE\.config\vbee\khoa.env")) {
@@ -115,10 +158,10 @@ else {
     Write-Host "          thiếu khoa.env thì không đọc được giọng VBee)" -ForegroundColor DarkGray
 }
 
-# ── 6. CHẠY NỀN ─────────────────────────────────────────────────────────────
+# ── 7. CHẠY NỀN ─────────────────────────────────────────────────────────────
 # macOS dùng launchd, Windows dùng Task Scheduler. Trạm phải tự bật khi đăng nhập,
 # không thì mỗi lần khởi động máy lại phải nhớ mở tay.
-Buoc 6 "Đăng ký trạm tự chạy khi đăng nhập"
+Buoc 7 "Đăng ký trạm tự chạy khi đăng nhập"
 $tenTask = "SocBongDa247-Tram"
 $py = (Get-Command python).Source
 schtasks /Query /TN $tenTask 2>$null | Out-Null
@@ -133,8 +176,8 @@ Register-ScheduledTask -TaskName $tenTask -Action $hd -Trigger $kh -Settings $ct
 Start-ScheduledTask -TaskName $tenTask
 Xong "đã đăng ký + bật ngay ($tenTask)"
 
-# ── 7. KIỂM ─────────────────────────────────────────────────────────────────
-Buoc 7 "Kiểm lại"
+# ── 8. KIỂM ─────────────────────────────────────────────────────────────────
+Buoc 8 "Kiểm lại"
 Start-Sleep -Seconds 5
 try {
     Invoke-WebRequest "http://localhost:8756/api/may" -UseBasicParsing -TimeoutSec 10 | Out-Null

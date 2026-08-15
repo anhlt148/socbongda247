@@ -444,6 +444,52 @@ def _get(d):
         return r.status, json.loads(r.read().decode())
 
 
+def tang_may_phu():
+    """CÀI ĐƯỢC TRÊN MÁY PHỤ KHÔNG — kiểm tài liệu và bộ cài có khớp thực tế không.
+
+    Vì sao thành cổng: 15/08 máy Windows dán link kho vào Claude Code thì chỉ thấy
+    404. Gốc: kho RIÊNG TƯ. Tệ hơn, chính bộ cài "một dòng" của em cũng chết cùng lý
+    do — `irm raw.githubusercontent.com/...` cũng đọc kho riêng tư. Tức hướng dẫn cài
+    em viết hôm trước CHƯA BAO GIỜ chạy được, mà em vẫn báo xong.
+
+    Bài học: tài liệu cài đặt là MÃ CHẠY TRÊN MÁY NGƯỜI KHÁC. Không thử được thì ít
+    nhất phải có cổng canh những giả định nó dựa vào.
+    """
+    print("⑦ MÁY PHỤ CÀI ĐƯỢC KHÔNG (bộ cài + tài liệu)")
+    goc = os.path.dirname(os.path.abspath(__file__))
+
+    cai = open(os.path.join(goc, "cai-windows.ps1"), encoding="utf-8").read()
+    _bao("$KEY" in cai and "Bearer $KEY" in cai,
+         "bộ cài có đường lấy khoá đọc kho riêng tư")
+    _bao("api.github.com/repos/anhlt148/socbongda247" in cai,
+         "bộ cài THỬ khoá trước khi clone (sai thì báo ngay, không để 404 khó hiểu)")
+    _bao("git credential approve" in cai,
+         "khoá cất vào kho khoá Windows, không nhét vào địa chỉ kho")
+    _bao("remote set-url origin $KHO" in cai,
+         "đường dự phòng có LAU khoá khỏi địa chỉ kho")
+
+    # Số bước phải liên tục 1,2,3… — chèn khối mới mà quên đánh lại số thì người
+    # ngồi máy kia thấy "[3]" hai lần, tưởng script chạy lặp.
+    so = [int(m) for m in re.findall(r'^Buoc (\d+) "', cai, re.M)]
+    _bao(so == list(range(1, len(so) + 1)),
+         f"số bước bộ cài liên tục 1..{len(so)}", f"đang là {so}" if so != list(range(1, len(so) + 1)) else "")
+
+    _bao(os.path.exists(os.path.join(goc, "capnhat.ps1")),
+         "có lệnh nâng cấp một dòng cho máy phụ (capnhat.ps1)")
+    cn = open(os.path.join(goc, "capnhat.ps1"), encoding="utf-8").read() \
+         if os.path.exists(os.path.join(goc, "capnhat.ps1")) else ""
+    _bao("git" in cn and "schtasks" in cn and "extension" in cn.lower(),
+         "lệnh nâng cấp lo ĐỦ BA phần: mã · trạm · extension")
+
+    # Mọi tài liệu chỉ cách cài đều phải mang khoá — sót một tệp là người kia làm
+    # theo tệp đó rồi tắc.
+    for ten in ("README.md", "CLAUDE.md", "HUONG-DAN-MAY-MOI.md"):
+        t = open(os.path.join(goc, ten), encoding="utf-8").read()
+        if "cai-windows.ps1 | iex" in t:
+            _bao("Authorization" in t and "Bearer" in t,
+                 f"{ten}: lệnh cài mang khoá đọc (kho riêng tư)")
+
+
 def tang_windows():
     """CHẠY ĐƯỢC TRÊN MÁY THỨ HAI KHÔNG — nạp thử mọi module trong môi trường GIẢ
     WINDOWS (chặn `fcntl`, thứ chỉ có trên Unix).
@@ -804,6 +850,7 @@ if __name__ == "__main__":
     tang_phong_cach()
     tang_extension()
     tang_windows()          # chạy được trên máy thứ hai không (15/08)
+    tang_may_phu()          # CÀI được trên máy thứ hai không (15/08)
     if sau:
         tang4_luong(ma)
     else:

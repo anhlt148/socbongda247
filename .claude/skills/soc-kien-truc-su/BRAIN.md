@@ -594,3 +594,34 @@ SyntaxError, bộ kiểm chết ngay dòng nạp.
 
 **Cách phòng:** neo mốc chèn vào dòng có dấu `)` đóng (kết thúc câu lệnh), và **`ast.parse`
 ngay trong cùng lệnh chèn** — đừng đợi tới lúc chạy bộ kiểm mới biết.
+
+## Tài liệu cài đặt là MÃ chạy trên máy người khác (15/08/2026)
+
+**Bệnh:** viết xong `cai-windows.ps1` + ba tài liệu hướng dẫn, chạy bộ kiểm ĐẠT HẾT, báo
+anh "đã ổn để chạy máy kia". Thực tế lệnh cài chết ngay dòng đầu ở máy đó: nó tải script
+từ `raw.githubusercontent.com` của kho RIÊNG TƯ → 404.
+
+**Gốc:** bộ kiểm chỉ soi mã CHẠY TRÊN MÁY NÀY. Tài liệu và bộ cài chạy trên máy KHÁC,
+trong môi trường khác, với quyền khác — vùng đó không có cổng nào canh. Và em kiểm
+"script có tồn tại, cú pháp trông ổn" chứ không kiểm "giả định nó dựa vào có đúng không".
+
+**Cách phòng:** với mọi thứ chạy ở máy khác, liệt kê GIẢ ĐỊNH rồi biến từng giả định
+thành một mục kiểm — kho công khai hay riêng tư · công cụ đã có chưa · quyền đọc/ghi ·
+đường dẫn tồn tại không. Tầng ⑦ `tang_may_phu()` làm việc đó. Và khi chưa thử thật được
+thì **nói thẳng là chưa thử**, đừng để "ĐẠT HẾT" nghe như đã nghiệm thu.
+
+## Kho riêng tư: cấp khoá đọc, đừng mở Public dù chỉ 5 giây (15/08/2026)
+
+**Cám dỗ:** đổi repo sang Public → clone → đổi lại Private. Nhanh, không phải học gì.
+
+**Vì sao không:** GitHub có luồng sự kiện công khai theo thời gian thực, nhiều bot bám
+để hốt kho mới mở. Kho này chứa BRAIN 50 KB, nhật ký, cách vận hành kênh — mã thì thường,
+nhưng bí quyết vận hành mới là thứ đáng giá. Và nó không giải quyết gì lâu dài: lần nâng
+cấp sau lại phải mở Public lần nữa.
+
+**Đường đúng:** fine-grained PAT — chỉ đúng repo ấy, chỉ quyền `Contents: Read-only`,
+có hạn, thu hồi bằng một cú bấm. Cất vào kho khoá của hệ điều hành
+(`git credential approve`), KHÔNG nhét vào địa chỉ remote — nhét vào đó thì khoá nằm
+chình ình trong `.git/config` và lộ ra mỗi lần `git remote -v`.
+
+**Không tự tạo khoá hộ anh** — đó là chìa khoá tài khoản anh, anh tự bấm, em chỉ đường.

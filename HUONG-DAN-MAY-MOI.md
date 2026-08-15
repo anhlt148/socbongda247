@@ -19,7 +19,29 @@ thêm thì mọi người hưởng.
 3. Nhập email Google của máy Windows, chọn quyền **Người chỉnh sửa** (Editor)
 4. Làm y hệt với thư mục **`kho-video-thanh-pham`** — nơi dồn thành phẩm của cả nhà
 
-### A2. Chép hai tệp khoá
+### A2. Tạo **khoá đọc kho mã** — bước bắt buộc, thiếu là không cài được
+
+Kho mã trên GitHub là **riêng tư**. Máy Windows chưa có quyền thì GitHub trả 404 —
+nó giả vờ như kho không tồn tại, nên thông báo lỗi trông rất khó hiểu.
+
+Đừng đăng nhập tài khoản GitHub của anh trên máy đó (làm thế là trao cả tài khoản).
+Cấp một **khoá chỉ đọc, chỉ mở đúng kho này**:
+
+1. Mở [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)
+2. **Token name**: `may-windows-soc`
+3. **Expiration**: 1 year (hoặc No expiration nếu ngại nhớ gia hạn)
+4. **Repository access** → **Only select repositories** → chọn **`socbongda247`**
+5. **Permissions** → **Repository permissions** → **Contents** → đổi sang **Read-only**
+   *(chỉ mục này thôi, không cấp thêm gì)*
+6. Bấm **Generate token** → **chép chuỗi `github_pat_…`**
+
+Chuỗi này **chỉ hiện một lần**. Chép ngay, đưa cho máy Windows qua đường riêng
+(USB, tin nhắn riêng) — đừng dán vào chat công khai.
+
+Muốn cắt quyền lúc nào thì vào [Personal access tokens](https://github.com/settings/tokens?type=beta)
+bấm **Revoke**. Máy kia mất quyền đọc ngay lập tức, không ảnh hưởng gì tới máy anh.
+
+### A3. Chép hai tệp khoá
 
 Khoá không nằm trong kho mã (đưa lên là lộ vĩnh viễn). Chép tay qua USB hoặc gửi
 riêng — **đừng gửi qua chat công khai**:
@@ -39,11 +61,16 @@ giọng VBee — tức không dựng được video.
 ### B1. Cài bằng một lệnh
 
 Mở **PowerShell** (bấm Start, gõ *PowerShell*, chuột phải → **Run as Administrator**),
-dán nguyên dòng này rồi Enter:
+dán nguyên dòng dưới đây rồi Enter — **thay `github_pat_...` bằng khoá anh Tuấn Anh đưa
+ở bước A2**:
 
 ```powershell
-irm https://raw.githubusercontent.com/anhlt148/socbongda247/main/cai-windows.ps1 | iex
+$T='github_pat_...'; irm -Headers @{Authorization="Bearer $T"} https://raw.githubusercontent.com/anhlt148/socbongda247/main/cai-windows.ps1 | iex
 ```
+
+Khoá xuất hiện hai lần trong một dòng lệnh này là đúng: một lần để tải bộ cài về, một
+lần để bộ cài kéo mã. Sau đó nó được cất vào **kho khoá của Windows**, lần sau `git pull`
+không hỏi lại nữa.
 
 Nó tự cài Python, ffmpeg, yt-dlp, Tesseract, Node, Git; kéo mã về; dựng thư mục; đăng
 ký trạm tự chạy mỗi khi đăng nhập Windows. Mất khoảng 10–15 phút lần đầu.
@@ -119,19 +146,26 @@ Ra dòng **"✅ ĐẠT HẾT"** là cài xong. Có dòng ❌ thì chụp màn h�
 |---|---|
 | Mở trạm | [http://localhost:8756](http://localhost:8756) |
 | Trạm không mở được | `schtasks /Run /TN SocBongDa247-Tram` |
-| Lấy bản nâng cấp mới của anh | `cd $env:USERPROFILE\socbongda247; git pull` |
+| Lấy bản nâng cấp mới của anh | `cd $env:USERPROFILE\socbongda247; git pull; .\capnhat.ps1` |
 
-### Nhận bản nâng cấp — **hai phần, đừng quên phần hai**
+### Nhận bản nâng cấp — **một lệnh, nó lo đủ ba phần**
 
 ```powershell
-cd $env:USERPROFILE\socbongda247; git pull; schtasks /End /TN SocBongDa247-Tram; schtasks /Run /TN SocBongDa247-Tram
+cd $env:USERPROFILE\socbongda247; git pull; .\capnhat.ps1
 ```
 
-Lệnh trên lo phần **trạm**. Còn **extension Chrome** thì `git pull` đã kéo file mới về ổ,
-nhưng Chrome vẫn chạy bản nó nạp lúc trước cho tới khi được bảo nạp lại. Đây là lỗi âm
-thầm: trông vẫn chạy bình thường, chỉ thiếu đúng cái tính năng vừa thêm.
+`capnhat.ps1` kiểm xem có việc nào đang dựng dở không (khởi động lại giữa chừng là
+**giết** việc đó), kéo mã, khởi động lại trạm, in ra những gì vừa đổi, rồi chạy bộ kiểm.
 
-Cách nạp lại: `chrome://extensions` → tìm ô **Sóc Bóng Đá 247** → bấm **⟳** (Tải lại).
+Ba phần của một lần nâng cấp — thiếu phần nào cũng thành lỗi âm thầm:
+
+| phần | vì sao cần |
+|---|---|
+| `git pull` | mã mới về ổ |
+| khởi động lại trạm | trạm nạp mã `.py` **một lần** lúc chạy; không restart thì nó vẫn chạy mã cũ trong bộ nhớ |
+| nạp lại extension | `git pull` kéo file mới về ổ, nhưng Chrome giữ bản đã nạp cho tới khi bấm ⟳ |
+
+Nạp lại extension: `chrome://extensions` → tìm ô **Sóc Bóng Đá 247** → bấm **⟳** (Tải lại).
 
 Không cần nhớ. Trạm tự so phiên bản: extension chạy bản cũ thì hiện thông báo
 *"Extension đang chạy bản cũ — máy có bản X, Chrome đang chạy Y"* ngay lần gắp ảnh kế tiếp.

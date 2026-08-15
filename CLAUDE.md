@@ -132,8 +132,11 @@ nguyên (~1,4 GB, dùng chung qua Drive), khoá (`~/.config/`). Xem `duong_dan.p
 **Windows** — một lệnh trong PowerShell (Run as Administrator):
 
 ```powershell
-irm https://raw.githubusercontent.com/anhlt148/socbongda247/main/cai-windows.ps1 | iex
+$T='github_pat_...'; irm -Headers @{Authorization="Bearer $T"} https://raw.githubusercontent.com/anhlt148/socbongda247/main/cai-windows.ps1 | iex
 ```
+
+Kho **riêng tư** — `$T` là khoá chỉ-đọc anh cấp cho máy đó ([cách tạo](HUONG-DAN-MAY-MOI.md#a2-tạo-khoá-đọc-kho-mã--bước-bắt-buộc-thiếu-là-không-cài-được)).
+Không có khoá thì GitHub trả 404, cả lệnh này lẫn `git clone` đều chết.
 
 **macOS** — kho đã sẵn ở `~/socbongda247`; đường dẫn khai trong
 `~/.config/socbongda247/may.json`, sửa được ở [trang phong cách](http://localhost:8756/phong-cach)
