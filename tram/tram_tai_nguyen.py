@@ -3336,6 +3336,16 @@ class Tay(BaseHTTPRequestHandler):
                 return self._js({"cau_hinh": PC.doc(), "mac_dinh": PC.MAC_DINH,
                                  "ten_viet": PC.TEN_VIET,
                                  "dem": {n: len(CN._bai_trong(n)) for n in PC.TEN_VIET}})
+            if d == "/api/may":                          # ĐỌC đường dẫn máy này
+                p_m = os.path.expanduser("~/.config/socbongda247/may.json")
+                try:
+                    ch_m = json.load(open(p_m, encoding="utf-8"))
+                except Exception:
+                    ch_m = {}
+                return self._js({"cau_hinh": ch_m, "dang_dung": {
+                    "nguoi": DD.NGUOI, "drive": DD.DRIVE, "kho_nang": DD.DATA,
+                    "viec": DD.VIEC, "kho_tai_nguyen": DD.KHO_TAI_NGUYEN,
+                    "kho_video": DD.KHO_VIDEO}})
             if d == "/menu.js":
                 return self._tep(os.path.join(TRAM, "menu.js"))
             if d == "/api/kho-nha-ds":
@@ -4031,6 +4041,33 @@ class Tay(BaseHTTPRequestHandler):
         except Exception:
             return self._js({"loi": "thân yêu cầu không phải JSON"}, 400)
         try:
+            if d == "/api/may":
+                # ĐƯỜNG DẪN RIÊNG MÁY NÀY (anh chốt 15/08). Khác phong-cach.json ở
+                # chỗ: phong cách nằm TRONG kho tài nguyên nên DÙNG CHUNG cả nhà;
+                # còn đường dẫn thì mỗi máy một kiểu — Mac trỏ /Volumes/DATA,
+                # Windows trỏ D:\. Để chung là hai máy giẫm nhau ngay.
+                p_m = os.path.expanduser("~/.config/socbongda247/may.json")
+                try:
+                    cu_m = json.load(open(p_m, encoding="utf-8"))
+                except Exception:
+                    cu_m = {}
+                for k_m in ("nguoi", "drive", "kho_nang", "viec", "kho_tai_nguyen"):
+                    if k_m in than:
+                        v_m = str(than[k_m] or "").strip()
+                        if v_m:
+                            cu_m[k_m] = v_m
+                        else:
+                            cu_m.pop(k_m, None)    # để trống = trả về cho máy tự dò
+                cu_m["_ghi_chu"] = ("Cấu hình RIÊNG máy này. KHÔNG lên git, KHÔNG lên "
+                                    "Drive. Đổi xong phải khởi động lại trạm.")
+                os.makedirs(os.path.dirname(p_m), exist_ok=True)
+                json.dump(cu_m, open(p_m, "w", encoding="utf-8"),
+                          ensure_ascii=False, indent=1)
+                # soi ngay xem đường mới có thật không — đừng để anh lưu xong mới biết sai
+                kiem = {k_m: (os.path.isdir(v_m) if k_m != "nguoi" else True)
+                        for k_m, v_m in cu_m.items() if not k_m.startswith("_")}
+                return self._js({"ok": True, "cau_hinh": cu_m, "co_that": kiem,
+                                 "nhac": "Khởi động lại trạm để đường mới có hiệu lực"})
             if d == "/api/phong-cach":                   # LƯU cấu hình phong cách
                 return self._js({"ok": True, "cau_hinh": PC.ghi(than)})
             if d == "/api/phong-cach-thu":               # BẢNG THỬ — xem trước, KHÔNG lưu

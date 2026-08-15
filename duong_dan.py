@@ -16,14 +16,71 @@ Kiểm nhanh:  python3 duong_dan.py
 import os
 import sys
 
+# ── CẤU HÌNH RIÊNG TỪNG MÁY (anh chốt 15/08) ─────────────────────────────────
+#
+# Hệ này từ nay chạy trên NHIỀU MÁY: anh trên Mac, nhân viên trên Windows, sau còn
+# thêm người nữa. Mỗi máy có ổ riêng, đường Drive riêng — nhưng CODE PHẢI GIỐNG HỆT
+# NHAU, không được ai sửa đường dẫn trong mã rồi đẩy lên kho chung (đó là cách chắc
+# chắn nhất để hai máy lệch nhau).
+#
+# Nên: đường dẫn ra khỏi mã, vào một tệp cấu hình của riêng máy —
+#     ~/.config/socbongda247/may.json
+# Tệp này KHÔNG lên git, KHÔNG lên Drive. Thiếu thì máy tự dò rồi tự tạo.
+#
+# Chia việc giữa ba nơi (anh chốt 15/08):
+#   · KHO TÀI NGUYÊN → Drive, DÙNG CHUNG. Ảnh, video, nhãn mắt máy, từ điển — ai bồi
+#     thêm thì cả nhà hưởng.
+#   · THƯ MỤC VIỆC   → ổ máy, RIÊNG từng người. Bài đang làm là việc của một người;
+#     để chung trên Drive là hai người ghi cùng một sổ, Drive đẻ bản trùng.
+#   · THÀNH PHẨM     → Drive, dồn về MỘT chỗ cho cả nhà.
+_CAU_HINH = os.path.expanduser("~/.config/socbongda247/may.json")
+
+
+def _doc_cau_hinh():
+    try:
+        import json as _j
+        return _j.load(open(_CAU_HINH, encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _do_drive():
+    """Tự dò thư mục Drive của kênh — mỗi máy đăng nhập một tài khoản Google."""
+    import glob as _g
+    nen = [os.path.expanduser("~/Library/CloudStorage"),            # macOS
+           os.path.expanduser("~"), "G:\\", "H:\\"]              # Windows
+    for n in nen:
+        for m in _g.glob(os.path.join(n, "GoogleDrive-*", "*")) + \
+                _g.glob(os.path.join(n, "My Drive")) + \
+                _g.glob(os.path.join(n, "Drive của tôi")):
+            for d in _g.glob(os.path.join(m, "*", "*Sóc bóng đá 247*")) + \
+                    _g.glob(os.path.join(m, "*Sóc bóng đá 247*")):
+                if os.path.isdir(d):
+                    return d
+    return ""
+
+
+def _do_kho_nang():
+    """Ổ chứa thứ NẶNG (thư mục việc). macOS: /Volumes/DATA; Windows: D:\\ …"""
+    for d in ("/Volumes/DATA/socbongda247", "D:\\socbongda247", "E:\\socbongda247"):
+        if os.path.isdir(os.path.dirname(d)):
+            return d
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "_kho")
+
+
+_CH = _doc_cau_hinh()
+
 # ── Hai nhà ──────────────────────────────────────────────────────────────────
 MAY = os.path.dirname(os.path.abspath(__file__))
-
-DRIVE = os.path.join(
+DRIVE = _CH.get("drive") or _do_drive() or os.path.join(
     os.path.expanduser("~"),
     "Library/CloudStorage/GoogleDrive-anhlt148@gmail.com/Drive của tôi",
     "Dự án với claude /Kênh youtube Sóc bóng đá 247",
 )
+# NGƯỜI LÀM — nhiều người cùng đẩy thành phẩm về một Drive thì hộp phải phân biệt
+# được ai làm, không thì hai người cùng ngày là trùng tên hộp (anh nêu 15/08).
+NGUOI = (_CH.get("nguoi") or os.environ.get("SOC_NGUOI")
+         or os.path.basename(os.path.expanduser("~")))[:16]
 
 # ── Trên ổ máy: thứ CHẠY ─────────────────────────────────────────────────────
 RADAR = os.path.join(MAY, "radar")
@@ -49,7 +106,7 @@ VAN_PHONG = BO_NAO          # giữ tên cũ cho mã cũ khỏi gãy
 # Kèm `don_kho.py` dọn định kỳ — chuyển chỗ mà không dọn thì chỉ đổi nơi bị đầy.
 #
 # Mọi đường dưới đây đều TỰ RƠI VỀ chỗ cũ nếu ổ DATA không gắn được — hệ vẫn chạy, chỉ tốn ổ.
-DATA = "/Volumes/DATA/socbongda247"
+DATA = _CH.get("kho_nang") or _do_kho_nang()
 _co_data = os.path.isdir(DATA)
 
 
@@ -59,7 +116,7 @@ def _o_data(ten, cu):
     return d if _co_data and os.path.isdir(d) else cu
 
 
-VIEC = _o_data("viec", os.path.join(MAY, "viec"))
+VIEC = _CH.get("viec") or _o_data("viec", os.path.join(MAY, "viec"))
 
 
 def so_video_ke(ngay):
@@ -101,7 +158,10 @@ THU_VBEE = os.path.join(CONG_CU, "thu_vbee.py")
 
 NHAN_DIEN = os.path.join(DRIVE, "nhan-dien")
 LOGO = os.path.join(NHAN_DIEN, "logo247-tron-1024.png")
-KHO_TAI_NGUYEN = _o_data("kho-tai-nguyen", os.path.join(DRIVE, "kho-tai-nguyen"))
+# KHO TÀI NGUYÊN — mặc định DÙNG CHUNG trên Drive (anh chốt 15/08). Máy nào muốn
+# giữ bản trên ổ trong (nhanh hơn, nhưng KHÔNG chia sẻ được) thì khai trong may.json.
+KHO_TAI_NGUYEN = _CH.get("kho_tai_nguyen") or \
+    _o_data("kho-tai-nguyen", os.path.join(DRIVE, "kho-tai-nguyen"))
 NHAC = os.path.join(KHO_TAI_NGUYEN, "nhac")
 VIDEO_STOCK = os.path.join(KHO_TAI_NGUYEN, "video-stock")
 VIDEO_TRAN = os.path.join(KHO_TAI_NGUYEN, "video-tran")

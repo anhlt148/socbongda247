@@ -359,6 +359,25 @@ def tang_chinh_phu():
              "UI nhắc khi anh ghép tay ảnh dọc")
     except OSError:
         pass
+    # ⑧j NHIỀU MÁY CHẠY CHUNG MỘT MÃ (anh chốt 15/08): đường dẫn phải ra khỏi code,
+    #    vào cấu hình RIÊNG từng máy — ai sửa đường trong mã rồi đẩy lên kho chung là
+    #    hai máy lệch nhau ngay. Kho tài nguyên dùng chung trên Drive, việc thì riêng.
+    try:
+        src_dd = open(os.path.join(MAY, "duong_dan.py"), encoding="utf-8").read()
+        _bao("_CAU_HINH" in src_dd and "may.json" in src_dd,
+             "đường dẫn đọc từ cấu hình riêng máy (~/.config/…/may.json)")
+        _bao("def _do_drive(" in src_dd and "def _do_kho_nang(" in src_dd,
+             "máy mới tự dò được Drive và ổ chứa (kể cả Windows)")
+        _bao("NGUOI = " in src_dd,
+             "có dấu NGƯỜI LÀM để nhiều người khỏi trùng tên hộp thành phẩm")
+        src_t3 = open(os.path.join(MAY, "tram", "tram_tai_nguyen.py"),
+                      encoding="utf-8").read()
+        _bao(src_t3.count('"/api/may"') >= 2, "trạm có cửa đọc + ghi đường dẫn máy")
+        src_pc = open(os.path.join(TRAM, "phong-cach.html"), encoding="utf-8").read()
+        _bao("m_kho_tai_nguyen" in src_pc and "mLuu" in src_pc,
+             "trang phong cách có mục Máy này để đổi đường dẫn")
+    except OSError:
+        pass
     # ⑨  CẢNH THUỘC CÂU NÀO — CHỈ ĐƯỢC TRA MỘT LẦN, trên mốc GỐC (anh bắt 13/08:
     #    "tại sao cảnh 4b, 4c không được đưa vào video khi render?"). Khối clip ③d dịch
     #    mốc mở của cảnh kề để mượn giây; ai tra câu theo mốc SAU đó thì cảnh rơi tụt về

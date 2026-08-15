@@ -133,6 +133,30 @@
   </div>
 
   <div style="display:flex;gap:9px;margin-bottom:30px">
+    <h2>💻 Máy này</h2>
+    <p class="giai">Đường dẫn <b>riêng của máy này</b> — không dùng chung với người khác.
+      Kho tài nguyên thì nên trỏ vào Drive để cả nhà cùng bồi; thư mục việc để trên ổ
+      trong cho nhanh và khỏi giẫm chân nhau. Đổi xong phải <b>khởi động lại trạm</b>.</p>
+    <div class="hang">
+      <label>Người làm (đặt tên hộp thành phẩm, để nhiều người khỏi trùng)
+        <input id="m_nguoi" placeholder="vd: anhlt · tam · quang"></label>
+    </div>
+    <div class="hang">
+      <label>📁 Thư mục VIỆC — bài đang làm, nặng, giữ trên ổ trong
+        <input id="m_viec" placeholder="để trống = máy tự dò"></label>
+    </div>
+    <div class="hang">
+      <label>🏠 KHO TÀI NGUYÊN — ảnh/video/nhãn, nên trỏ vào Drive để DÙNG CHUNG
+        <input id="m_kho_tai_nguyen" placeholder="để trống = máy tự dò"></label>
+    </div>
+    <div class="hang">
+      <label>☁️ Thư mục DRIVE của kênh — nơi dồn thành phẩm cả nhà
+        <input id="m_drive" placeholder="để trống = máy tự dò"></label>
+    </div>
+    <div id="mBao" style="margin:6px 0;font-size:13px"></div>
+    <button id="mLuu" style="padding:8px 16px;background:#332a26;color:#f4efe9;border:0;
+      border-radius:8px;cursor:pointer;margin-bottom:14px">💻 Lưu đường dẫn máy này</button>
+
     <button class="chinh" id="luu">💾 Lưu cấu hình</button>
     <button id="lai">↩ Trả về mặc định</button>
     <button id="thuLai">↻ Xem lại</button>
@@ -250,6 +274,32 @@ $('#luu').onclick = async () => {
   try { const r = await api('/api/phong-cach', docForm()); veForm(r.cau_hinh);
         bao('✅ Đã lưu — video dựng từ giờ dùng cấu hình này'); veThu(); }
   catch(e){ bao('Lưu hỏng: '+e.message, true); }
+};
+/* ĐƯỜNG DẪN MÁY NÀY (anh chốt 15/08) — tách khỏi phong-cach.json vì file ấy nằm
+   TRONG kho tài nguyên, tức dùng chung cả nhà; còn đường dẫn thì mỗi máy một kiểu. */
+(async () => {
+  try {
+    const r = await api('/api/may');
+    const c = r.cau_hinh || {}, dd = r.dang_dung || {};
+    for (const k of ['nguoi', 'viec', 'kho_tai_nguyen', 'drive']) {
+      const o = document.querySelector('#m_' + k);
+      if (o) { o.value = c[k] || ''; o.placeholder = dd[k] ? `tự dò ra: ${dd[k]}` : 'máy tự dò'; }
+    }
+  } catch (e) {}
+})();
+document.querySelector('#mLuu').onclick = async () => {
+  const than = {};
+  for (const k of ['nguoi', 'viec', 'kho_tai_nguyen', 'drive'])
+    than[k] = (document.querySelector('#m_' + k) || {}).value || '';
+  try {
+    const r = await api('/api/may', than);
+    const xau = Object.entries(r.co_that || {})
+      .filter(([k, v]) => !v).map(([k]) => k);
+    document.querySelector('#mBao').innerHTML = xau.length
+      ? `<span style="color:#e88">⚠ Đã lưu, nhưng KHÔNG thấy thư mục: ${xau.join(', ')}</span>`
+      : `<span style="color:#7fdc8a">✓ Đã lưu — mọi đường đều có thật.</span>
+         <span style="color:#e8c46a">Khởi động lại trạm để có hiệu lực.</span>`;
+  } catch (e) { bao('Lưu hỏng: ' + e.message, true); }
 };
 $('#lai').onclick = () => { veForm(MD); veThu(); bao('Đã đưa về mặc định — nhớ bấm Lưu'); };
 $('#thuLai').onclick = veThu;
