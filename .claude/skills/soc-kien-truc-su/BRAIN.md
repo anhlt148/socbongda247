@@ -800,3 +800,28 @@ và không đẻ đường thứ hai để sau này lệch nhau.
 
 **Chọn mốc theo THÓI QUEN NGƯỜI DÙNG, không theo sơ đồ kỹ thuật.** Mốc "đổi bài" đắt giá
 vì đó đúng là khoảnh khắc anh cần kho đầy — không phải mốc nào đẹp trong luồng dữ liệu.
+
+## Trang báo giấu link video trong JSON-LD, không phải trong thẻ <video> (16/08/2026)
+
+Báo Việt Nam (VnExpress và cùng họ) dựng trình phát bằng JS: thẻ `<video>` chỉ mang
+`blob:` — thứ chỉ sống trong tab, tải về là vô nghĩa. Nhưng chúng vẫn phải khai link
+thật cho Google hiểu, và chỗ khai đó là khối `<script type="application/ld+json">`,
+trường `contentUrl` của `VideoObject`. Đường ấy cho link CDN `.m3u8` tải được thẳng.
+
+**Thứ tự dò nên là:** thẻ `<video>` (http thật) → `og:video` → JSON-LD `contentUrl`.
+Và **đừng loại thẻ `<video>` theo kích thước**: trình phát chưa bấm play có `width = 0`.
+
+**Có link media thật thì đưa yt-dlp link ấy, đừng đưa địa chỉ trang.** Đo trên VnExpress:
+link JSON-LD ra đúng video 3:20; địa chỉ trang thì yt-dlp mò ra thứ khác, không đọc nổi
+thời lượng. Ngược lại với MXH (YouTube, Facebook, TikTok) thì địa chỉ trang tốt hơn hẳn —
+yt-dlp có bộ bóc riêng cho từng nền tảng. Nên chọn theo DẠNG của src, không chọn cứng.
+
+## Tính năng "tự đoán" phải thử trên trang thật mới biết đúng sai (16/08/2026)
+
+Hàm dò video viết xong đọc rất hợp lý: ba lớp, chấm điểm, đủ cả. Chạy thử trên một bài
+VnExpress thì lộ ngay hai lỗi chí mạng — bộ lọc bề ngang giết mọi video chưa play, và
+thứ tự thử của trạm chọn nhầm nguồn. Không thử thì cả hai lỗi ấy đến tay anh.
+
+**Luật:** mã phải ĐOÁN thay người (không có con trỏ chỉ, không có lựa chọn tường minh)
+thì bắt buộc thử trên ít nhất một trang thật thuộc đúng họ trang người dùng hay mở —
+đọc mã không bao giờ thấy được `width = 0` hay `src` là `blob:`.

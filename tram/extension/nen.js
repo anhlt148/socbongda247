@@ -210,7 +210,83 @@ chrome.runtime.onMessage.addListener((tin) => {
 const PHIM = {
   "soc-phim-anh-viec": { kho: false, ten: "kho việc" },
   "soc-phim-anh-kho":  { kho: true,  ten: "KHO CHUNG" },
+  "soc-phim-video":    { video: true, ten: "kho việc (VIDEO)" },
 };
+
+// Mẩu mã chạy TRONG trang — tìm VIDEO của trang này (anh đặt 16/08: "bấm phím tắt là
+// tải được video luôn từ các web, giống như tải ảnh").
+//
+// Khác ảnh ở chỗ: ảnh thì có con trỏ chuột chỉ đúng tấm, còn phím tắt video thì KHÔNG
+// AI CHỈ — mã phải tự đoán anh muốn cái nào. Chấm điểm theo ba dấu hiệu, mạnh dần:
+// đang phát (anh vừa bấm play = đúng cái đang xem) · nằm trong tầm nhìn · khung to.
+//
+// Lấy được địa chỉ http thật thì gửi kèm, KHÔNG có cũng chẳng sao: trạm vẫn tải bằng
+// địa chỉ TRANG (yt-dlp có bộ bóc riêng cho từng nền tảng, thường ăn đứt việc mò src).
+// Vì thế bản này không cố bóc `blob:` — bóc được cũng vô dụng, blob chỉ sống trong tab.
+function _docVideoTrang() {
+  const q = (v) => {
+    const r = v.getBoundingClientRect();
+    let d = Math.max(1, r.width * r.height);
+    if (!v.paused && !v.ended) d *= 8;                       // đang phát: gần như chắc chắn
+    if (v.currentTime > 0) d *= 2;                           // đã từng chạy
+    if (r.top < innerHeight && r.bottom > 0 && r.width > 0) d *= 3;  // trong tầm nhìn
+    return d;
+  };
+  // ĐỪNG lọc theo bề ngang ở đây. Đo thật trên VnExpress 16/08: trình phát chưa bấm
+  // play thì thẻ <video> có width = 0 — lọc là mất trắng, rồi báo "trang không có
+  // video" trong khi trang có. Bề ngang chỉ dùng để XẾP HẠNG khi có nhiều video.
+  const vs = [...document.querySelectorAll("video")];
+  vs.sort((a, b) => q(b) - q(a));
+  const httpCuaThe = (v) => [v.currentSrc, v.src,
+      ...[...v.querySelectorAll("source")].map(s => s.src)]
+      .find(u => u && /^https?:/i.test(u)) || "";
+
+  let src = vs.length ? httpCuaThe(vs[0]) : "";
+  // Báo Việt Nam (VnExpress, Thanh Niên, Dân Trí…) hay khai địa chỉ THẬT ở thẻ meta
+  // hoặc khối JSON-LD, trong khi thẻ <video> chỉ mang blob: — lấy ở đây ăn chắc hơn.
+  if (!src) {
+    const og = document.querySelector('meta[property="og:video"], '
+      + 'meta[property="og:video:url"], meta[property="og:video:secure_url"], '
+      + 'meta[itemprop="contentUrl"]');
+    const u = og && (og.content || "");
+    if (/^https?:/i.test(u)) src = u;
+  }
+  if (!src) {
+    for (const sc of document.querySelectorAll('script[type="application/ld+json"]')) {
+      try {
+        const j = JSON.parse(sc.textContent || "{}");
+        const duyet = (o) => {
+          if (!o || typeof o !== "object") return "";
+          if (typeof o.contentUrl === "string" && /^https?:/i.test(o.contentUrl)) return o.contentUrl;
+          for (const k of Object.keys(o)) {
+            const t = duyet(o[k]);
+            if (t) return t;
+          }
+          return "";
+        };
+        const t = duyet(j);
+        if (t) { src = t; break; }
+      } catch (e) { /* khối hỏng thì bỏ qua, đừng để chết cả hàm */ }
+    }
+  }
+  return { src, so: vs.length, dangPhat: vs.some(v => !v.paused && !v.ended) };
+}
+
+async function _hoiVideoTrang(tabId) {
+  // allFrames: video báo hay nằm trong iframe player
+  const kq = await chrome.scripting.executeScript({
+    target: { tabId, allFrames: true }, func: _docVideoTrang,
+  });
+  let tot = { src: "", so: 0, dangPhat: false };
+  for (const r of kq) {
+    const v = r && r.result;
+    if (!v) continue;
+    if (v.dangPhat && v.src) return v;                 // ưu tiên tuyệt đối: đang phát
+    if (v.src && !tot.src) tot = v;
+    else if (v.so && !tot.so) tot = { ...tot, so: v.so };
+  }
+  return tot;
+}
 
 // Mẩu mã chạy TRONG trang — trả về địa chỉ ảnh đang bị trỏ chuột.
 // Ba lớp dò, vì ảnh trên web có ba lối vẽ khác nhau.
@@ -291,6 +367,30 @@ chrome.commands.onCommand.addListener(async (lenh) => {
     bao("❌ Phím tắt không dùng được ở đây", "Chỉ chạy trên trang web thường (http/https).");
     return;
   }
+  // ── NHÁNH VIDEO (anh đặt 16/08) ────────────────────────────────────────────
+  if (dat.video) {
+    let v = { src: "", so: 0 };
+    try {
+      v = await _hoiVideoTrang(tab.id);
+    } catch (e) {
+      // trang chặn bơm mã thì vẫn thử được: gửi thẳng địa chỉ trang cho yt-dlp
+    }
+    // KHÔNG thấy thẻ <video> nào mà cũng chẳng có meta → nhiều khả năng anh bấm nhầm
+    // trang. Nói thẳng thay vì im lặng tải 15 phút rồi báo hỏng.
+    if (!v.src && !v.so) {
+      await _baoTrang(tab.id, "🐿 Trang này không thấy video nào\n"
+        + "mở đúng trang có trình phát rồi bấm lại (Alt+V)", false);
+      return;
+    }
+    await _baoTrang(tab.id, "🐿 Đang kéo video về kho Sóc…\nxong sẽ báo ở góc màn hình", true);
+    try {
+      await guiVideo(tab.url, v.src);
+    } catch (e) {
+      await _baoTrang(tab.id, "❌ Chưa lấy được video\n" + (e.message || ""), false);
+    }
+    return;
+  }
+
   let u = "";
   try {
     u = await _hoiAnhDuoiChuot(tab.id);

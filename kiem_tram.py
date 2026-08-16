@@ -1134,6 +1134,20 @@ def tang_extension():
          if khai != xuly else "")
     _bao("chrome.commands.onCommand" in nen, "có người nghe phím tắt (onCommand)")
 
+    # ⑧m PHÍM TẮT TẢI VIDEO (anh đặt 16/08: "bấm phím tắt là tải được video luôn từ
+    #    các web, giống như tải ảnh"). Khác ảnh ở chỗ KHÔNG có con trỏ chỉ đúng cái
+    #    nào — mã phải tự đoán, nên ba lớp dò phải còn đủ.
+    _bao("soc-phim-video" in (mf.get("commands") or {}), "manifest khai phím tắt VIDEO")
+    _bao("function _docVideoTrang" in nen, "có mắt dò video trong trang")
+    _bao("og:video" in nen, "lớp dò 2: thẻ meta og:video")
+    _bao("application/ld+json" in nen and "contentUrl" in nen,
+         "lớp dò 3: khối JSON-LD (đường DUY NHẤT ăn với báo VN — đo thật VnExpress)")
+    _bao("querySelectorAll(\"video\")]" in nen and "width >= 80" not in nen,
+         "KHÔNG lọc thẻ video theo bề ngang (chưa bấm play thì width = 0)")
+    src_t = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
+    _bao("la_media" in src_t and "m3u8" in src_t,
+         "trạm thử LINK MEDIA trước địa chỉ trang khi extension bóc được link thật")
+
     # ⑧l EXTENSION BÁO KHI CHẠY BẢN CŨ (anh hỏi 15/08: "sau này extension vẫn cập
     #    nhật được chứ?"). Extension nạp kiểu "giải nén": git pull về file mới mà
     #    Chrome vẫn chạy bản đã nạp cho tới khi bấm ⟳ Tải lại — lỗi ÂM THẦM, trông

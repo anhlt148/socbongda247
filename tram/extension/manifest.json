@@ -1,16 +1,28 @@
 {
   "manifest_version": 3,
   "name": "Sóc — gắp ảnh về kho",
-  "version": "1.4",
+  "version": "1.5",
   "description": "Chuột phải — hoặc trỏ chuột vào ảnh rồi bấm phím tắt — để gửi thẳng ảnh/video về kho của Trạm duyệt tài nguyên (Sóc Bóng Đá 247).",
   "commands": {
     "soc-phim-anh-viec": {
-      "suggested_key": { "default": "Alt+S", "mac": "Alt+S" },
+      "suggested_key": {
+        "default": "Alt+S",
+        "mac": "Alt+S"
+      },
       "description": "📥 Gửi ảnh đang trỏ chuột về kho VIỆC đang mở"
     },
     "soc-phim-anh-kho": {
-      "suggested_key": { "default": "Alt+A", "mac": "Alt+A" },
+      "suggested_key": {
+        "default": "Alt+A",
+        "mac": "Alt+A"
+      },
       "description": "🏠 Gửi ảnh đang trỏ chuột về KHO CHUNG (chờ nhãn)"
+    },
+    "soc-phim-video": {
+      "suggested_key": {
+        "default": "Alt+V"
+      },
+      "description": "🎬 Tải VIDEO của trang này về kho việc đang mở"
     }
   },
   "permissions": [

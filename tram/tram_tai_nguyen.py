@@ -3334,7 +3334,15 @@ def _nhan_video_job(ma_job, ma, trang, src, cookies):
         # đó. YouTube (anh yêu cầu 07/08): có thêm lượt lùi giả app iOS — YouTube thỉnh
         # thoảng chặn máy lạ đòi cookie, mà cookie tài khoản KÊNH thì không được đem dùng.
         cac_luot = []
-        for u in [x for x in (url, src) if x and x.startswith("http")]:
+        # THỨ TỰ THỬ: link MEDIA THẬT trước, địa chỉ trang sau (đo thật 16/08 trên
+        # VnExpress). Extension nay bóc được link CDN từ khối JSON-LD của trang báo:
+        # yt-dlp với link ấy ra đúng video (3:20), còn với địa chỉ trang thì nó mò ra
+        # thứ khác, không cả đọc được thời lượng. Trang MXH (Facebook, YouTube, TikTok)
+        # thì ngược lại — bộ bóc riêng của yt-dlp ăn đứt việc mò src — nên chỉ đảo thứ
+        # tự khi src TRÔNG NHƯ tệp media, còn lại giữ nguyên nếp cũ.
+        la_media = bool(src) and bool(re.search(r"\.(m3u8|mpd|mp4|m4v|webm)(\?|$)", src, re.I))
+        thu_tu = (src, url) if la_media else (url, src)
+        for u in [x for x in thu_tu if x and x.startswith("http")]:
             cac_luot.append((u, []))
             if "youtube.com" in u or "youtu.be" in u:
                 cac_luot.append((u, ["--extractor-args", "youtube:player_client=ios"]))

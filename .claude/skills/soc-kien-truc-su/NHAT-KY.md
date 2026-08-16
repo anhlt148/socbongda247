@@ -815,3 +815,34 @@ Kho vẫn sạch vì `nhap_kho_chu_the` giữ nguyên cổng lọc sẵn có (b�
 chuyển sang bài video-3 → trạm tự vét: **+2 tấm mới vào kho**, 24 tấm bỏ đúng vì đã có
 sẵn (vốn lấy từ kho ra), 1 bẩn 1 nhỏ bị cổng loại. Cổng ⑭ 6 mục.
 `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp.
+
+## 16/08/2026 — phím tắt Alt+V: tải video từ web như tải ảnh
+
+**Anh đặt:** "nâng cấp extension để bấm phím tắt là tải được video luôn từ các web,
+giống như tải ảnh vậy."
+
+**Khó hơn ảnh ở một điểm:** ảnh có con trỏ chuột chỉ đúng tấm, còn phím tắt video thì
+KHÔNG AI CHỈ — mã phải tự đoán anh muốn cái nào. Chấm điểm theo ba dấu hiệu mạnh dần:
+đang phát (×8) · trong tầm nhìn (×3) · khung to.
+
+**Ba lớp dò địa chỉ, và đo thật mới biết lớp nào mới là lớp ăn:**
+1. thẻ `<video>` (currentSrc/src/source)
+2. thẻ meta `og:video`
+3. khối `JSON-LD` → `contentUrl`
+
+Trên VnExpress (đúng loại trang anh gửi): thẻ `<video>` chỉ mang `blob:` — vô dụng, blob
+chỉ sống trong tab. Không có meta og:video. **Chỉ lớp JSON-LD ăn**, cho ra link CDN thật
+`d1.vnecdn.net/.../master.m3u8`.
+
+**Hai chỗ suýt hỏng, chỉ lộ ra khi thử trên trang thật:**
+- Bản đầu lọc `<video>` theo bề ngang ≥ 80px. Trình phát VnExpress **chưa bấm play thì
+  width = 0** → lọc là mất trắng, rồi báo "trang không có video" trong khi trang có. Nay
+  bề ngang chỉ dùng để xếp hạng.
+- Trạm vốn thử ĐỊA CHỈ TRANG trước, src sau. Đo bằng yt-dlp: link JSON-LD ra đúng video
+  (3:20), còn địa chỉ trang thì mò ra thứ khác, không cả đọc được thời lượng. Nay src
+  **trông như tệp media** (`.m3u8|.mpd|.mp4|.m4v|.webm`) thì thử TRƯỚC; trang MXH giữ
+  nếp cũ vì bộ bóc riêng của yt-dlp ăn đứt việc mò src.
+
+**Đã kiểm toàn tuyến:** gửi đúng dữ liệu extension sẽ gửi → video về kho `200.9s · 63.7 MB`
+(khớp 3:20), tên mang nội dung bài. Đã dọn tệp thử khỏi bài của anh. Cổng ⑧m 6 mục.
+`kiem_tram.py --sau` ĐẠT HẾT hai lần. manifest 1.4 → **1.5**.
