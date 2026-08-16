@@ -525,8 +525,15 @@ def tang_may_phu():
     goc = os.path.dirname(os.path.abspath(__file__))
 
     cai = open(os.path.join(goc, "cai-windows.ps1"), encoding="utf-8").read()
+    # Kho để CÔNG KHAI từ 16/08 nên lệnh cài không cần khoá. Nhưng bộ cài phải chạy được
+    # CẢ HAI trạng thái — anh đổi kho về riêng tư lúc nào là quyền của anh, mà lúc ấy máy
+    # phụ không được đứng chết với một lỗi 404 khó hiểu.
     _bao("$KEY" in cai and "Bearer $KEY" in cai,
-         "bộ cài có đường lấy khoá đọc kho riêng tư")
+         "bộ cài vẫn có đường khoá đọc, phòng khi kho đổi về riêng tư")
+    _bao("kho công khai — không cần khoá" in cai,
+         "kho công khai thì bộ cài KHÔNG hỏi khoá (đừng bắt người dùng nhập thứ vô nghĩa)")
+    _bao("Kho có thể đã đổi về RIÊNG TƯ" in cai,
+         "clone hỏng thì hỏi khoá tại chỗ, không chết câm")
     _bao("api.github.com/repos/anhlt148/socbongda247" in cai,
          "bộ cài THỬ khoá trước khi clone (sai thì báo ngay, không để 404 khó hiểu)")
     _bao("git credential approve" in cai,
@@ -549,11 +556,33 @@ def tang_may_phu():
 
     # Mọi tài liệu chỉ cách cài đều phải mang khoá — sót một tệp là người kia làm
     # theo tệp đó rồi tắc.
-    for ten in ("README.md", "CLAUDE.md", "HUONG-DAN-MAY-MOI.md"):
-        t = open(os.path.join(goc, ten), encoding="utf-8").read()
-        if "cai-windows.ps1 | iex" in t:
-            _bao("Authorization" in t and "Bearer" in t,
-                 f"{ten}: lệnh cài mang khoá đọc (kho riêng tư)")
+    # Lệnh cài trong tài liệu phải KHỚP trạng thái thật của kho — hỏi thẳng GitHub, đừng
+    # đoán. Tài liệu bảo "dán khoá" mà kho công khai thì người đọc loay hoay tạo khoá vô
+    # ích; ngược lại thì họ dán lệnh trần rồi ăn 404.
+    rieng = None
+    try:
+        r = subprocess.run(["gh", "repo", "view", "anhlt148/socbongda247",
+                            "--json", "isPrivate", "-q", ".isPrivate"],
+                           capture_output=True, text=True, timeout=25)
+        if r.returncode == 0:
+            rieng = r.stdout.strip() == "true"
+    except Exception:
+        pass
+    if rieng is None:
+        print("   ·  (bỏ qua kiểm khớp tài liệu — không hỏi được GitHub)")
+    else:
+        for ten in ("README.md", "CLAUDE.md", "HUONG-DAN-MAY-MOI.md"):
+            t = open(os.path.join(goc, ten), encoding="utf-8").read()
+            if "cai-windows.ps1 | iex" not in t:
+                continue
+            # Bỏ khối <details> — đó là đường DỰ PHÒNG cố ý giữ lại (hướng dẫn cấp khoá
+            # khi kho đổi về riêng tư), không phải lệnh cài người dùng đọc hằng ngày.
+            chinh = re.sub(r"<details>.*?</details>", "", t, flags=re.S)
+            co_khoa = "Bearer $T" in chinh
+            _bao(co_khoa == rieng,
+                 f"{ten}: lệnh cài khớp kho {'RIÊNG TƯ' if rieng else 'CÔNG KHAI'}",
+                 "tài liệu đòi khoá mà kho công khai" if co_khoa and not rieng
+                 else ("kho riêng tư mà lệnh cài không mang khoá" if rieng and not co_khoa else ""))
 
 
 def tang_windows():
@@ -652,13 +681,31 @@ def tang4_luong(ma):
             r = post("/api/tai-len", {"ma": ma, "tep": [
                 {"ten": "zz-kiem.jpg", "data": b64, "url": "https://kiem/zz.jpg",
                  "trang": "https://kiem"}]})
-            _bao(bool(r.get("anh")), "extension → kho BÀI (/api/tai-len)", str(r)[:60])
+            # "TRÙNG" cũng tính là ĐẠT: cửa vẫn sống, chỉ là vân tay còn sót từ lượt kiểm
+            # trước. Điều cổng này canh là CỬA CÓ THÔNG hay không, không phải ảnh có mới.
+            thong = bool(r.get("anh")) or any("TRÙNG" in (h.get("loi") or "")
+                                              for h in (r.get("hong") or []))
+            _bao(thong, "extension → kho BÀI (/api/tai-len)", str(r)[:60])
+            base = os.path.join(DD.VIEC, ma, "anh") + os.sep
             for a in (r.get("anh") or []):          # dọn ngay, không để rác trong bài
-                for p in (os.path.join(os.environ.get("VIEC_DIR", ""), ""),):
-                    pass
-                base = os.path.join(DD.VIEC, ma, "anh") + os.sep
                 for p in (base + a["tep"], base + "_thumb/anh__" + a["tep"]):
                     os.path.exists(p) and os.remove(p)
+            # DỌN CẢ VÂN TAY. Quên khâu này thì lượt kiểm sau bị chính mình chặn vì
+            # "trùng" — cổng tự làm bẩn chỗ nó đứng. (Lỗi có sẵn, chỉ lộ ra sau khi vá
+            # đua ghi 16/08: trước đó sổ vân tay bị đè nên vô tình sạch.)
+            for ten_so in ("van-tay.json", "van-tay-loi.json"):
+                p_vt = base + ten_so
+                if not os.path.exists(p_vt):
+                    continue
+                try:
+                    so = json.load(open(p_vt, encoding="utf-8"))
+                    bo = [a["tep"] for a in (r.get("anh") or [])]
+                    con = {k: v for k, v in so.items() if k not in bo}
+                    if len(con) != len(so):
+                        json.dump(con, open(p_vt, "w", encoding="utf-8"),
+                                  ensure_ascii=False)
+                except Exception:
+                    pass
             p_sg = os.path.join(DD.VIEC, ma, "anh", "so-gap.jsonl")
             if os.path.exists(p_sg):
                 giu = [l for l in open(p_sg, encoding="utf-8")

@@ -659,3 +659,26 @@ hiện thành "chập chờn" chứ không phải hỏng hẳn — loại lỗi 
 **Cách phòng:** phía máy chủ giữ một **số đếm luỹ kế** (đã xong bao nhiêu lượt từ lúc chạy),
 phía trang nhớ số lần trước và so. Số luỹ kế không trượt được — dù việc nhanh cỡ nào, dù
 poll thưa cỡ nào. Áp cho mọi thứ kiểu "báo cho trang biết có hàng mới".
+
+## Cổng kiểm không được làm bẩn chỗ nó đứng (16/08/2026)
+
+**Bệnh:** cổng ④ gửi một tấm ảnh kiểm vào bài thật để chứng minh cửa nhận còn sống. Nó
+dọn tấm ảnh, nhưng quên dọn MỤC VÂN TAY của tấm ấy. Lượt chạy sau, hệ chống trùng nhận
+ra "ảnh này có rồi" và từ chối — cổng tự chặn chính mình, báo TRƯỢT một chức năng vẫn
+đang tốt.
+
+**Điều đáng nhớ hơn:** lỗi này CÓ SẴN từ lâu mà không lộ, vì trước đó sổ vân tay bị đua
+ghi làm mất mục — hai lỗi che nhau. Vá lỗi này làm lộ lỗi kia. **Một cổng đang xanh
+không chứng minh nó đúng; có khi nó xanh nhờ một lỗi khác.**
+
+**Cách phòng:** cổng nào ghi vào dữ liệu thật thì phải dọn **đủ mọi dấu vết** — tệp, sổ
+phụ, vân tay, chỉ mục. Và luôn **chạy bộ kiểm HAI LẦN LIÊN TIẾP**: lần hai trượt nghĩa
+là cổng tự làm bẩn.
+
+## Kiểm tài liệu thì HỎI THỰC TẾ, đừng ghim trạng thái (16/08/2026)
+
+Cổng ⑦ ban đầu ghim cứng "kho là riêng tư nên lệnh cài phải mang khoá". Anh đổi kho sang
+công khai là cổng báo trượt một tài liệu đang đúng. Nay nó hỏi thẳng
+`gh repo view --json isPrivate` rồi mới đối chiếu. Nguyên tắc chung: **cổng canh sự KHỚP
+giữa tài liệu và thực tế, không canh một giá trị cố định** — thực tế thay đổi là chuyện
+bình thường, cổng phải đi theo.

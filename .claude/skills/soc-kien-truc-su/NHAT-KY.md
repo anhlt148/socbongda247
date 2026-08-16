@@ -644,3 +644,26 @@ cài được pwsh trên Mac — thiếu mật khẩu sudo), nên cú pháp Powe
 
 **Đã kiểm:** test lại 6/6 tấm về đủ, tên riêng biệt, sổ vân tay khớp. `kiem_tram.py --sau`
 ĐẠT HẾT. Dọn 2 mảnh `.part` tồn đọng.
+
+## 16/08/2026 — kho mã chuyển sang CÔNG KHAI
+
+**Anh chốt** sau khi em đo thật: repo KHÔNG chứa khoá/token nào (mọi `github_pat_...`
+chỉ là chỗ điền mẫu), không có tệp khoá nào từng lọt vào lịch sử, không có số điện
+thoại/email lạ. Cái mất khi công khai thuần là BÍ QUYẾT VẬN HÀNH (BRAIN 61 KB, nhật ký
+71 KB, phân tích văn phong 60 KB) — không phải rủi ro an toàn.
+
+**Đã làm:** `gh repo edit --visibility public`. Thử clone ẩn danh: ĐƯỢC. Bộ cài tải
+trực tiếp: HTTP 200.
+
+**Tài liệu + bộ cài theo sau:** lệnh cài bỏ khoá; `cai-windows.ps1` GIỮ đường khoá làm
+dự phòng và tự hỏi khoá nếu clone hỏng (kho có thể đổi về riêng tư bất cứ lúc nào);
+mục A2 trong hướng dẫn thu vào khối `<details>`.
+
+**Cổng ⑦ nay HỎI THẲNG GitHub** repo đang công khai hay riêng tư rồi mới kết luận tài
+liệu đúng hay sai — thay vì ghim cứng một trạng thái. Bỏ qua khối `<details>` khi soi.
+
+**Vá kèm — cổng ④ tự làm bẩn chỗ nó đứng:** nó gửi ảnh kiểm vào bài thật, dọn ảnh nhưng
+QUÊN dọn vân tay → lượt chạy sau bị chính mình chặn vì "TRÙNG". Lỗi có sẵn, chỉ lộ ra
+SAU khi vá đua ghi (trước đó sổ vân tay bị đè nên vô tình sạch). Nay dọn cả vân tay, và
+coi "TRÙNG" cũng là đạt — thứ cổng canh là CỬA CÓ THÔNG, không phải ảnh có mới.
+Đã chạy `--sau` HAI LẦN LIÊN TIẾP, cả hai ĐẠT HẾT.

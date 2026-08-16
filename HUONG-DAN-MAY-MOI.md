@@ -19,33 +19,34 @@ thêm thì mọi người hưởng.
 3. Nhập email Google của máy Windows, chọn quyền **Người chỉnh sửa** (Editor)
 4. Làm y hệt với thư mục **`kho-video-thanh-pham`** — nơi dồn thành phẩm của cả nhà
 
-### A2. Tạo **khoá đọc kho mã** — bước bắt buộc, thiếu là không cài được
+### A2. Khoá đọc kho mã — **hiện KHÔNG cần**
 
-Kho mã trên GitHub là **riêng tư**. Máy Windows chưa có quyền thì GitHub trả 404 —
-nó giả vờ như kho không tồn tại, nên thông báo lỗi trông rất khó hiểu.
+Kho mã đang để **công khai** (anh chốt 16/08) nên máy nào cũng kéo được, không cần
+đăng nhập hay khoá gì. Bỏ qua mục này.
 
-Đừng đăng nhập tài khoản GitHub của anh trên máy đó (làm thế là trao cả tài khoản).
-Cấp một **khoá chỉ đọc, chỉ mở đúng kho này**:
+<details>
+<summary>Chỉ mở ra khi kho đã đổi về riêng tư</summary>
+
+Lúc ấy máy chưa có quyền sẽ nhận 404 — GitHub giả vờ như kho không tồn tại. Cấp một
+khoá **chỉ đọc, chỉ mở đúng kho này** (đừng đăng nhập tài khoản GitHub của anh trên
+máy đó — thế là trao cả tài khoản):
 
 1. Mở [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)
-2. **Token name**: `may-windows-soc`
-3. **Expiration**: 1 year (hoặc No expiration nếu ngại nhớ gia hạn)
-4. **Repository access** → **Only select repositories** → chọn **`socbongda247`**
-5. Kéo xuống khối **Permissions** — nó **trống**, ghi *"No repository permissions added yet"*.
-   Đây là chỗ hay tắc, vì GitHub bắt tự thêm quyền vào:
-   - bấm **+ Add permissions** (góc phải khối đó)
-   - gõ `Contents` → chọn nó
-   - đổi ô quyền cạnh **Contents** thành **Read-only**
+2. **Token name**: `may-windows-soc` · **Expiration**: 1 year
+3. **Repository access** → **Only select repositories** → chọn **`socbongda247`**
+4. Khối **Permissions** khởi đầu TRỐNG — bấm **+ Add permissions**, gõ `Contents`,
+   đổi thành **Read-only**. GitHub tự thêm kèm **Metadata: Read-only**, cứ để nguyên.
+5. **Generate token** → chép chuỗi `github_pat_…` (chỉ hiện một lần)
 
-   GitHub tự thêm kèm **Metadata: Read-only** — quyền bắt buộc đi cùng, cứ để nguyên.
-   Ngoài hai mục này thì **không cấp thêm gì**.
-6. Bấm **Generate token** → **chép chuỗi `github_pat_…`**
+Rồi cài bằng lệnh mang khoá:
 
-Chuỗi này **chỉ hiện một lần**. Chép ngay, đưa cho máy Windows qua đường riêng
-(USB, tin nhắn riêng) — đừng dán vào chat công khai.
+```powershell
+$T='github_pat_...'; irm -Headers @{Authorization="Bearer $T"} https://raw.githubusercontent.com/anhlt148/socbongda247/main/cai-windows.ps1 | iex
+```
 
-Muốn cắt quyền lúc nào thì vào [Personal access tokens](https://github.com/settings/tokens?type=beta)
-bấm **Revoke**. Máy kia mất quyền đọc ngay lập tức, không ảnh hưởng gì tới máy anh.
+Thu hồi lúc nào cũng được: [Personal access tokens](https://github.com/settings/tokens?type=beta) → **Revoke**.
+
+</details>
 
 ### A3. Chép hai tệp khoá
 
@@ -67,16 +68,11 @@ giọng VBee — tức không dựng được video.
 ### B1. Cài bằng một lệnh
 
 Mở **PowerShell** (bấm Start, gõ *PowerShell*, chuột phải → **Run as Administrator**),
-dán nguyên dòng dưới đây rồi Enter — **thay `github_pat_...` bằng khoá anh Tuấn Anh đưa
-ở bước A2**:
+dán nguyên dòng này rồi Enter:
 
 ```powershell
-$T='github_pat_...'; irm -Headers @{Authorization="Bearer $T"} https://raw.githubusercontent.com/anhlt148/socbongda247/main/cai-windows.ps1 | iex
+irm https://raw.githubusercontent.com/anhlt148/socbongda247/main/cai-windows.ps1 | iex
 ```
-
-Khoá xuất hiện hai lần trong một dòng lệnh này là đúng: một lần để tải bộ cài về, một
-lần để bộ cài kéo mã. Sau đó nó được cất vào **kho khoá của Windows**, lần sau `git pull`
-không hỏi lại nữa.
 
 Nó tự cài Python, ffmpeg, yt-dlp, Tesseract, Node, Git; kéo mã về; dựng thư mục; đăng
 ký trạm tự chạy mỗi khi đăng nhập Windows. Mất khoảng 10–15 phút lần đầu.

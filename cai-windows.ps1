@@ -2,13 +2,13 @@
 #  CÀI HỆ SÓC BÓNG ĐÁ 247 TRÊN MÁY WINDOWS  —  anh chốt 15/08/2026
 #
 #  Chạy MỘT LẦN trên máy mới. Mở PowerShell (chuột phải > Run as Administrator)
-#  rồi dán nguyên dòng này — THAY chuỗi khoá bằng khoá anh Tuấn Anh đưa:
+#  rồi dán nguyên dòng này:
 #
+#      irm https://raw.githubusercontent.com/anhlt148/socbongda247/main/cai-windows.ps1 | iex
+#
+#  Kho đang CÔNG KHAI (anh chốt 16/08) nên không cần khoá gì. Đường khoá đọc vẫn giữ
+#  bên dưới, phòng khi sau này anh đổi kho về riêng tư — lúc ấy chạy kèm khoá:
 #      $T='github_pat_...'; irm -Headers @{Authorization="Bearer $T"} https://raw.githubusercontent.com/anhlt148/socbongda247/main/cai-windows.ps1 | iex
-#
-#  KHO NÀY RIÊNG TƯ. Không có khoá thì cả dòng lệnh trên lẫn `git clone` đều bị
-#  GitHub từ chối (404 — nó giả vờ như kho không tồn tại). Khoá là loại CHỈ ĐỌC,
-#  chỉ mở đúng kho này, anh thu hồi lúc nào cũng được.
 #
 #  Hoặc nếu đã tải mã về rồi:  .\cai-windows.ps1
 #
@@ -58,13 +58,13 @@ $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
 # Kho RIÊNG TƯ nên phải có khoá đọc. Lấy khoá theo ba đường, đường nào có trước
 # thì dùng: biến $T trong dòng lệnh dán · biến môi trường · hỏi thẳng người dùng.
 Buoc 2 "Khoá đọc kho mã"
+# Kho đang CÔNG KHAI nên bước này thường không làm gì cả — chỉ chạy khi có khoá sẵn
+# (biến $T trong dòng lệnh dán, hoặc biến môi trường), tức khi anh đã đổi kho về riêng tư.
 $KEY = ""
-if ($T)                          { $KEY = $T }
-elseif ($env:SOC_GH_TOKEN)       { $KEY = $env:SOC_GH_TOKEN }
-elseif (-not (Test-Path "$NHA\.git")) {
-    Write-Host "    Dán khoá đọc kho (anh Tuấn Anh đưa, dạng github_pat_...):"
-    $KEY = Read-Host "    khoá"
-}
+if ($T)                    { $KEY = $T }
+elseif ($env:SOC_GH_TOKEN) { $KEY = $env:SOC_GH_TOKEN }
+
+if (-not $KEY) { Xong "kho công khai — không cần khoá" }
 
 if ($KEY) {
     # Hỏi GitHub xem khoá có thật mở được kho này không — SAI THÌ BÁO NGAY, đừng
@@ -94,7 +94,12 @@ if (Test-Path "$NHA\.git") {
     if (-not (Test-Path "$NHA\.git")) {
         # Kho khoá không ăn (máy thiếu Git Credential Manager) — kéo bằng địa chỉ
         # có khoá, xong LAU địa chỉ lại cho sạch ngay.
-        if (-not $KEY) { Chet "Không kéo được mã và cũng không có khoá. Chạy lại kèm khoá đọc." }
+        if (-not $KEY) {
+            Nhac "Không kéo được mã. Kho có thể đã đổi về RIÊNG TƯ."
+            Write-Host "    Dán khoá đọc (anh Tuấn Anh đưa, dạng github_pat_...), hoặc Enter để bỏ:"
+            $KEY = Read-Host "    khoá"
+            if (-not $KEY) { Chet "Không có khoá — dừng. Hỏi anh Tuấn Anh xem kho còn công khai không." }
+        }
         git clone "https://x-access-token:$KEY@github.com/anhlt148/socbongda247.git" $NHA | Out-Null
         git -C $NHA remote set-url origin $KHO
         Xong "đã kéo về (đường dự phòng) — địa chỉ kho đã lau sạch khoá"

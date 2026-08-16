@@ -27,9 +27,6 @@ Rồi nói việc cần làm bằng tiếng Việt bình thường:
 Claude tự đọc [`CLAUDE.md`](CLAUDE.md) — biết kiến trúc, biết luật đã trả giá, biết phải
 chạy cổng hồi quy trước khi báo xong.
 
-> **Kho này RIÊNG TƯ.** Dán link cho một phiên Claude chưa có quyền thì nó chỉ thấy 404 —
-> GitHub giả vờ như kho không tồn tại. Máy mới phải cài bằng khoá đọc trước (bên dưới);
-> **cài xong rồi thì Claude đọc mã ngay tại máy**, không cần link nữa.
 
 ---
 
@@ -38,11 +35,8 @@ chạy cổng hồi quy trước khi báo xong.
 **Windows** — PowerShell (Run as Administrator):
 
 ```powershell
-$T='github_pat_...'; irm -Headers @{Authorization="Bearer $T"} https://raw.githubusercontent.com/anhlt148/socbongda247/main/cai-windows.ps1 | iex
+irm https://raw.githubusercontent.com/anhlt148/socbongda247/main/cai-windows.ps1 | iex
 ```
-
-Kho **riêng tư** — `$T` là khoá chỉ-đọc anh cấp cho máy đó ([cách tạo](HUONG-DAN-MAY-MOI.md#a2-tạo-khoá-đọc-kho-mã--bước-bắt-buộc-thiếu-là-không-cài-được)).
-Không có khoá thì GitHub trả 404, cả lệnh này lẫn `git clone` đều chết.
 
 **macOS**:
 
