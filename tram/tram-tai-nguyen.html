@@ -972,8 +972,57 @@ setInterval(async () => {
       napViec(ma);
     }
     _keoTruoc = tong;
+    veBangBanMoi(r.ban_moi);
   } catch (e) {}
 }, 4000);
+
+// ── DẢI "CÓ BẢN NÂNG CẤP MỚI" (anh hỏi 16/08: "làm gì để máy kia biết mà update") ──
+// Anh nâng cấp ở máy Mac rồi đẩy lên GitHub. Máy phụ không có cách nào biết ngoài việc
+// tự nhớ chạy lệnh — nhớ vài hôm rồi quên, làm cả tuần trên bản cũ mà không hay.
+// Nay trạm tự hỏi GitHub 20 phút/lượt, có bản mới thì dải này hiện ra ngay trên trang.
+// KHÔNG tự cập nhật: cập nhật giữa lúc đang dựng là hỏng việc. Anh bấm mới chạy.
+let _banMoiHien = false;
+function veBangBanMoi(bm){
+  if (!bm) return;
+  let b = document.getElementById('bangBanMoi');
+  if (!bm.co){ if (b) b.remove(); _banMoiHien = false; return; }
+  if (_banMoiHien) return;                       // đã hiện rồi thì đừng vẽ lại mỗi 4 giây
+  _banMoiHien = true;
+  b = document.createElement('div');
+  b.id = 'bangBanMoi';
+  b.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:80;background:#16301f;'
+    + 'border:1px solid #4fbf6a;color:#bff3cd;border-radius:11px;padding:11px 14px;'
+    + 'font:13px/1.5 inherit;box-shadow:0 6px 20px #000a;max-width:330px';
+  b.innerHTML = `<b style="color:#7fdc8a">⬆ Có bản nâng cấp mới</b><br>`
+    + `<span style="font-size:12px;color:#9ec9a9">${bm.so || ''} bản mới trên GitHub`
+    + ` · máy đang chạy ${esc(bm.dang || '')}</span><br>`
+    + `<button id="bmCapNhat" class="vang" style="margin-top:8px;font-size:12px;padding:5px 11px">`
+    + `⬇ Cập nhật ngay</button> `
+    + `<button id="bmDeSau" style="margin-top:8px;font-size:12px;padding:5px 9px">để sau</button>`;
+  document.body.appendChild(b);
+  document.getElementById('bmDeSau').onclick = () => { b.remove(); };
+  document.getElementById('bmCapNhat').onclick = async () => {
+    const nut = document.getElementById('bmCapNhat');
+    nut.disabled = true; nut.textContent = '… đang kéo mã mới';
+    try {
+      const r = await (await fetch('/api/cap-nhat', {method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({khoi_dong_lai: true})})).json();
+      if (r.loi) throw new Error(r.loi);
+      nut.textContent = '… đang khởi động lại trạm';
+      // trạm tự thoát, bộ quản lý dịch vụ bật lại — chờ nó sống rồi nạp lại trang
+      for (let i = 0; i < 40; i++){
+        await new Promise(t => setTimeout(t, 1500));
+        try { await fetch('/api/may', {cache:'no-store'}); location.reload(); return; }
+        catch (e) {}
+      }
+      nut.textContent = 'trạm chưa lên — bật lại tay';
+    } catch (e) {
+      nut.disabled = false; nut.textContent = '⬇ Cập nhật ngay';
+      bao('Chưa cập nhật được — ' + e.message, true);
+    }
+  };
+}
 
 const api = async (d, than) => {
   const r = await fetch(d, than ? {method:'POST', headers:{'Content-Type':'application/json'},

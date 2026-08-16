@@ -174,8 +174,13 @@ if ($LASTEXITCODE -eq 0) { schtasks /Delete /TN $tenTask /F | Out-Null }
 $hd = New-ScheduledTaskAction -Execute $py `
         -Argument "`"$NHA\tram\tram_tai_nguyen.py`"" -WorkingDirectory $NHA
 $kh = New-ScheduledTaskTrigger -AtLogOn
+# TỰ BẬT LẠI KHI TRẠM THOÁT — bắt buộc từ 16/08, khi trạm có nút "Cập nhật ngay":
+# nó kéo mã mới rồi TỰ THOÁT để nạp lại (mã .py chỉ đọc lúc khởi động). Không có mấy
+# dòng này thì trạm chết luôn sau khi cập nhật, người ngồi máy đó không biết đường bật.
+# macOS đã có sẵn nhờ KeepAlive trong plist; Windows phải khai tay.
 $ct = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries `
-        -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)
+        -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) `
+        -RestartCount 999 -RestartInterval ([TimeSpan]::FromMinutes(1))
 Register-ScheduledTask -TaskName $tenTask -Action $hd -Trigger $kh -Settings $ct `
     -Description "Trạm duyệt tài nguyên — Sóc Bóng Đá 247" -Force | Out-Null
 Start-ScheduledTask -TaskName $tenTask

@@ -72,8 +72,23 @@ if (Test-Path $mf) {
     Write-Host "    Khong nho cung khong sao: tram tu bao khi Chrome chay ban cu."
 }
 
-# ── 5. CỔNG KIỂM ────────────────────────────────────────────────────────────
-Buoc 5 "Chay bo kiem hoi quy"
+# ── 5. BẢO ĐẢM TRẠM TỰ BẬT LẠI ──────────────────────────────────────────────
+# Trạm có nút "Cập nhật ngay": nó kéo mã rồi TỰ THOÁT để nạp lại. Task đăng ký trước
+# 16/08 không có thiết lập tự bật lại, nên thoát là chết luôn. Vá tại chỗ, chạy lại
+# nhiều lần cũng không sao.
+Buoc 5 "Bao dam tram tu bat lai sau khi thoat"
+try {
+    $t = Get-ScheduledTask -TaskName "SocBongDa247-Tram" -ErrorAction Stop
+    if ($t.Settings.RestartCount -lt 1) {
+        $t.Settings.RestartCount = 999
+        $t.Settings.RestartInterval = "PT1M"
+        Set-ScheduledTask -TaskName "SocBongDa247-Tram" -Settings $t.Settings | Out-Null
+        Xong "da bat che do tu khoi dong lai"
+    } else { Xong "da co san" }
+} catch { Nhac "khong doc duoc Task SocBongDa247-Tram: $_" }
+
+# ── 6. CỔNG KIỂM ────────────────────────────────────────────────────────────
+Buoc 6 "Chay bo kiem hoi quy"
 python "$NHA\kiem_tram.py"
 
 Write-Host "`nXong. Mo tram: http://localhost:8756`n" -ForegroundColor Green

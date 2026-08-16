@@ -88,6 +88,55 @@ VIEC_JOB = {}                                                 # việc gắp ả
 # 09/08 khuya: kéo lâu không thấy động tĩnh là tưởng lỗi bấm kéo lại lần hai)
 DANG_KEO = {}
 
+# ── CÓ BẢN NÂNG CẤP MỚI KHÔNG (anh hỏi 16/08: "làm gì để máy kia biết mà update") ──
+# Anh sửa ở máy Mac rồi đẩy lên GitHub; máy phụ không có cách nào biết ngoài việc tự
+# nhớ chạy `git pull`. Nhớ được vài hôm rồi quên, làm cả tuần trên bản cũ mà không hay.
+#
+# Trạm tự hỏi GitHub — nhưng hỏi NGẦM, mỗi 20 phút một lượt trong luồng riêng, vì mỗi
+# lượt mất ~1,1 giây đường mạng. Kết quả nằm sẵn trong bộ nhớ, trang đọc tức thì và
+# ĐI NHỜ lượt gọi `/api/dang-keo` vốn đã poll 4 giây/lần — không đẻ thêm đường hỏi mới.
+BAN_MOI = {"co": False, "sha": "", "dang": "", "so": 0, "luc": "", "loi": ""}
+GOC_MA = os.path.dirname(TRAM)
+
+
+def _git(*doi, cho=25):
+    r = subprocess.run(["git", "-C", GOC_MA, *doi], capture_output=True, text=True,
+                       timeout=cho)
+    return (r.stdout or "").strip(), (r.stderr or "").strip(), r.returncode
+
+
+def _do_ban_moi():
+    """Một lượt hỏi GitHub. `ls-remote` chỉ đọc con trỏ nhánh — không tải mã về, nhẹ."""
+    try:
+        dang, _, _ = _git("rev-parse", "HEAD")
+        xa, err, ma = _git("ls-remote", "origin", "refs/heads/main")
+        if ma or not xa:
+            BAN_MOI.update(loi=(err or "không hỏi được GitHub")[:120])
+            return
+        sha = xa.split()[0]
+        co = bool(sha) and sha != dang
+        so = 0
+        if co:
+            # đếm xem lệch bao nhiêu bản — nói "có 3 bản mới" dễ hiểu hơn một mã băm
+            dem, _, m2 = _git("rev-list", "--count", f"HEAD..{sha}")
+            if m2:                                  # chưa có bản ghi ấy ở máy → fetch nhẹ
+                _git("fetch", "--quiet", "origin", "main", cho=60)
+                dem, _, m2 = _git("rev-list", "--count", f"HEAD..{sha}")
+            so = int(dem) if dem.isdigit() else 0
+        BAN_MOI.update(co=co, sha=sha[:7], dang=dang[:7], so=so, loi="",
+                       luc=datetime.now().strftime("%H:%M"))
+    except Exception as e:
+        BAN_MOI.update(loi=str(e)[:120])
+
+
+def _canh_ban_moi():
+    while True:
+        _do_ban_moi()
+        time.sleep(1200)                            # 20 phút một lượt
+
+
+threading.Thread(target=_canh_ban_moi, daemon=True).start()
+
 
 def _keo(ma, loai, so):
     """Đếm việc đang kéo, VÀ đếm luỹ kế số lượt đã xong.
@@ -3410,8 +3459,9 @@ class Tay(BaseHTTPRequestHandler):
                 # trang poll để hiện "⏳ đang kéo x video · y ảnh về kho" (anh đặt 09/08)
                 ma_k = urllib.parse.unquote(d.split("/", 3)[3])
                 with KHOA:
-                    return self._js(dict(DANG_KEO.get(ma_k)
-                                         or {"video": 0, "anh": 0, "xong": 0}))
+                    d_k = dict(DANG_KEO.get(ma_k) or {"video": 0, "anh": 0, "xong": 0})
+                d_k["ban_moi"] = dict(BAN_MOI)     # đi nhờ, khỏi đẻ đường hỏi mới
+                return self._js(d_k)
             if d == "/kho-nha-duyet":
                 return self._tep(os.path.join(TRAM, "kho-nha-duyet.html"))
             if d == "/phong-cach":                       # trang núm vặn chống dập khuôn
@@ -5682,6 +5732,28 @@ class Tay(BaseHTTPRequestHandler):
                                  args=(ma_job, than["ma"], than.get("trang", ""),
                                        than.get("src", ""), than.get("cookies") or [])).start()
                 return self._js({"job": ma_job})
+            if d == "/api/cap-nhat":
+                # ANH BẤM LÀ MÁY TỰ CẬP NHẬT (anh chốt 16/08). Ba chốt an toàn:
+                #  ① có việc đang chạy thì TỪ CHỐI — chuỗi sau Duyệt lời là luồng bên
+                #    trong tiến trình này, khởi động lại giữa chừng là giết nó không kịp
+                #    báo gì (anh đã mất một bài vì chuyện đó 12/08).
+                #  ② `--ff-only`: máy phụ lỡ sửa mã thì DỪNG và nói thẳng, đừng tự trộn.
+                #  ③ pull xong mới thoát; bộ quản lý dịch vụ (launchd trên Mac,
+                #    Task Scheduler trên Windows) bật lại — mã .py chỉ nạp lúc khởi động,
+                #    không thoát thì mã mới nằm trên ổ mà trạm vẫn chạy bản cũ.
+                with KHOA:
+                    ban = [k for k, v in VIEC_JOB.items() if not v.get("xong")]
+                if ban:
+                    return self._js({"loi": f"đang có {len(ban)} việc chạy dở — "
+                                            "chờ xong rồi cập nhật, không thì mất việc"}, 409)
+                ra, err, ma_g = _git("pull", "--ff-only", "origin", "main", cho=180)
+                if ma_g:
+                    return self._js({"loi": (err or ra or "git pull hỏng")[:300]}, 500)
+                _do_ban_moi()
+                if than.get("khoi_dong_lai"):
+                    threading.Timer(1.0, lambda: os._exit(0)).start()
+                return self._js({"ok": True, "ket_qua": ra[-400:],
+                                 "dang": BAN_MOI.get("dang", "")})
             if d == "/api/goi-y":
                 ma_job = f"y{int(time.time() * 1000)}"
                 with KHOA:
