@@ -721,3 +721,31 @@ dựng trang.
 200 ở server nghĩa là **trình duyệt chưa từng hỏi**, không phải "ảnh hỏng". Đọc bảng
 network để thấy nó đang hỏi gì — chính chỗ ấy lộ ra nó hỏi ảnh của lượt cũ. Chỉ nhìn ảnh
 chụp màn hình thì rất dễ kết luận nhầm là "đang tải chậm" rồi bỏ qua.
+
+## Hai đường cùng vẽ một vùng thì đường nào cũng phải vẽ ĐỦ (16/08/2026)
+
+**Bệnh:** nút ⇥ vừa ô dùng được đúng một lần rồi biến mất cả buổi. Không lỗi, không
+crash — chỉ là nó không bao giờ hiện lại.
+
+**Gốc:** vùng giao diện ấy (dòng chữ độ dài + nút) có HAI đường cập nhật. `capNhatMc()`
+vẽ đủ cả hai thứ; `tuDoiThiDenTheo()` chỉ vẽ dòng chữ, bỏ quên cái nút. Mà
+`tuDoiThiDenTheo` lại là đường chạy nhiều nhất (mỗi lần tua video). Nút bị ẩn từ lần
+bấm trước nên cứ nằm ẩn mãi.
+
+**Cách phòng:** một vùng giao diện chỉ nên có MỘT hàm dựng lại nó; đường nào cần đổi dữ
+liệu thì đổi xong gọi hàm ấy, đừng tự vẽ lấy một nửa. Dấu hiệu nhận ra trong lúc đọc mã:
+thấy hai chỗ cùng ghi `textContent`/`style.display` cho cùng một phần tử là đã sai rồi.
+
+**Đi kèm — trạng thái DÍNH nguy hiểm hơn trạng thái sai.** `display:none` không tự hết.
+Thứ gì bị ẩn theo điều kiện thì mọi đường làm điều kiện ấy đổi đều phải tính lại, không
+thì lỗi biểu hiện thành "tính năng biến mất" — kiểu lỗi người dùng khó mô tả nhất và
+lập trình viên khó tin nhất.
+
+## Mã ô phụ "5:0" phải tách NGAY TRONG hàm nhận nó (16/08/2026)
+
+`oGiay("5:0")` làm `+"5:0"` → NaN → trả 0. Hàm gọi nó thì có chỗ tách `:` trước (moClip),
+có chỗ không (capNhatMc, mcVuaO) — nên tính năng chạy đúng ở cảnh chính, chết câm ở cảnh
+phụ. Đúng họ lỗi "cảnh chính có gì cảnh phụ có nấy" mà anh đã dặn bốn lần.
+
+**Luật:** hàm nào nhận mã Ô thì tự chuẩn hoá mã ấy bên trong, đừng bắt nơi gọi nhớ hộ.
+Mười nơi gọi là mười cơ hội quên.

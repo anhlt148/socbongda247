@@ -709,3 +709,30 @@ xem video gốc HTTP 200 · ảnh mồi HTTP 200 · không ô ảnh nào vỡ ·
   *Cổng đầu tiên viết ra lại bắt oan chính lời bình luận giải thích — vì bình luận có
   nhắc chuỗi `loading="lazy"`. Bài học nhỏ: cổng soi chuỗi thì phải soi ĐÚNG thẻ, đừng
   cắt khối theo độ dài.*
+
+## 16/08/2026 — video gốc tự vào kho khi xếp kho + sửa nút ⇥ vừa ô
+
+**① Anh chốt:** "mỗi lần làm xong 1 content có dùng video gốc thì tự đẩy vào kho chung."
+
+Khung đã có sẵn: nút Kho chạy nền `nhap_kho_chu_the.py` (ảnh) và `nhap_kho_video.py
+--doan-bai` (đoạn cắt). Thiếu đúng video GỐC — cùng họ lỗi 14/08, chỉ khác tầng.
+Nay thêm `nhap_goc_bai(viec)` và cho `nhap_doan_bai` gọi nó ở đầu: MỘT đường chạy, nút
+Kho đã gọi sẵn nên không đẻ tiến trình thứ ba. Có thêm cờ `--goc-bai` để chạy riêng.
+Test thật: bài thử có 1 video gốc → chạy đúng lệnh nút Kho gọi → v65 vào kho có nhãn
+mắt máy; chạy lần hai → "BỎ QUA — đã trong kho". Dọn sạch bản thử sau khi kiểm.
+
+**② Anh báo:** nút ⇥ vừa ô "dùng được một lần rồi không thấy hiện nữa". Tái hiện được
+bằng trình duyệt thật, và là HAI lỗi chồng nhau:
+
+- `tuDoiThiDenTheo()` — chạy mỗi lần TUA video, gõ ô Từ, bấm "⏱ Từ =" — tự dựng lại
+  dòng chữ `#mcDai` (nên mất luôn phần "· ô cần 3.9s") và KHÔNG đụng `#mcVuaO`. Nút bị
+  `display:none` từ lần bấm trước, chỉ `capNhatMc()` bật lại được → kẹt ẩn.
+- `oGiay()` nhận mã ô PHỤ "5:0" rồi `+"5:0"` → NaN → trả 0. Ô phụ coi như không có độ
+  dài; chạm vào một cảnh phụ là nút tắt vĩnh viễn tới khi đóng mở lại cửa cắt.
+
+Sửa: `tuDoiThiDenTheo` giao trọn cho `capNhatMc`; `oGiay` tự tách `:` ngay trong nó
+(chứ không bắt từng nơi gọi nhớ tách). Cổng ⑪ canh 8 mục, gồm cả "mọi đường đổi mốc
+đều phải chạy qua capNhatMc".
+
+**Đã kiểm:** ba vòng tua → kéo lệch → bấm vừa ô, cả trên ô chính lẫn ô phụ, nút hiện/ẩn
+đúng từng bước và bấm ăn mọi lần. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp.

@@ -355,6 +355,41 @@ def ban_do_moc(tep_kho, so_moc=14):
     return moc
 
 
+def nhap_goc_bai(viec):
+    """VIDEO GỐC anh gắp về bài → KHO VIDEO CHUNG (anh chốt 16/08: "mỗi lần làm xong 1
+    content có dùng video gốc thì tự đẩy vào kho chung").
+
+    Cùng họ lỗi với đoạn cắt hôm 14/08, chỉ khác tầng: đoạn cắt đã có đường về kho từ
+    hôm ấy, còn BẢN GỐC vẫn nằm chết trong `<bài>/clip/tay/`. Rà 16/08: 38 video gốc,
+    3,4 GB, chỉ 2 bản có mặt trong kho — công tìm và tải mất trắng với mọi bài sau.
+
+    Bản gốc quý hơn đoạn cắt: từ nó cắt được đoạn KHÁC cho bài khác, còn đoạn đã cắt thì
+    chỉ dùng được đúng một khuôn.
+    """
+    thu = os.path.join(viec, "clip", "tay")
+    if not os.path.isdir(thu):
+        return 0
+    kb = {}
+    try:
+        kb = json.load(open(os.path.join(viec, "kich-ban.json"), encoding="utf-8"))
+    except Exception:
+        pass
+    them = 0
+    for p_g in sorted(glob.glob(os.path.join(thu, "tay_*.mp4"))):
+        #   · `kho__v*.mp4` là bản KÉO TỪ KHO về bài — nhập lại là quay vòng (glob trên
+        #     đã loại sẵn vì chúng không mang tiền tố `tay_`)
+        #   · dưới 1,2 MB là mảnh tải hỏng, không phải video
+        try:
+            if os.path.getsize(p_g) < 1_200_000:
+                continue
+        except OSError:
+            continue
+        them += _nhap_tep_video(p_g, tieu_de=kb.get("tieu_de", "")[:70], loai="goc",
+                                nguon_doan=f"video gốc của bài {os.path.basename(viec)}")
+    print(f"— {them} video GỐC mới vào kho video")
+    return them
+
+
 def nhap_doan_bai(viec):
     """ĐOẠN ANH CẮT TRONG BÀI → KHO VIDEO CHUNG (anh bắt 14/08: "video được cắt rồi để
     ghép vào video thì phải cho hiện ở kho-nha-duyet, mấy video cắt gần đây a ko thấy").
@@ -398,9 +433,10 @@ def nhap_doan_bai(viec):
                         except ValueError:
                             kh = None
                     doan.append((ph[1], float(ph[2]), float(ph[3]), kh))
+    n_goc = nhap_goc_bai(viec)         # bản GỐC trước, đoạn cắt sau
     if not doan:
         print("bài này không có đoạn clip nào")
-        return 0
+        return n_goc
     kb = {}
     try:
         kb = json.load(open(os.path.join(viec, "kich-ban.json"), encoding="utf-8"))
@@ -443,7 +479,7 @@ def nhap_doan_bai(viec):
                                     khung_da_cat=khung, goc_kho=g_kho)
         da_co.add(dau)
     print(f"— {them} đoạn mới vào kho video (trong {len(doan)} đoạn của bài)")
-    return them
+    return them + n_goc
 
 
 def tai(url):
@@ -509,6 +545,8 @@ if __name__ == "__main__":
         # hồi tố clip tay của bài = đoạn ĐÃ CẮT → dòng "cat" (video tải link mới là "goc")
         _nhap_tep_video(sys.argv[i + 1],
                         sys.argv[i + 2] if len(sys.argv) > i + 2 else "", loai="cat")
+    elif "--goc-bai" in sys.argv:
+        nhap_goc_bai(DD.tim_viec(sys.argv[sys.argv.index("--goc-bai") + 1]))
     elif "--doan-bai" in sys.argv:
         nhap_doan_bai(DD.tim_viec(sys.argv[sys.argv.index("--doan-bai") + 1]))
         sys.exit(0)

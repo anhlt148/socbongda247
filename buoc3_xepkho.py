@@ -266,13 +266,15 @@ def xep(viec):
     # ĐOẠN CLIP anh cắt tay cũng phải về kho — luật "cảnh chính có gì cảnh phụ có nấy"
     # áp cho TÀI NGUYÊN: ảnh có đường về kho từ 10/08, còn đoạn video thì không, nên
     # anh cắt cả tuần mà kho-nha-duyet vẫn trống trơn (anh bắt 14/08). Chạy nền như ảnh.
+    # Từ 16/08 lượt này gánh CẢ VIDEO GỐC trong `clip/tay/` (anh chốt: "làm xong content
+    # có dùng video gốc thì tự đẩy vào kho chung") — cùng một tiến trình, không đẻ thêm.
     try:
         subprocess.Popen([sys.executable,
                           os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                        "nhap_kho_video.py"), "--doan-bai", viec],
                          stdout=open(os.path.join(viec, "nhap-kho-video.log"), "w"),
                          stderr=subprocess.STDOUT, start_new_session=True)
-        print("  🎬 đang nhập đoạn clip của bài vào kho video (chạy nền)")
+        print("  🎬 đang nhập VIDEO GỐC + đoạn clip của bài vào kho video (chạy nền)")
     except Exception as e:
         print(f"  ⚠ không khởi động được nhập kho video ({e})")
     # CỜ ĐÃ XẾP KHO (11/08): trạm dựa vào cờ này để nhắc "bài dựng xong >1 ngày chưa

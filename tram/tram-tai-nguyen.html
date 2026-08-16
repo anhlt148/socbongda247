@@ -2751,7 +2751,13 @@ let mcSpan = 4;                          // ĐỘ DÀI đoạn đang chọn — 
    bệnh "cảnh 4b/4c không lên hình" (13/08). Cảnh lái clip thì không ai phải nhường ai.
    ĐỀ XUẤT chứ KHÔNG ép: anh vẫn kéo tự do, muốn về đúng ô thì bấm nút "vừa ô". */
 function oGiay(iCau){
-  const c = (dl.cau || []).find(x => x.i === +iCau);
+  // Ô PHỤ mang mã "5:0" — phải TÁCH ở đây, tại chính hàm này, chứ không bắt từng nơi
+  // gọi tự nhớ tách. Bản cũ để `+"5:0"` thành NaN nên trả 0, và mọi thứ dựa vào nó
+  // chết theo: dòng "· ô cần 3.9s" biến mất, nút ⇥ vừa ô ẩn luôn và bấm cũng không ăn.
+  // Đó là lý do anh thấy "dùng được một lần rồi không hiện nữa" (16/08) — chỉ cần chạm
+  // vào một cảnh PHỤ là nút tắt vĩnh viễn cho tới khi mở lại cửa cắt.
+  // Đúng luật "cảnh chính có gì cảnh phụ có nấy": ô phụ cũng cần kéo đoạn cho vừa ô.
+  const c = (dl.cau || []).find(x => x.i === +String(iCau).split(':')[0]);
   if (!c) return 0;
   return (c.den - c.tu) / (c.so_phan || 1);
 }
@@ -2777,9 +2783,18 @@ function mcVuaO(){                       // kéo đoạn về đúng độ dài 
 // cứng 4s, giờ giữ nguyên độ dài đoạn — tua để DỊCH cả cửa sổ cắt, Đến tự tính theo)
 function tuDoiThiDenTheo(){
   $('#mcDen').value = (+$('#mcTu').value + (mcSpan || 4)).toFixed(1).replace(/\.0$/, '');
-  const dai = +$('#mcDen').value - +$('#mcTu').value;
-  $('#mcDai').textContent = `= ${dai.toFixed(1)}s` + (dai < 0.8 ? ' ⚠ tối thiểu 0,8s' : '');
-  $('#mcBo').style.display = clipCanh[$('#mcCau').value] ? '' : 'none';
+  // RỒI ĐỂ capNhatMc() LO PHẦN CÒN LẠI — đừng tự viết lại dòng chữ ở đây.
+  //
+  // Anh báo 16/08: "nút vừa ô dùng được một lần rồi không thấy hiện nữa". Gốc chính là
+  // chỗ này: bản cũ tự dựng lấy `#mcDai` (nên mất luôn phần "· ô cần 3.9s") và KHÔNG
+  // đụng tới `#mcVuaO`. Mà nút ấy bị `display:none` từ lần bấm trước, chỉ capNhatMc()
+  // mới bật lại được — nên sau khi bấm "vừa ô" một lần thì mọi thao tác TUA VIDEO, gõ
+  // ô Từ, bấm "⏱ Từ =" đều để nút kẹt ở trạng thái ẩn, dù đoạn đã lệch ô trở lại.
+  // Đúng lúc anh cần nó nhất: tua tìm khoảnh khắc đẹp rồi muốn kéo về đúng độ dài cảnh.
+  //
+  // Bài học chung: hai đường cùng cập nhật MỘT vùng giao diện thì đường nào cũng phải
+  // cập nhật ĐỦ vùng ấy — nếu không, cái nào chạy sau sẽ để lại nửa vời.
+  capNhatMc();
 }
 $('#mcTu').oninput = tuDoiThiDenTheo;
 $('#mcDen').oninput = capNhatMc;

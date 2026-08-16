@@ -448,6 +448,46 @@ def _get(d):
         return r.status, json.loads(r.read().decode())
 
 
+def tang_vua_o():
+    """NÚT ⇥ VỪA Ô — kéo đoạn cắt về đúng độ dài ô cảnh.
+
+    Anh báo 16/08: "dùng được một lần sau đó không thấy nó hiện nữa khi đang biên tập
+    cùng một content". Tái hiện được, và hoá ra HAI lỗi chồng nhau:
+
+    ① `tuDoiThiDenTheo()` (chạy mỗi lần TUA video, gõ ô Từ, bấm "⏱ Từ =") tự dựng lại
+       dòng chữ `#mcDai` mà KHÔNG đụng tới nút `#mcVuaO`. Nút bị `display:none` từ lần
+       bấm trước, chỉ `capNhatMc()` mới bật lại được — nên nút kẹt ẩn dù đoạn đã lệch ô.
+    ② `oGiay()` nhận mã ô PHỤ dạng "5:0" rồi làm `+"5:0"` → NaN → trả 0. Ô phụ coi như
+       không có độ dài: dòng "· ô cần 3.9s" biến mất, nút tắt vĩnh viễn. Chạm vào một
+       cảnh phụ là hỏng cho tới khi đóng mở lại cửa cắt.
+    """
+    print("⑪ NÚT ⇥ VỪA Ô (cửa cắt clip)")
+    ui = open(os.path.join(TRAM, "tram-tai-nguyen.html"), encoding="utf-8").read()
+
+    i = ui.find("function tuDoiThiDenTheo()")
+    than = ui[i:ui.find("\n}", i)] if i > 0 else ""
+    _bao("capNhatMc();" in than,
+         "tuDoiThiDenTheo giao cho capNhatMc lo trọn vùng (không tự viết nửa vời)")
+    _bao("$('#mcDai').textContent" not in than,
+         "chỉ MỘT nơi dựng dòng chữ độ dài — hai nơi thì cái sau để lại nửa vời")
+
+    j = ui.find("function oGiay(")
+    than_o = ui[j:ui.find("\n}", j)] if j > 0 else ""
+    _bao("String(iCau).split(':')" in than_o,
+         "oGiay hiểu mã Ô PHỤ dạng \"5:0\" (cảnh phụ cũng phải kéo vừa ô)")
+
+    # Mọi đường đổi mốc đều phải chạy qua capNhatMc, không đường nào được đi tắt
+    for ten, dau in (("gõ ô Từ", "$('#mcTu').oninput"),
+                     ("gõ ô Đến", "$('#mcDen').oninput"),
+                     ("bấm ⏱ Từ =", "$('#mcLayTu').onclick"),
+                     ("bấm ⏱ Đến =", "$('#mcLayDen').onclick"),
+                     ("đổi cảnh", "$('#mcCau').onchange")):
+        k = ui.find(dau)
+        doan = ui[k:k + 200] if k > 0 else ""
+        _bao("capNhatMc" in doan or "tuDoiThiDenTheo" in doan,
+             f"{ten} → có cập nhật lại nút vừa ô")
+
+
 def tang_kho_video():
     """KHO VIDEO — bộ lọc gốc/cắt, và video gốc có thật sự vào kho không.
 
@@ -495,6 +535,13 @@ def tang_kho_video():
         so_v = [json.loads(l) for l in open(os.path.join(kv, "so-video.jsonl"),
                                             encoding="utf-8") if l.strip()]
         n_goc = len([m for m in so_v if m.get("loai") == "goc"])
+            # VIDEO GỐC PHẢI TỰ VÀO KHO khi xếp kho (anh chốt 16/08). Cùng họ lỗi với đoạn
+        # cắt 14/08, chỉ khác tầng — đoạn cắt có đường về kho, bản gốc thì không.
+        src_v = open(os.path.join(os.path.dirname(TRAM), "nhap_kho_video.py"),
+                     encoding="utf-8").read()
+        _bao("def nhap_goc_bai(" in src_v, "có hàm nhập VIDEO GỐC của bài vào kho")
+        _bao("n_goc = nhap_goc_bai(viec)" in src_v,
+             "xếp kho kéo theo cả video gốc (một đường chạy, không đẻ tiến trình thứ ba)")
         _bao(n_goc >= 5, f"kho có video GỐC để anh mở ra cắt — {n_goc} bản",
              "kho gần như chỉ có đoạn đã cắt" if n_goc < 5 else "")
         mat = [m for m in so_v if not os.path.exists(os.path.join(kv, m.get("tep", "")))]
@@ -1022,6 +1069,7 @@ if __name__ == "__main__":
     tang_may_phu()          # CÀI được trên máy thứ hai không (15/08)
     tang_dua_ghi()          # nhận nhiều tấm cùng lúc có mất không (16/08)
     tang_kho_video()        # kho video: lọc gốc/cắt + video gốc có vào kho (16/08)
+    tang_vua_o()            # nút ⇥ vừa ô còn hiện lại được không (16/08)
     if sau:
         tang4_luong(ma)
     else:
