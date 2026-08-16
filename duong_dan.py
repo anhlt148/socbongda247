@@ -162,6 +162,11 @@ LOGO = os.path.join(NHAN_DIEN, "logo247-tron-1024.png")
 # giữ bản trên ổ trong (nhanh hơn, nhưng KHÔNG chia sẻ được) thì khai trong may.json.
 KHO_TAI_NGUYEN = _CH.get("kho_tai_nguyen") or \
     _o_data("kho-tai-nguyen", os.path.join(DRIVE, "kho-tai-nguyen"))
+# BẢN SAO KHO TRÊN DRIVE — chỗ `dong_bo_kho.py` soi gương sang. Máy anh giữ kho ở ổ
+# trong cho nhanh (KHO_TAI_NGUYEN), Drive là bản để máy khác đọc; máy nào đã trỏ thẳng
+# KHO_TAI_NGUYEN vào Drive rồi thì để trống, khỏi tự soi gương với chính mình.
+KHO_DRIVE = _CH.get("kho_drive") or (
+    "" if "CloudStorage" in KHO_TAI_NGUYEN else os.path.join(DRIVE, "kho-tai-nguyen"))
 NHAC = os.path.join(KHO_TAI_NGUYEN, "nhac")
 VIDEO_STOCK = os.path.join(KHO_TAI_NGUYEN, "video-stock")
 VIDEO_TRAN = os.path.join(KHO_TAI_NGUYEN, "video-tran")
