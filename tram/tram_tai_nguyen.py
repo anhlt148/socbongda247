@@ -89,9 +89,22 @@ DANG_KEO = {}
 
 
 def _keo(ma, loai, so):
+    """Đếm việc đang kéo, VÀ đếm luỹ kế số lượt đã xong.
+
+    Vì sao cần `xong` (anh báo 16/08 "ảnh 2·3·4 phải bấm tải lại trang mới thấy"):
+    trang poll 4 giây một lần để biết lúc nào kéo xong mà nạp lại kho. Kéo một tấm ảnh
+    chỉ mất chưa tới một giây — poll TRƯỢT HOÀN TOÀN cửa sổ ấy, trang không bao giờ
+    biết có ảnh mới. Video tải lâu nên bắt được; ảnh nhanh nên trượt. Đúng cái "lúc
+    được lúc không".
+
+    Số đang-kéo là ẢNH CHỤP TỨC THỜI — ai cũng có thể nhìn trượt. Số luỹ kế thì KHÔNG
+    trượt được: trang chỉ cần so với lần trước, thấy tăng là biết có hàng mới.
+    """
     with KHOA:
-        d = DANG_KEO.setdefault(ma, {"video": 0, "anh": 0})
+        d = DANG_KEO.setdefault(ma, {"video": 0, "anh": 0, "xong": 0})
         d[loai] = max(0, d[loai] + so)
+        if so < 0:
+            d["xong"] = d.get("xong", 0) + (-so)
 
 
 # ── KHO CHỦ THỂ dùng chung (anh chốt 10/08) ──────────────────────────────────
@@ -3179,7 +3192,8 @@ def _nhan_video_job(ma_job, ma, trang, src, cookies):
     """
     viec = os.path.join(DD.VIEC, ma)
     thu = os.path.join(viec, "clip", "tay")
-    p_ck = None
+    p_ck = p_giu = tep = None
+    n = 0
     _keo(ma, "video", +1)
     try:
         if not os.path.isdir(viec):
@@ -3190,8 +3204,23 @@ def _nhan_video_job(ma_job, ma, trang, src, cookies):
         if not vp.path.strip("/") and not vp.query:
             raise RuntimeError("đang đứng ở TRANG CHỦ / bảng tin — bấm mở video ra trang "
                                "riêng của nó (URL đổi thành /watch, /reel, /video…) rồi hãy gắp")
-        n = 1 + max([int(m.group(1)) for f in glob.glob(os.path.join(thu, "tay_*.mp4"))
-                     if (m := re.search(r"tay_(\d+)", os.path.basename(f)))], default=0)
+        # SỐ THỨ TỰ PHẢI XÍ NGUYÊN TỬ (anh báo 16/08 "video 2 không thấy"). Hai lỗi ở
+        # đây: ① glob chỉ nhìn `tay_*.mp4`, mà video ĐANG TẢI mang tên `tay_02.f399.mp4.part`
+        # — gắp video thứ hai trong lúc video đầu chưa xong thì cả hai cùng ra số 01 rồi
+        # đè nhau; ② đếm-rồi-đặt-tên không bao giờ nguyên tử. Nay nhìn MỌI tệp `tay_*`
+        # (kể cả .part) và xí chỗ bằng O_EXCL — hệ điều hành bảo đảm chỉ một người xí được.
+        n = 0
+        while True:
+            n += 1
+            if glob.glob(os.path.join(thu, f"tay_{n:02d}*")):
+                continue
+            try:
+                os.close(os.open(os.path.join(thu, f"tay_{n:02d}.giu"),
+                                 os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+                break
+            except FileExistsError:
+                continue
+        p_giu = os.path.join(thu, f"tay_{n:02d}.giu")
         tep = os.path.join(thu, f"tay_{n:02d}.mp4")
         if cookies:
             fd, p_ck = tempfile.mkstemp(prefix="soc-ck-", suffix=".txt")
@@ -3275,6 +3304,20 @@ def _nhan_video_job(ma_job, ma, trang, src, cookies):
             VIEC_JOB[ma_job] = {"xong": True, "loi": str(e)}
     finally:
         _keo(ma, "video", -1)
+        # DỌN RÁC: tệp giữ chỗ, và mảnh `.part`/`.f###` của lượt tải hỏng. Không dọn thì
+        # kho đầy mảnh vụn (đã thấy tay_02.f399.mp4.part 10 MB nằm lại ở 2 bài) và lần
+        # sau đếm số bị nhiễu.
+        try:
+            if p_giu and os.path.exists(p_giu):
+                os.remove(p_giu)
+        except OSError:
+            pass
+        if n and not (tep and os.path.exists(tep) and os.path.getsize(tep) > 50000):
+            for rac in glob.glob(os.path.join(thu, f"tay_{n:02d}*")):
+                try:
+                    os.remove(rac)
+                except OSError:
+                    pass
         if p_ck:
             try:
                 os.remove(p_ck)
@@ -3357,7 +3400,8 @@ class Tay(BaseHTTPRequestHandler):
                 # trang poll để hiện "⏳ đang kéo x video · y ảnh về kho" (anh đặt 09/08)
                 ma_k = urllib.parse.unquote(d.split("/", 3)[3])
                 with KHOA:
-                    return self._js(dict(DANG_KEO.get(ma_k) or {"video": 0, "anh": 0}))
+                    return self._js(dict(DANG_KEO.get(ma_k)
+                                         or {"video": 0, "anh": 0, "xong": 0}))
             if d == "/kho-nha-duyet":
                 return self._tep(os.path.join(TRAM, "kho-nha-duyet.html"))
             if d == "/phong-cach":                       # trang núm vặn chống dập khuôn

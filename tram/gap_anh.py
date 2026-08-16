@@ -19,6 +19,7 @@ import os
 import re
 import shutil
 import sys
+import threading
 import urllib.parse
 import urllib.request
 
@@ -127,7 +128,46 @@ def _so_tiep(thu_muc, tien_to):
 # ── VÂN TAY ẢNH chống trùng (anh bắt 09/08: cùng một ảnh vào kho nhiều lần) ──────
 # dHash 64 bit: thu về 9×8 xám, so sáng-tối từng cặp điểm kề — cùng ảnh dù khác cỡ/nén
 # vẫn ra vân gần nhau. Khác ≤6 bit coi là TRÙNG. Sổ van-tay.json nằm cạnh ảnh.
-_VT_KHOA = None
+# KHOÁ THEO THƯ MỤC KHO — anh báo 16/08: "tải ảnh lúc được lúc không, ảnh 2·3·4 phải
+# bấm tải lại trang mới thấy". Tái hiện bằng 6 lượt gửi ĐỒNG THỜI: MẤT SẠCH cả 6 tấm.
+#
+# Gốc: `_so_tiep()` đặt tên bằng cách ĐẾM TỆP ĐANG CÓ. Sáu luồng cùng đếm ra `n00`,
+# cùng ghi đè một tệp, rồi khâu chống trùng thấy "ảnh của luồng khác" nên `os.remove`
+# — xoá mất tệp mà luồng kia đang đọc dở. Sổ vân tay cũng đọc-sửa-ghi không khoá nên
+# mất mục theo. Ba lỗi chồng nhau, ra đúng cái "chập chờn".
+#
+# Trạm là MỘT tiến trình nhiều luồng (ThreadingHTTPServer) nên Lock theo thư mục là đủ
+# và rẻ. Chống tiến trình KHÁC (script chạy tay) thì thêm O_EXCL lúc xí tên — xem _dat_cho.
+_KHOA_KHO = {}
+_KHOA_SO = threading.Lock()
+
+
+def _khoa_thu_muc(thu_muc):
+    """Mỗi thư mục kho một khoá riêng — hai bài khác nhau không phải chờ nhau."""
+    k = os.path.abspath(thu_muc)
+    with _KHOA_SO:
+        if k not in _KHOA_KHO:
+            _KHOA_KHO[k] = threading.Lock()
+        return _KHOA_KHO[k]
+
+
+def _dat_cho(thu_muc, tien_to, so_luong):
+    """XÍ TRƯỚC tên tệp — tạo tệp rỗng ngay, để không ai giành mất.
+
+    `O_CREAT | O_EXCL` là lời hứa của hệ điều hành: chỉ MỘT người tạo được tệp ấy, kẻ
+    còn lại nhận FileExistsError. Nhờ vậy hai TIẾN TRÌNH khác nhau cũng không thể cùng
+    xí một tên — thứ mà đếm-rồi-đặt-tên không bao giờ bảo đảm nổi.
+    """
+    ra, n = [], _so_tiep(thu_muc, tien_to)
+    while len(ra) < so_luong:
+        p = os.path.join(thu_muc, f"{tien_to}{n:02d}.jpg")
+        try:
+            os.close(os.open(p, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+            ra.append(p)
+        except FileExistsError:
+            pass
+        n += 1
+    return ra
 
 
 def _dhash(im):
@@ -354,7 +394,6 @@ def _tai_mot(u, thu_muc, ten, referer="", so_vt=None, khoa=None, crop=None,
 
 
 def _khoa_gia():
-    import threading
     return threading.Lock()
 
 
@@ -472,15 +511,16 @@ def _ghi_so(thu_muc, ds):
 def _thu_hoach(cap, thu_muc, tien_to, can, chung, referer="", bao_tien=None, crops=None):
     """cap = [(url, w_bao, h_bao)] → tải song song → qua cổng → ghi sổ → trả danh sách."""
     os.makedirs(thu_muc, exist_ok=True)
-    dau = _so_tiep(thu_muc, tien_to)
     # Tải GẤP ĐÔI số cần (trước là gấp ba). Đo 05/08: 54 tấm tải về, 47 tấm qua lọc kích
     # thước, rồi soi watermark cả 47 mà chỉ giữ 18 — 29 tấm bị soi xong mới vứt đi.
     # Gấp đôi vẫn thừa đủ để bù số rụng ở cổng, mà bớt được một phần ba thời gian soi.
     lay = cap if chung.get("tu_chon") else cap[:can * 2]   # anh đã chỉ thì lấy đủ, không cắt
     # cap có thể là (u,w,h) hoặc (u,w,h,caption) — caption đi kèm để ghi vào sổ
-    viec = [(x[0], f"{tien_to}{dau + i:02d}.jpg") for i, x in enumerate(lay)]
+    # XÍ TÊN NGUYÊN TỬ thay cho đếm-rồi-đặt-tên (cùng lỗi 16/08 với nhan_tep): hai job
+    # tìm ảnh chạy song song trên cùng một bài từng đè lên tệp của nhau.
+    viec = [(x[0], os.path.basename(t))
+            for x, t in zip(lay, _dat_cho(thu_muc, tien_to, len(lay)))]
     _ct_theo_url = {x[0]: (x[3] if len(x) > 3 else "") for x in lay}
-    import threading
     so_vt, p_vt = _nap_van_tay(thu_muc)
     so_loi, p_loi = _nap_van_loi(thu_muc)         # vân LÕI đi kèm (anh hỏi 11/08)
     khoa_vt = threading.Lock()
@@ -490,6 +530,15 @@ def _thu_hoach(cap, thu_muc, tien_to, can, chung, referer="", bao_tien=None, cro
                                                    so_vt, khoa_vt, crops.get(t[0]),
                                                    so_loi),
                                 viec) if x]
+    # Tên đã xí mà tấm rốt cuộc bị loại (ảnh nhỏ, tải hỏng, trùng) thì để lại một tệp
+    # RỖNG nằm trong kho — trang trạm sẽ bày ra một ô ảnh vỡ. Dọn ngay.
+    for _, ten_x in viec:
+        px = os.path.join(thu_muc, ten_x)
+        try:
+            if os.path.exists(px) and os.path.getsize(px) == 0:
+                os.remove(px)
+        except OSError:
+            pass
     _luu_van_tay(so_vt, p_vt)
     _luu_van_tay(so_loi, p_loi)
 
@@ -642,7 +691,15 @@ TIEN_TO["nguoi"] = "n"
 def nhan_tep(ds_tep, thu_muc):
     """ds_tep = [(tên gốc, bytes)] → lưu vào kho, soi, trả danh sách kèm nhãn cảnh báo."""
     os.makedirs(thu_muc, exist_ok=True)
-    dau = _so_tiep(thu_muc, "n")
+    # CẢ KHỐI nằm trong một khoá: xí tên · ghi ảnh · soi trùng · ghi sổ vân tay. Tách nhỏ
+    # ra thì vẫn hở — khâu soi trùng phải thấy đúng những gì khâu ghi vừa làm, không thì
+    # nó tưởng ảnh của luồng khác là "bản trùng" rồi xoá đi (đúng lỗi 16/08).
+    with _khoa_thu_muc(thu_muc):
+        return _nhan_tep_trong_khoa(ds_tep, thu_muc)
+
+
+def _nhan_tep_trong_khoa(ds_tep, thu_muc):
+    cho = _dat_cho(thu_muc, "n", len(ds_tep))      # xí đủ tên NGAY, không ai giành được
     so_vt, p_vt = _nap_van_tay(thu_muc)            # chống trùng (anh bắt 09/08)
     so_loi, p_loi = _nap_van_loi(thu_muc)          # + vân LÕI (anh hỏi 11/08)
     ra, i = [], 0
@@ -650,8 +707,8 @@ def nhan_tep(ds_tep, thu_muc):
         ten_goc, du_lieu = muc[0], muc[1]
         u_goc = muc[2] if len(muc) > 2 else ""
         trang = muc[3] if len(muc) > 3 else ""
-        ten = f"n{dau + i:02d}.jpg"
-        p = os.path.join(thu_muc, ten)
+        p = cho[i]
+        ten = os.path.basename(p)
         try:
             open(p, "wb").write(du_lieu)
             im = Image.open(p)
@@ -662,7 +719,8 @@ def nhan_tep(ds_tep, thu_muc):
             h_loi = _dhash_loi(im)               # vân LÕI: bắt cả bản đã cắt mép
             cu = _tim_trung(so_vt, h_vt, so_loi, h_loi)
             if cu:
-                os.remove(p)
+                os.remove(p)                       # trả lại chỗ đã xí
+                i += 1                             # nhưng KHÔNG tái dùng tên ấy cho tấm sau
                 ra.append({"tep": ten_goc, "loi": f"TRÙNG với {cu} đã có trong kho — bỏ qua"})
                 continue
             so_vt[ten] = h_vt
@@ -670,7 +728,8 @@ def nhan_tep(ds_tep, thu_muc):
             im.thumbnail((2200, 2200), Image.LANCZOS)
             im.save(p, quality=92)
         except Exception as e:
-            os.path.exists(p) and os.remove(p)
+            os.path.exists(p) and os.remove(p)      # trả lại chỗ đã xí
+            i += 1
             ra.append({"tep": ten_goc, "loi": f"không đọc được ảnh: {e}"})
             continue
         i += 1

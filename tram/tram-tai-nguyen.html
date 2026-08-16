@@ -923,7 +923,10 @@ function bao(t, xau, giu){
 // ── băng "ĐANG KÉO VỀ KHO" (anh đặt 09/08 khuya): extension kéo video/ảnh lâu mà trang
 // im lìm là tưởng lỗi bấm kéo lại lần hai — poll 4s, đang kéo thì hiện đếm, xong thì
 // ting + tự nạp lại kho cho ảnh/clip mới hiện ra ngay
-let _keoTruoc = 0;
+// `_xongTruoc` = số lượt đã kéo xong lần poll trước. Dùng số LUỸ KẾ chứ không dựa vào
+// việc bắt trúng lúc "đang kéo": kéo một tấm ảnh xong trong chưa tới một giây, poll 4
+// giây trượt sạch — đó là lý do ảnh 2·3·4 phải F5 mới thấy (anh báo 16/08).
+let _keoTruoc = 0, _xongTruoc = null;
 setInterval(async () => {
   if (!ma) return;
   try {
@@ -943,12 +946,19 @@ setInterval(async () => {
         + [r.video ? `${r.video} video` : '', r.anh ? `${r.anh} ảnh` : '']
           .filter(Boolean).join(' · ')
         + ' — đừng bấm kéo lại';
-    } else {
-      if (b) b.remove();
-      if (_keoTruoc > 0){                          // vừa kéo XONG → báo + làm mới kho
-        bao('✅ Đã kéo xong về kho — ảnh/clip mới đã hiện trong kho');
-        napViec(ma);
-      }
+    } else if (b) {
+      b.remove();
+    }
+    // SO SỐ LUỸ KẾ — không trượt dù việc kéo nhanh cỡ nào. Lần poll đầu chỉ ghi nhận
+    // mốc, không nạp lại (mở trang ra mà tự nhảy một cái là khó chịu).
+    const xong = r.xong || 0;
+    if (_xongTruoc === null){
+      _xongTruoc = xong;
+    } else if (xong > _xongTruoc){
+      const them = xong - _xongTruoc;
+      _xongTruoc = xong;
+      bao(`✅ ${them} thứ vừa về kho — đã hiện trong kho, khỏi tải lại trang`);
+      napViec(ma);
     }
     _keoTruoc = tong;
   } catch (e) {}

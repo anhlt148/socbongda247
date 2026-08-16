@@ -25,11 +25,15 @@ Thêm bẫy mới học được thì viết thẳng vào đây — đó là cá
 """
 import ast
 import builtins
+import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
+import threading
 import urllib.error
 import urllib.request
 
@@ -444,6 +448,68 @@ def _get(d):
         return r.status, json.loads(r.read().decode())
 
 
+def tang_dua_ghi():
+    """NHẬN NHIỀU TẤM CÙNG LÚC CÓ MẤT KHÔNG — chạy thật, không đọc mã đoán.
+
+    Vì sao thành cổng: 16/08 anh báo "tải ảnh lúc được lúc không, ảnh 2·3·4 phải bấm
+    tải lại trang mới thấy". Bắn 6 lượt ĐỒNG THỜI vào cửa nhận: MẤT SẠCH cả 6 tấm.
+    Gốc là `_so_tiep()` đặt tên bằng cách ĐẾM TỆP ĐANG CÓ — sáu luồng cùng ra `n00`,
+    đè nhau, rồi khâu chống trùng `os.remove` mất tệp luồng khác đang đọc dở.
+
+    Cổng này gọi thẳng `gap_anh.nhan_tep` từ 6 luồng nên chạy được cả khi trạm tắt,
+    và chạy được trên máy Windows.
+    """
+    print("⑨ NHẬN NHIỀU TẤM CÙNG LÚC (đua ghi)")
+    goc = os.path.dirname(os.path.abspath(__file__))
+    sys.path.insert(0, os.path.join(goc, "tram"))
+    try:
+        import gap_anh
+        from PIL import Image, ImageDraw
+    except ImportError as e:
+        _bao(False, "nạp được gap_anh để thử", str(e))
+        return
+
+    def anh(i):
+        im = Image.new("RGB", (1920, 1080), (255, 255, 255))
+        d = ImageDraw.Draw(im)
+        for o in range(12):                     # bàn cờ 4×3 theo bit của i — khác BỐ CỤC
+            if (i * 7 + 1) >> (o % 8) & 1:      # THÔ, đúng thứ vân tay dHash nhìn
+                x, y = (o % 4) * 480, (o // 4) * 360
+                d.rectangle([x, y, x + 479, y + 359], fill=(10, 10, 10))
+        b = io.BytesIO()
+        im.save(b, "JPEG", quality=92)
+        return b.getvalue()
+
+    thu = tempfile.mkdtemp(prefix="soc-kiem-dua-")
+    try:
+        N = 6
+        lo = [threading.Thread(target=lambda i=i: gap_anh.nhan_tep(
+            [(f"thu{i}.jpg", anh(i), "", "")], thu)) for i in range(N)]
+        [t.start() for t in lo]
+        [t.join() for t in lo]
+        con = sorted(f for f in os.listdir(thu) if f.endswith(".jpg"))
+        _bao(len(con) == N, f"{N} tấm gửi cùng lúc thì còn đủ {N}",
+             f"chỉ còn {len(con)}: {con}" if len(con) != N else "")
+        _bao(len(set(con)) == len(con), "không tấm nào trùng tên tấm khác")
+        p_vt = os.path.join(thu, "van-tay.json")
+        vt = json.load(open(p_vt, encoding="utf-8")) if os.path.exists(p_vt) else {}
+        _bao(len(vt) == len(con), "sổ vân tay khớp số ảnh (không bị đè)",
+             f"sổ {len(vt)} ≠ ảnh {len(con)}" if len(vt) != len(con) else "")
+    finally:
+        shutil.rmtree(thu, ignore_errors=True)
+
+    # Đường VIDEO cùng họ bệnh: số thứ tự tính bằng glob. Kiểm bằng chuỗi vì tải video
+    # thật thì chậm và phụ thuộc mạng.
+    src = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
+    _bao("O_CREAT | os.O_EXCL" in src, "video: xí số thứ tự nguyên tử (O_EXCL)")
+    _bao('glob.glob(os.path.join(thu, f"tay_{n:02d}*"))' in src,
+         "video: đếm số nhìn CẢ tệp đang tải (.part), không chỉ .mp4")
+    _bao('d["xong"] = d.get("xong", 0)' in src,
+         "bộ đếm luỹ kế để trang biết có hàng mới (poll không trượt)")
+    ui = open(os.path.join(TRAM, "tram-tai-nguyen.html"), encoding="utf-8").read()
+    _bao("_xongTruoc" in ui, "trang nạp lại kho theo số luỹ kế, không rình trạng thái tức thời")
+
+
 def tang_may_phu():
     """CÀI ĐƯỢC TRÊN MÁY PHỤ KHÔNG — kiểm tài liệu và bộ cài có khớp thực tế không.
 
@@ -851,6 +917,7 @@ if __name__ == "__main__":
     tang_extension()
     tang_windows()          # chạy được trên máy thứ hai không (15/08)
     tang_may_phu()          # CÀI được trên máy thứ hai không (15/08)
+    tang_dua_ghi()          # nhận nhiều tấm cùng lúc có mất không (16/08)
     if sau:
         tang4_luong(ma)
     else:

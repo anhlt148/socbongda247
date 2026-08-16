@@ -613,3 +613,34 @@ khai realtime) và kho có BRAIN 50 KB + nhật ký nội bộ.
 
 **Đã kiểm:** `kiem_tram.py --sau` ĐẠT HẾT. **CHƯA thử thật trên máy Windows** (không
 cài được pwsh trên Mac — thiếu mật khẩu sudo), nên cú pháp PowerShell chỉ mới rà mắt.
+
+## 16/08/2026 — extension tải ảnh/video CHẬP CHỜN: ba lỗi đua ghi chồng nhau
+
+**Anh báo:** "tải ảnh, video lúc được lúc không · video 2 không thấy dù có tiếng kêu ·
+ảnh 2·3·4 phải bấm tải lại trang mới thấy".
+
+**Tái hiện:** bắn 6 lượt `/api/tai-len` ĐỒNG THỜI vào một bài thử → **mất sạch cả 6 tấm**.
+
+**Ba gốc, chồng lên nhau:**
+1. `gap_anh._so_tiep()` đặt tên bằng cách ĐẾM TỆP ĐANG CÓ → 6 luồng cùng ra `n00.jpg`,
+   cùng ghi đè; khâu chống trùng thấy "ảnh của luồng khác" nên `os.remove` → xoá mất tệp
+   luồng kia đang `Image.open` dở → "không đọc được ảnh". Sổ vân tay cũng đọc-sửa-ghi
+   không khoá nên mất mục theo.
+2. `_nhan_video_job` đếm `tay_*.mp4` — mà video ĐANG TẢI mang tên `tay_02.f399.mp4.part`,
+   glob không thấy → gắp video 2 lúc video 1 chưa xong thì cả hai cùng ra số 01. Thêm:
+   lượt tải hỏng KHÔNG dọn `.part` (đã thấy 2 mảnh 10 MB nằm lại ở 2 bài).
+3. Trang nạp lại kho bằng cách RÌNH trạng thái "đang kéo", poll 4 giây. Nhận một tấm ảnh
+   xong trong chưa tới một giây → poll trượt sạch → trang không bao giờ biết có ảnh mới.
+   Video lâu nên bắt được, ảnh nhanh nên trượt — đúng cái "lúc được lúc không".
+
+**Đã sửa:**
+- `gap_anh.py`: `_khoa_thu_muc()` (Lock theo thư mục) + `_dat_cho()` xí tên bằng
+  `O_CREAT|O_EXCL`; `nhan_tep` chạy trọn trong khoá; `_thu_hoach` dùng chung cơ chế xí
+  tên; dọn tệp giữ chỗ khi tấm bị loại. Gỡ luôn 2 chỗ `import threading` TRONG THÂN HÀM.
+- `tram_tai_nguyen.py`: video xí số bằng O_EXCL, glob nhìn `tay_NN*` mọi đuôi, dọn rác
+  `.part` ở `finally`; khai sẵn `p_giu/tep/n` để finally không NameError khi job lỗi sớm.
+- `_keo()` đếm LUỸ KẾ `xong`; UI so số luỹ kế thay vì rình trạng thái tức thời.
+- `kiem_tram.py` tầng ⑨ `tang_dua_ghi()`: bắn 6 luồng thật vào `nhan_tep`, đếm lại.
+
+**Đã kiểm:** test lại 6/6 tấm về đủ, tên riêng biệt, sổ vân tay khớp. `kiem_tram.py --sau`
+ĐẠT HẾT. Dọn 2 mảnh `.part` tồn đọng.

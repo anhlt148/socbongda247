@@ -625,3 +625,37 @@ có hạn, thu hồi bằng một cú bấm. Cất vào kho khoá của hệ đi
 chình ình trong `.git/config` và lộ ra mỗi lần `git remote -v`.
 
 **Không tự tạo khoá hộ anh** — đó là chìa khoá tài khoản anh, anh tự bấm, em chỉ đường.
+
+## Đếm-rồi-đặt-tên là lỗi đua ghi kinh điển (16/08/2026)
+
+**Bệnh:** `n = số tệp đang có; ghi tệp thứ n` — chạy một mình thì đúng, chạy song song thì
+hai người cùng ra một số rồi đè nhau. Ở hệ này nó gây ra "extension tải ảnh lúc được lúc
+không" suốt nhiều ngày, và nặng hơn: khâu chống trùng tưởng ảnh của luồng khác là bản
+trùng nên `os.remove` — xoá mất tệp người kia đang đọc.
+
+**Cách phòng — hai lớp, dùng cả hai:**
+- **Trong tiến trình**: `threading.Lock` theo THƯ MỤC (không phải khoá toàn cục — hai bài
+  khác nhau đừng bắt chờ nhau). Bọc TRỌN khối đọc sổ → ghi tệp → soi trùng → ghi sổ; tách
+  nhỏ ra là vẫn hở, vì khâu soi phải thấy đúng thứ khâu ghi vừa làm.
+- **Giữa các tiến trình**: xí tên bằng `os.open(p, O_CREAT | O_EXCL)`. Đây là lời hứa của
+  hệ điều hành — chỉ MỘT người tạo được, kẻ kia nhận `FileExistsError`. Script chạy tay
+  ngoài trạm cũng không giành được.
+- Xí chỗ thì phải **TRẢ chỗ**: tấm bị loại (trùng, hỏng, quá nhỏ) mà không xoá tệp rỗng
+  thì kho đầy ô ảnh vỡ.
+
+**Glob phải nhìn cả tệp ĐANG LÀM DỞ.** `tay_*.mp4` không khớp `tay_02.f399.mp4.part` —
+việc đang chạy trở nên vô hình với việc kế tiếp. Đếm số thì glob theo TIỀN TỐ (`tay_02*`),
+đừng theo đuôi.
+
+## Đừng RÌNH trạng thái tức thời — hãy đếm LUỸ KẾ (16/08/2026)
+
+**Bệnh:** trang poll 4 giây hỏi "có đang kéo gì không", thấy chuyển từ >0 về 0 thì nạp lại
+kho. Việc kéo một tấm ảnh xong trong chưa tới một giây → poll trượt hoàn toàn → trang
+không bao giờ biết có ảnh mới → anh phải F5. Việc CÀNG NHANH càng dễ trượt, nên nó biểu
+hiện thành "chập chờn" chứ không phải hỏng hẳn — loại lỗi khó tin nhất.
+
+**Gốc:** trạng thái tức thời là ảnh chụp; ai cũng có thể nhìn trượt giữa hai lần chụp.
+
+**Cách phòng:** phía máy chủ giữ một **số đếm luỹ kế** (đã xong bao nhiêu lượt từ lúc chạy),
+phía trang nhớ số lần trước và so. Số luỹ kế không trượt được — dù việc nhanh cỡ nào, dù
+poll thưa cỡ nào. Áp cho mọi thứ kiểu "báo cho trang biết có hàng mới".
