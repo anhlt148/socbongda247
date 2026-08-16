@@ -762,3 +762,32 @@ báo đúng "1 bản mới · máy đang chạy 0a3499e" → dải hiện trên 
 trạm tự thoát → launchd bật lại → máy về đúng bản mới → trạm báo "đã là bản mới nhất".
 Chốt an toàn: bật một việc chạy nền rồi gọi cửa cập nhật → HTTP 409 kèm lời giải thích.
 Bản thử đã gỡ khỏi GitHub. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp; cổng ⑫ 10 mục.
+
+## 16/08/2026 — chuỗi máy tự chạy xong, trang tự nạp lại
+
+**Anh bắt:** "kiểm tra bước này báo gán nháp tài nguyên rồi mà không thấy? phải tải lại
+trang mới có. em set up xong thì tự tải lại trang đi."
+
+**HAI gốc:**
+① Người canh job (`theoDoiSauDuyet`) chỉ sống trong TRANG ĐÃ BẤM Duyệt lời. Anh reload,
+   mở bài khác rồi quay lại, hay mở trạm ở tab khác — mất người canh, chuỗi xong chẳng
+   ai gọi `napViec`. Vòng đồng hồ vẫn poll nhưng chỉ nhìn "có job đang chạy không" —
+   ảnh chụp tức thời, poll 6 giây rất dễ trượt đúng khoảnh khắc job kết thúc.
+② **Sổ `VIEC_JOB_MA` (job này của bài nào) chỉ được 4/21 đường tạo job ghi vào.** Lập
+   14/08 để thanh %% sống lại sau reload, vá vài đường rồi bỏ quên 17 đường còn lại —
+   chúng đẻ job VÔ DANH: trạm biết có việc chạy mà không biết của bài nào.
+
+**Sửa:** ghi sổ ở **MỘT CỬA** — `do_POST` nhớ `ma` của thân yêu cầu, `_js()` thấy phản
+hồi mang mã job thì ghi luôn. Vá 21 chỗ rời rạc thì chắc sót, và đường thứ 22 thêm sau
+này lại quên. Rồi `/api/dong-ho` trả `job_xong` (SỐ LUỸ KẾ), trang so với lần trước,
+thấy tăng là `napViec` — không trượt được dù poll thưa cỡ nào.
+
+**Tự soi ra hai lỗ hổng của chính bản vá, bịt trước khi nó cắn:**
+- `/api/dong-ho` cũng trả khoá `"job"` nhưng là DICT mô tả bước đang chạy → lọt vào cửa
+  ghi sổ là dùng dict làm khoá từ điển. Chặn bằng `isinstance(jid, str)`.
+- Kết nối keep-alive dùng lại một handler cho nhiều lượt, nên `_ma_bai_than` của lượt
+  POST trước còn dính sang lượt GET sau. Tách `_chay_post()` + `finally` dọn sạch.
+
+**Đã kiểm:** chạy chuỗi thật rồi KHÔNG đụng gì thêm → trang tự nạp lại 3 lần (nhiều
+đường cùng báo, chấp nhận được) rồi ĐỨNG YÊN 20 giây — không vòng lặp. Gọi xen GET liên
+tục lúc job đang chạy: sổ vẫn đúng. Cổng ⑬ 8 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần.

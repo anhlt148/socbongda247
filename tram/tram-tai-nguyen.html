@@ -836,6 +836,7 @@ let dsViec = [], ma = null, dl = null, khoDau = null;
    "muốn biết 1 video sản xuất trong bao lâu, kể từ lúc bấm tạo việc đến khi đẩy xong
    lên Drive". Server giữ MỐC, trình duyệt lo phần đếm từng giây — hỏi lại server mỗi
    15 giây thôi, đủ bắt mốc mới mà không quấy trạm. */
+let _jobXongTruoc = null;      // số job đã xong lần poll trước (16/08)
 let dhMoc = {}, dhChot = 0, dhChang = '';
 const DH_TEN = {mo_viec:'mở việc', duyet_loi:'anh duyệt lời',
   chuoi_xong:'máy tự chạy', duyet_anh:'anh duyệt ảnh',
@@ -861,6 +862,21 @@ async function dhNap(){
     // thanh % SỐNG LẠI sau reload (anh bắt 14/08): server quét job đang chạy của bài
     if (r.job) dhTienDo(r.job.buoc, r.job.da, r.job.tong);
     else if (!dhChot) dhTienDo(null);
+    // CHUỖI MÁY TỰ CHẠY XONG → NẠP LẠI KHO NGAY (anh bắt 16/08: "báo gán nháp tài
+    // nguyên rồi mà không thấy, phải tải lại trang mới có").
+    // So SỐ LUỸ KẾ chứ không rình "job biến mất" — poll 6 giây rất dễ trượt đúng khoảnh
+    // khắc job kết thúc, mà trượt một lần là mất luôn, không có lần thứ hai.
+    // Người canh cũ (theoDoiSauDuyet) chỉ sống trong trang đã bấm Duyệt lời; đây là
+    // lưới an toàn cho mọi trường hợp còn lại: reload, mở bài khác rồi quay về, mở trạm
+    // trên máy thứ hai.
+    const jx = r.job_xong || 0;
+    if (_jobXongTruoc === null){
+      _jobXongTruoc = jx;                        // lần đầu chỉ ghi mốc, đừng nhảy một cái
+    } else if (jx > _jobXongTruoc){
+      _jobXongTruoc = jx;
+      await napViec(ma);
+      bao('✓ Máy chạy xong — ảnh và thẻ đã hiện, khỏi tải lại trang');
+    }
   }catch(e){ $('#dHo').style.display = 'none'; }
 }
 function dhVe(){
@@ -1077,6 +1093,10 @@ async function napViec(m){
   // ĐỔI BÀI → XOÁ SẠCH lịch sử undo — không thì ⌘Z áp bản đồ ảnh của BÀI CŨ đè lên
   // bài mới (đúng họ tai nạn gán đè bài f04608 hôm 10/08). Lịch sử sống theo TỪNG bài.
   if (typeof lsChon !== 'undefined' && ma !== m){ lsChon = []; lsVt = -1; }
+  // Số job đã xong đếm THEO BÀI — đổi bài mà giữ số cũ thì bài mới có số khác hẳn,
+  // trang tưởng "vừa chạy xong" rồi tự nạp lại một cách vô cớ. Đặt về null để lượt
+  // poll đầu của bài mới chỉ ghi mốc.
+  if (ma !== m) _jobXongTruoc = null;
   ma = m; dl = await api('/api/viec/' + encodeURIComponent(m)); dhNap();
   if (dl.loi) return bao('Lỗi nạp việc: ' + dl.loi, true);
   banDo = Object.assign({}, dl.ban_do);

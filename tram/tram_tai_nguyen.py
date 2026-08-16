@@ -3404,6 +3404,20 @@ class Tay(BaseHTTPRequestHandler):
         self.wfile.write(than)
 
     def _js(self, d, ma=200):
+        # xem chú thích ở do_POST: job nào cũng phải khai mình thuộc bài nào
+        try:
+            jid = d.get("job") if isinstance(d, dict) else None
+            bai = getattr(self, "_ma_bai_than", "")
+            # CHỈ chuỗi mã job mới ghi sổ. `/api/dong-ho` cũng trả khoá "job" nhưng là
+            # một DICT mô tả bước đang chạy — lọt vào đây là dùng dict làm khoá từ điển.
+            # Và nó là đường GET: với kết nối keep-alive, cùng một handler phục vụ nhiều
+            # lượt, nên `_ma_bai_than` của lượt POST trước còn dính lại. Hai chỗ hở này
+            # gặp nhau thì ghi sổ nhầm job cho bài khác — em tự bịt trước khi nó cắn.
+            if isinstance(jid, str) and jid and bai:
+                with KHOA:
+                    VIEC_JOB_MA[jid] = bai
+        except Exception:
+            pass
         self._tra(ma, "application/json; charset=utf-8",
                   json.dumps(d, ensure_ascii=False).encode())
 
@@ -4116,15 +4130,31 @@ class Tay(BaseHTTPRequestHandler):
                 # "không biết có đang chạy hay không") — quét VIEC_JOB tìm job chưa
                 # xong mang mã bài này, trang vẽ lại thanh % từ đây.
                 j_dh = None
+                # SỐ JOB ĐÃ XONG của bài — đếm LUỸ KẾ, không phải trạng thái tức thời.
+                # Anh báo 16/08: chuỗi máy tự chạy (gợi thẻ · tìm ảnh · xếp kho · gán
+                # nháp) báo xong rồi mà cảnh vẫn trống, phải F5 mới thấy ảnh.
+                # Gốc: người canh job (`theoDoiSauDuyet`) chỉ sống trong trang đã bấm
+                # Duyệt lời. Anh reload hay mở bài khác giữa chừng là mất người canh —
+                # chuỗi chạy xong chẳng ai gọi nạp lại kho.
+                # Vòng đồng hồ thì vẫn poll đều, nhưng nó chỉ nhìn "có job đang chạy
+                # không" — mà đó là ảnh chụp tức thời, poll 6 giây rất dễ trượt đúng lúc
+                # job kết thúc. Số luỹ kế thì không trượt được: trang so với lần trước,
+                # thấy tăng là biết vừa có chuỗi chạy xong. (Cùng bài học với bộ đếm
+                # `xong` của DANG_KEO sáng nay.)
+                xong_dh = 0
                 with KHOA:
                     for jid, jv in VIEC_JOB.items():
-                        if not jv.get("xong") and VIEC_JOB_MA.get(jid) == ma_dh:
+                        if VIEC_JOB_MA.get(jid) != ma_dh:
+                            continue
+                        if jv.get("xong"):
+                            xong_dh += 1
+                        else:
                             j_dh = {"buoc": jv.get("buoc", ""),
                                     "da": jv.get("da"), "tong": jv.get("tong")}
                 return self._js({"co": True, "moc": DH.doc(v_dh),
                                  "tong_giay": tk_dh["tong_giay"],
                                  "cac_buoc": tk_dh["cac_buoc"], "text": tk_dh["text"],
-                                 "job": j_dh})
+                                 "job": j_dh, "job_xong": xong_dh})
             if d == "/api/nhac-nho":
                 # 📥📦 HAI LỖ HỔNG IM LẶNG của luồng nhập kho (anh duyệt vá 11/08):
                 # ① ảnh extension tải về nằm ngăn chờ-nhãn mà không ai nhắc ở trạm chính;
@@ -4300,6 +4330,21 @@ class Tay(BaseHTTPRequestHandler):
             than = json.loads(self.rfile.read(n) or b"{}")
         except Exception:
             return self._js({"loi": "thân yêu cầu không phải JSON"}, 400)
+        # SỔ "JOB NÀY CỦA BÀI NÀO" — ghi ở MỘT CỬA, ngay đây (anh bắt 16/08: "báo gán
+        # nháp tài nguyên rồi mà không thấy, phải tải lại trang mới có").
+        #
+        # Sổ VIEC_JOB_MA lập 14/08 để thanh %% sống lại sau reload, nhưng chỉ 4 trong 21
+        # đường tạo job nhớ ghi vào — 17 đường còn lại đẻ job VÔ DANH: trạm biết có việc
+        # đang chạy mà không biết của bài nào, nên chẳng báo được cho trang nào cả.
+        # Vá 17 chỗ bằng tay thì chắc chắn sót, và đường thứ 22 thêm sau này lại quên.
+        # Nên bắt tại cửa ra: phản hồi nào mang khoá "job" thì ghi sổ luôn.
+        self._ma_bai_than = str(than.get("ma") or "").strip()
+        try:
+            return self._chay_post(d, than)
+        finally:
+            self._ma_bai_than = ""
+
+    def _chay_post(self, d, than):
         try:
             if d == "/api/may":
                 # ĐƯỜNG DẪN RIÊNG MÁY NÀY (anh chốt 15/08). Khác phong-cach.json ở

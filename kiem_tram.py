@@ -448,6 +448,43 @@ def _get(d):
         return r.status, json.loads(r.read().decode())
 
 
+def tang_chuoi_xong_bao():
+    """CHUỖI MÁY TỰ CHẠY XONG THÌ TRANG CÓ BIẾT KHÔNG.
+
+    Anh bắt 16/08: "báo gán nháp tài nguyên rồi mà không thấy, phải tải lại trang mới
+    có". Hai gốc:
+    ① Người canh job (`theoDoiSauDuyet`) chỉ sống trong TRANG ĐÃ BẤM Duyệt lời. Reload
+       hay mở bài khác giữa chừng là mất người canh — chuỗi xong chẳng ai nạp lại kho.
+    ② Sổ `VIEC_JOB_MA` (job này của bài nào) lập 14/08 nhưng chỉ 4 trong 21 đường tạo
+       job nhớ ghi vào; 17 đường còn lại đẻ job VÔ DANH. Trạm biết có việc đang chạy mà
+       không biết của bài nào → không báo được cho trang nào cả.
+
+    Vá 17 chỗ bằng tay thì chắc chắn sót và đường thứ 22 lại quên, nên ghi sổ ở MỘT CỬA:
+    phản hồi POST nào mang mã job thì tự ghi.
+    """
+    print("⑬ CHUỖI MÁY TỰ CHẠY XONG → TRANG TỰ NẠP LẠI")
+    src = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
+    ui = open(os.path.join(TRAM, "tram-tai-nguyen.html"), encoding="utf-8").read()
+
+    _bao("self._ma_bai_than = str(than.get(\"ma\")" in src,
+         "mọi lượt POST đều nhớ mình thuộc bài nào")
+    _bao("VIEC_JOB_MA[jid] = bai" in src,
+         "ghi sổ job→bài ở MỘT CỬA (không vá 21 chỗ rời rạc)")
+    _bao("isinstance(jid, str)" in src,
+         "chỉ chuỗi mã job mới ghi sổ (/api/dong-ho cũng trả khoá 'job' nhưng là dict)")
+    _bao("self._ma_bai_than = \"\"" in src,
+         "dọn dấu vết sau mỗi lượt POST (keep-alive dùng lại handler)")
+    _bao('"job_xong": xong_dh' in src, "trạm trả SỐ LUỸ KẾ job đã xong của bài")
+    _bao("_jobXongTruoc" in ui and "await napViec(ma)" in ui,
+         "trang so số luỹ kế rồi tự nạp lại kho")
+    _bao("if (ma !== m) _jobXongTruoc = null;" in ui,
+         "đổi bài thì đếm lại từ đầu (không thì nạp lại vô cớ)")
+
+    # Đường tạo job mới sau này cũng phải đi qua cửa ấy — đếm để biết khi nào lệch
+    n_job = len(re.findall(r'ma_job = f"', src))
+    _bao(n_job >= 20, f"đếm được {n_job} đường tạo job — tất cả đi chung một cửa ghi sổ")
+
+
 def tang_bao_ban_moi():
     """MÁY PHỤ CÓ BIẾT KHI ANH ĐẨY BẢN MỚI KHÔNG (anh hỏi 16/08).
 
@@ -1108,6 +1145,7 @@ if __name__ == "__main__":
     tang_kho_video()        # kho video: lọc gốc/cắt + video gốc có vào kho (16/08)
     tang_vua_o()            # nút ⇥ vừa ô còn hiện lại được không (16/08)
     tang_bao_ban_moi()      # máy phụ có biết khi anh đẩy bản mới không (16/08)
+    tang_chuoi_xong_bao()   # chuỗi máy tự chạy xong → trang tự nạp lại (16/08)
     if sau:
         tang4_luong(ma)
     else:

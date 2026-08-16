@@ -764,3 +764,22 @@ người ngồi máy phụ bấm "Cập nhật ngay" là trạm tắt hẳn, kh�
 MỌI NỀN nơi nó chạy, và phải có đường vá cho máy đã cài từ trước — sửa bộ cài không áp
 dụng ngược cho máy cài rồi. Cùng họ với bài học "tài liệu cài đặt là mã chạy trên máy
 người khác".
+
+## Sổ nào cũng phải ghi ở MỘT CỬA, đừng rải ra 21 nơi (16/08/2026)
+
+**Bệnh:** sổ `VIEC_JOB_MA` (job này thuộc bài nào) lập 14/08 để thanh %% sống lại sau
+reload. Lúc ấy vá đúng 4 đường đang cần. Hôm nay đếm ra **21 đường tạo job — 17 đường
+chưa bao giờ ghi sổ**. Chúng đẻ job vô danh: trạm biết có việc chạy mà không biết của
+bài nào, nên chuỗi xong không báo được cho trang nào.
+
+**Gốc:** vá theo nhu cầu trước mắt thì chỉ đúng cho những đường đang nghĩ tới. Đường thứ
+5, thứ 12, và đường thêm tuần sau đều không biết là mình phải ghi sổ.
+
+**Cách phòng:** tìm chỗ MỌI đường bắt buộc đi qua rồi ghi ở đó. Ở đây là hàm trả JSON:
+phản hồi nào mang mã job thì ghi sổ, không cần route tự nhớ. Một chỗ, đúng cho cả đường
+sẽ viết sau này. Dấu hiệu cần làm vậy: đếm được nhiều hơn 3 nơi phải nhớ cùng một việc.
+
+**Kèm theo — vá xong phải soi lại chính bản vá.** Cửa chung nghĩa là mọi thứ đi qua đó,
+kể cả thứ mình không nghĩ tới: một route GET cũng trả khoá `"job"` nhưng là dict, và
+kết nối keep-alive dùng lại handler nên dấu vết lượt trước còn dính. Hai lỗi ấy em tự
+tìm ra bằng cách đọc lại mã vừa viết, trước khi chúng kịp gây chuyện.
