@@ -448,6 +448,62 @@ def _get(d):
         return r.status, json.loads(r.read().decode())
 
 
+def tang_kho_video():
+    """KHO VIDEO — bộ lọc gốc/cắt, và video gốc có thật sự vào kho không.
+
+    Vì sao thành cổng (anh báo 16/08): "video gốc tải về phục vụ những video gần đây
+    không hiển thị trong kho". Gốc: đường gắp video của extension chỉ lưu vào
+    `<bài>/clip/tay/`, KHÔNG nhập kho — chỉ đoạn ĐÃ CẮT mới vào. Kho có 26 đoạn cắt mà
+    chỉ 2 video gốc, trong khi ổ máy có 38 video gốc nằm rải rác không ai thấy.
+    """
+    print("⑩ KHO VIDEO (lọc gốc/cắt · video gốc có vào kho không)")
+    src = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
+    ui = open(os.path.join(TRAM, "tram-tai-nguyen.html"), encoding="utf-8").read()
+
+    _bao('loc_vb = (q.get("loai")' in src, "server nhận bộ lọc loai=goc|cat")
+    _bao('"so_goc": so_goc' in src, "server trả số lượng từng loại để trang hiện lên nút")
+    _bao("kbLocLoai" in ui and 'data-loc="goc"' in ui and 'data-loc="cat"' in ui,
+         "trang có ba chip lọc: tất cả · gốc · cắt")
+    _bao("$('#kbLocLoai').style.display = tab === 'video'" in ui,
+         "chip lọc chỉ hiện ở tab Video (ảnh không có gốc/cắt)")
+    _bao("_kbMa = '';" in ui, "đổi bộ lọc thì nạp lại thật, không bị 'bài này nạp rồi' chặn")
+    # LƯỚI VẼ LẠI KHÔNG ĐƯỢC DÙNG loading="lazy" (bắt được 16/08 khi test bằng trình
+    # duyệt thật): sau khi bấm chip lọc, innerHTML dựng ảnh mới mà trình duyệt KHÔNG kích
+    # hoạt lazy cho chúng — network cho thấy nó vẫn tải ảnh của lượt trước, còn ảnh đang
+    # hiện thì chưa từng được yêu cầu. Kết quả: 18 ô video gốc trống trơn, không báo lỗi.
+    # Soi ĐÚNG thẻ ảnh, đừng soi cả khối: bình luận giải thích ngay trên nó cũng nhắc
+    # chữ `loading="lazy"`, cắt khối theo độ dài là bắt oan chính lời giải thích.
+    _bao('<img src="${esc(v.thumb)}" loading="lazy"' not in ui
+         and '<img src="${esc(v.thumb)}" decoding="async"' in ui,
+         'lưới VIDEO không dùng lazy (lưới vẽ lại thì lazy không kích hoạt)')
+
+    # Tên video gắp về phải mang nội dung bài — nhưng PHẢI giữ tiền tố tay_NN, vì mọi
+    # phép đếm số thứ tự và glob dọn rác trong hệ đều dựa vào nó.
+    _bao("ten_noi_dung = slug_hoa(" in src, "video gắp về đặt tên theo nội dung bài")
+    _bao('cuoi = f"tay_{n:02d}"' in src and '"-o", os.path.join(thu, f"{cuoi}.%(ext)s")' in src,
+         "tên mới GIỮ tiền tố tay_NN (glob và phép đếm số không gãy)")
+
+    # slug_hoa phải là MỘT nguồn — hai bản sẽ lệch nhau
+    b3 = open(os.path.join(os.path.dirname(TRAM), "buoc3_xepkho.py"), encoding="utf-8").read()
+    _bao("from chuan_ten import slug_hoa" in b3 and "def slug_hoa" not in b3,
+         "slug_hoa chỉ có MỘT bản (chuan_ten.py)")
+
+    # Kho thật: video gốc đã vào chưa
+    try:
+        import duong_dan as _DD
+        kv = os.path.join(_DD.KHO_TAI_NGUYEN, "video-chu-the")
+        so_v = [json.loads(l) for l in open(os.path.join(kv, "so-video.jsonl"),
+                                            encoding="utf-8") if l.strip()]
+        n_goc = len([m for m in so_v if m.get("loai") == "goc"])
+        _bao(n_goc >= 5, f"kho có video GỐC để anh mở ra cắt — {n_goc} bản",
+             "kho gần như chỉ có đoạn đã cắt" if n_goc < 5 else "")
+        mat = [m for m in so_v if not os.path.exists(os.path.join(kv, m.get("tep", "")))]
+        _bao(not mat, "mọi mục trong sổ kho video đều còn tệp thật",
+             f"{len(mat)} mục trỏ tới tệp đã mất" if mat else "")
+    except Exception as e:
+        _bao(False, "đọc được sổ kho video", str(e)[:70])
+
+
 def tang_dua_ghi():
     """NHẬN NHIỀU TẤM CÙNG LÚC CÓ MẤT KHÔNG — chạy thật, không đọc mã đoán.
 
@@ -965,6 +1021,7 @@ if __name__ == "__main__":
     tang_windows()          # chạy được trên máy thứ hai không (15/08)
     tang_may_phu()          # CÀI được trên máy thứ hai không (15/08)
     tang_dua_ghi()          # nhận nhiều tấm cùng lúc có mất không (16/08)
+    tang_kho_video()        # kho video: lọc gốc/cắt + video gốc có vào kho (16/08)
     if sau:
         tang4_luong(ma)
     else:

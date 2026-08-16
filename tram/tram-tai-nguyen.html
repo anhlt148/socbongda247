@@ -462,6 +462,17 @@ rồi tự nhảy sang cảnh trống kế. Gán 20 cảnh bằng 20 phím, khô
             title="Bày ẢNH kho nhà hợp bài">🖼 Ảnh</button>
           <button id="kbTabVideo" style="font-size:11px;padding:3px 9px"
             title="Bày ĐOẠN VIDEO trong kho hợp bài — bấm một đoạn là lấy về dải 🎬 CLIP của bài để cắt & gán cảnh">🎬 Video</button>
+          <!-- LỌC GỐC / ĐÃ CẮT (anh đặt 16/08): kho trộn hai thứ khác hẳn nhau —
+               video GỐC dài vài phút tới vài giờ để soi và cắt, ĐOẠN đã cắt vài giây
+               để gán thẳng vào cảnh. Chỉ hiện khi đang ở tab 🎬 Video. -->
+          <span id="kbLocLoai" style="display:none;gap:3px;flex:0 0 auto;white-space:nowrap">
+            <button class="kb-loc vang" data-loc="" style="font-size:10.5px;padding:3px 7px;white-space:nowrap;flex:0 0 auto"
+              title="Bày cả video gốc lẫn đoạn đã cắt">tất cả</button>
+            <button class="kb-loc" data-loc="goc" style="font-size:10.5px;padding:3px 7px;white-space:nowrap;flex:0 0 auto"
+              title="Chỉ VIDEO GỐC — bản dài gắp từ mạng về, mở ra để soi và cắt đoạn">🎞 gốc</button>
+            <button class="kb-loc" data-loc="cat" style="font-size:10.5px;padding:3px 7px;white-space:nowrap;flex:0 0 auto"
+              title="Chỉ ĐOẠN ĐÃ CẮT — vài giây, gán thẳng vào cảnh được ngay">✂ cắt</button>
+          </span>
           <div id="kbTieu" style="font-size:12px;color:#7fd67f;white-space:nowrap;
             overflow:hidden;text-overflow:ellipsis;max-width:40%"></div>
           <span id="kbThieu" class="an" style="font-size:11.5px;color:#e6a23c;
@@ -1778,7 +1789,7 @@ let hienLac = false, chonXoa = false, xoaChon = new Set();
 // đủ mọi cảnh (câu chưa có ảnh đi trước). Bấm một tấm = nhận về bài + gán thẳng vào
 // ĐÚNG CẢNH máy đoán tấm ấy hợp (badge "≈câu N"), không cần chọn cảnh trước.
 let _kbDaNap = 0, _kbTong = 0, _kbMa = null, _kbDangLay = false, _kbGon = false;
-let _kbQ = '', _kbHen = null, _kbTab = 'anh';   // 'anh' | 'video' (anh đặt 2 tab 11/08)
+let _kbQ = '', _kbHen = null, _kbTab = 'anh', _kbLoai = '';   // 'anh' | 'video' (anh đặt 2 tab 11/08)
 async function veKhoBai(moi){
   if (!ma || !dl) return;
   if (_kbTab === 'video') return veKhoVideo();  // tab 🎬 — cùng ô tìm, cùng dải
@@ -1881,14 +1892,17 @@ async function veKhoVideo(){
   let r;
   try {
     r = await (await fetch('/api/kho-video-bai?ma=' + encodeURIComponent(ma)
-      + (_kbQ ? '&q=' + encodeURIComponent(_kbQ) : ''))).json();
+      + (_kbQ ? '&q=' + encodeURIComponent(_kbQ) : '')
+      + (_kbLoai ? '&loai=' + _kbLoai : ''))).json();
   } catch (e) { return; }
   $('#daiKhoBai').className = '';
   const t = $('#kbTieu');
   t.innerHTML = _kbQ
     ? (r.tong ? `🎬 <b>${r.tong}</b> đoạn khớp "${esc(_kbQ)}"`
               : `🎬 <b style="color:#e6a23c">kho không có đoạn "${esc(_kbQ)}"</b>`)
-    : `🎬 <b>${r.tong}</b> đoạn video trong kho · xếp theo hợp bài`;
+    : (_kbLoai === 'goc' ? `🎞 <b>${r.tong}</b> video GỐC · mở ra để cắt`
+     : _kbLoai === 'cat' ? `✂ <b>${r.tong}</b> đoạn đã cắt · gán thẳng vào cảnh`
+     : `🎬 <b>${r.tong}</b> trong kho (${r.so_goc || 0} gốc · ${r.so_cat || 0} đã cắt)`);
   t.title = 'Bấm một đoạn = LẤY VỀ dải 🎬 CLIP của bài (cắt & gán cảnh bằng thẻ clip).\n'
     + 'Rê chuột đọc mô tả mắt máy · 🔍 xem thử đoạn.';
   $('#kbLuoi').innerHTML = (r.ds || []).map((v, i) => `
@@ -1896,7 +1910,13 @@ async function veKhoVideo(){
       style="cursor:pointer;border:1px solid #2e5c2e;border-radius:8px;overflow:hidden;
       position:relative"
       title="${esc(v.chu_the || '')}${v.chu_the ? '\n' : ''}${esc(v.mo_ta || '')}\n(bấm = mở VIDEO GỐC ngay đoạn này để CẮT TẠI CHỖ rồi gán cảnh)">
-      <img src="${esc(v.thumb)}" loading="lazy"
+      <!-- KHÔNG dùng loading="lazy" ở đây (sửa 16/08). Đo thật: sau khi bấm chip lọc,
+           lưới được vẽ lại bằng innerHTML thì trình duyệt KHÔNG kích hoạt lazy cho ảnh
+           mới — nhìn network thấy nó vẫn tải ảnh của lượt trước, còn ảnh đang hiện thì
+           chưa từng được yêu cầu. Kết quả: 18 ô video gốc trống trơn.
+           Lưới này tối đa 60 ô, ảnh mồi ~30 KB, lấy từ localhost — lazy chẳng tiết kiệm
+           gì mà đổi lấy một lỗi câm. (Lưới ẢNH hàng trăm tấm thì vẫn giữ lazy.) -->
+      <img src="${esc(v.thumb)}" decoding="async"
         style="width:100%;height:var(--kb-cao,66px);object-fit:cover;display:block">
       <div style="position:absolute;top:2px;left:2px;background:${v.loai === 'goc' ? '#2e4a5ce0' : '#2e5c2ee0'};color:#dfd;
         font-size:9px;padding:1px 4px;border-radius:5px">${
@@ -1944,12 +1964,23 @@ function kbDoiTab(tab){
   // nút chỉ có nghĩa cho ẢNH (máy xếp nghĩa, gán hết, gọi thêm, cảnh thiếu) ẩn ở tab video
   ['kbXep', 'kbGanHet', 'kbThem', 'kbGiai'].forEach(i =>
     $('#' + i).style.display = tab === 'video' ? 'none' : '');
+  // ngược lại: lọc gốc/cắt chỉ có nghĩa cho VIDEO
+  $('#kbLocLoai').style.display = tab === 'video' ? 'inline-flex' : 'none';
   if (tab === 'video') $('#kbThieu').className = 'an';
   $('#kbLuoi').innerHTML = '';
   tab === 'video' ? veKhoVideo() : veKhoBai(true);
 }
 $('#kbTabAnh').onclick = () => kbDoiTab('anh');
 $('#kbTabVideo').onclick = () => kbDoiTab('video');
+// Chip lọc: đổi bộ lọc rồi nạp lại dải video. `_kbMa = ''` để veKhoVideo() không tưởng
+// "bài này nạp rồi" mà bỏ qua — chính cái bẫy đã làm dải kho đứng im khi đổi từ khoá.
+document.querySelectorAll('.kb-loc').forEach(b => b.onclick = () => {
+  _kbLoai = b.dataset.loc;
+  document.querySelectorAll('.kb-loc').forEach(x =>
+    x.classList.toggle('vang', x.dataset.loc === _kbLoai));
+  _kbMa = '';
+  veKhoVideo();
+});
 
 // NHẬN một tấm kho về bài rồi giao đường ảnh cho hàm xử lý — tách riêng để đường
 // GHÉP ĐÔI dùng chung (anh bắt 11/08: dải kho không ghép được vào cảnh)

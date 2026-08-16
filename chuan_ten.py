@@ -45,6 +45,20 @@ def bo_dau(s):
     return re.sub(r"[^a-z0-9 ]", " ", s.replace("đ", "d")).strip()
 
 
+def slug_hoa(s, dai=42):
+    """Chuỗi tiếng Việt → tên tệp an toàn: bỏ dấu, đ→d, gì không phải chữ-số thành gạch.
+
+    Ở một chỗ duy nhất (anh chốt "não một nguồn"): trước 16/08 hàm này nằm riêng trong
+    `buoc3_xepkho.py`; nay tên video gắp về cũng cần nó, chép bản thứ hai là hai bản sẽ
+    lệch nhau.
+    """
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn") \
+        .replace("đ", "d").replace("Đ", "D")
+    s = re.sub(r"[^a-zA-Z0-9]+", "-", s).strip("-").lower()
+    return s[:dai].strip("-")
+
+
 def _nfc(s):
     return unicodedata.normalize("NFC", s or "")
 

@@ -667,3 +667,45 @@ QUÊN dọn vân tay → lượt chạy sau bị chính mình chặn vì "TRÙNG
 SAU khi vá đua ghi (trước đó sổ vân tay bị đè nên vô tình sạch). Nay dọn cả vân tay, và
 coi "TRÙNG" cũng là đạt — thứ cổng canh là CỬA CÓ THÔNG, không phải ảnh có mới.
 Đã chạy `--sau` HAI LẦN LIÊN TIẾP, cả hai ĐẠT HẾT.
+
+## 16/08/2026 — kho video: lọc gốc/cắt + video gốc chưa bao giờ vào kho
+
+**Anh giao:** ① làm bộ lọc giữa video gốc và video đã cắt trong kho; ② tìm xem vì sao
+video gốc tải về phục vụ các bài gần đây KHÔNG hiện trong kho, làm cho nó hiện lại.
+
+**Chẩn đoán ②:** sổ kho video có 28 mục — **26 đoạn cắt, chỉ 2 video gốc**. Trong khi ổ
+máy có **38 video gốc** (3,4 GB) nằm rải rác ở `<bài>/clip/tay/`. Gốc: `_nhan_video_job`
+chỉ lưu vào thư mục bài + ghi `nguon-clip.json` của bài — **chưa bao giờ nhập kho chủ
+thể**; chỉ khi anh CẮT một đoạn thì đoạn ấy mới vào kho (loai="cat"). Nên video gốc vô
+hình với mọi bài khác.
+
+**Đã làm:**
+- Hồi tố: nhập 20 video gốc đủ tiêu chuẩn vào kho qua `_nhap_tep_video(..., loai="goc")`
+  — dùng lại luồng chuẩn (3 lớp chống trùng + nhãn mắt máy + ảnh mồi), không viết luồng
+  song song. Loại tệp <1,2 MB (mảnh tải hỏng) và `kho__v*.mp4` (bản kéo TỪ kho về bài —
+  nhập lại là quay vòng).
+- Lọc gốc/cắt: server nhận `?loai=goc|cat` và trả `so_goc`/`so_cat`. Lọc ở SERVER vì
+  danh sách bị cắt còn 60 đoạn trước khi trả về — lọc phía trang là mất bớt.
+- UI: ba chip `tất cả · 🎞 gốc · ✂ cắt`, chỉ hiện ở tab Video, tiêu đề đổi theo bộ lọc.
+- Tên video gắp về mang nội dung bài (`tay_01_thai-lan-ca-khia-viet-nam.mp4`) — GIỮ
+  tiền tố `tay_NN` vì mọi phép đếm số và glob dọn rác đều dựa vào nó.
+- `slug_hoa` chuyển từ `buoc3_xepkho.py` sang `chuan_ten.py` — não một nguồn.
+- Gương Drive BỎ QUA video >60 MB trong `video-chu-the/`: video gốc là thứ mỗi máy tự
+  tải được, đẩy 3,4 GB lên Drive là phí dung lượng và băng thông.
+- launchd `com.socbongda247.dongbokho` chạy gương 15 phút/lượt (python3, không qua zsh —
+  TCC chặn shell đụng Drive).
+- `kiem_tram.py` tầng ⑩ `tang_kho_video()` — 10 mục.
+
+**Đã kiểm:** API ba trạng thái lọc (tất cả 39 / gốc 12 / cắt 27 — đúng từng con số) ·
+bấm thật ba chip trên trình duyệt (13 gốc / 27 cắt / 40 tất cả, chip sáng đúng) · route
+xem video gốc HTTP 200 · ảnh mồi HTTP 200 · không ô ảnh nào vỡ · `kiem_tram.py --sau`
+ĐẠT HẾT.
+
+**Bổ sung cùng ngày — hai lỗi bắt được KHI TEST bằng trình duyệt thật:**
+- Chip "tất cả" bị vắt thành hai dòng → thêm `white-space:nowrap; flex:0 0 auto`.
+- **Ảnh mồi không hiện trên lưới video** dù server trả 200: `loading="lazy"` không kích
+  hoạt cho ảnh vừa chèn bằng innerHTML. Bỏ lazy cho lưới video (≤60 ô, ảnh 30 KB,
+  localhost), giữ lazy cho lưới ảnh. Cổng ⑩ canh thêm mục này.
+  *Cổng đầu tiên viết ra lại bắt oan chính lời bình luận giải thích — vì bình luận có
+  nhắc chuỗi `loading="lazy"`. Bài học nhỏ: cổng soi chuỗi thì phải soi ĐÚNG thẻ, đừng
+  cắt khối theo độ dài.*

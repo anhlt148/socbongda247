@@ -682,3 +682,42 @@ công khai là cổng báo trượt một tài liệu đang đúng. Nay nó hỏ
 `gh repo view --json isPrivate` rồi mới đối chiếu. Nguyên tắc chung: **cổng canh sự KHỚP
 giữa tài liệu và thực tế, không canh một giá trị cố định** — thực tế thay đổi là chuyện
 bình thường, cổng phải đi theo.
+
+## Thứ vào được kho mới tồn tại — lưu vào thư mục bài là chôn nó (16/08/2026)
+
+**Bệnh:** anh gắp 38 video gốc về (3,4 GB) qua nhiều tuần, không tấm nào hiện trong kho.
+Không ai báo lỗi, không có gì gãy — chúng chỉ đơn giản là **không tồn tại** với phần còn
+lại của hệ, vì cửa gắp video lưu thẳng vào `<bài>/clip/tay/` rồi dừng ở đó.
+
+**Gốc:** trong hệ này, KHO là nơi mọi thứ được nhìn thấy và tra cứu. Cửa nào đưa tài
+nguyên vào mà không đi qua khâu nhập kho thì tài nguyên ấy chỉ dùng được đúng một lần,
+cho đúng bài đang mở.
+
+**Cách phòng:** thêm cửa nhận tài nguyên mới (ảnh, video, clip, nhạc) thì câu hỏi bắt
+buộc là *"cái này có vào kho không?"* — nếu không thì nói rõ vì sao. Và mọi luồng nhập
+kho đều gọi hàm nhập CHUẨN, không viết luồng riêng: hàm chuẩn đã mang sẵn ba lớp chống
+trùng, nhãn mắt máy, ảnh mồi và ghi sổ — luồng riêng bao giờ cũng thiếu một trong số đó.
+
+**Kèm theo:** thứ nặng thì nhập kho nhưng ĐỪNG đồng bộ lên Drive. Video gốc 100–600 MB
+là thứ mỗi máy tự tải lại được; thứ đáng dùng chung là đoạn đã cắt (vài MB) và ảnh.
+
+## `loading="lazy"` chết câm trên lưới VẼ LẠI (16/08/2026)
+
+**Bệnh:** bấm chip lọc, lưới hiện đủ 18 ô video gốc — đúng số, đúng nhãn, đúng thời
+lượng — nhưng **không ô nào có ảnh**. Không lỗi console, không 404; server trả ảnh HTTP
+200 khi gọi thẳng, tệp trên đĩa đủ 30 KB.
+
+**Gốc:** lưới được dựng lại bằng `innerHTML`. Với ảnh mang `loading="lazy"` trong một
+container `overflow-y:auto`, trình duyệt KHÔNG kích hoạt tải cho lứa ảnh vừa chèn — nhìn
+bảng network thấy nó vẫn đang tải ảnh của LƯỢT TRƯỚC, còn ảnh đang hiện thì chưa từng
+được yêu cầu lần nào.
+
+**Cách phòng:** lazy chỉ dành cho danh sách DÀI và tải THEO CUỘN (lưới ảnh hàng trăm
+tấm). Lưới ngắn, vẽ lại theo thao tác, ảnh nhỏ lấy từ localhost thì bỏ lazy — nó không
+tiết kiệm gì mà đổi lấy một lỗi câm. Dùng `decoding="async"` nếu vẫn muốn ảnh không chặn
+dựng trang.
+
+**Cách phát hiện, đáng nhớ hơn cả cách sửa:** `naturalWidth === 0` trên trang mà tệp vẫn
+200 ở server nghĩa là **trình duyệt chưa từng hỏi**, không phải "ảnh hỏng". Đọc bảng
+network để thấy nó đang hỏi gì — chính chỗ ấy lộ ra nó hỏi ảnh của lượt cũ. Chỉ nhìn ảnh
+chụp màn hình thì rất dễ kết luận nhầm là "đang tải chậm" rồi bỏ qua.

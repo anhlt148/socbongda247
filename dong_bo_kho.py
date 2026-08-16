@@ -48,8 +48,19 @@ def _nfc(x):
     return ud.normalize("NFC", x)
 
 
+# VIDEO GỐC NẶNG KHÔNG LÊN DRIVE. Video gốc gắp từ mạng về hay 100–600 MB một tệp
+# (đo 16/08: 38 tệp = 3,4 GB) — đẩy lên là ngốn dung lượng Drive và băng thông cho thứ
+# mỗi máy tự tải được. Thứ đáng dùng chung là ĐOẠN ĐÃ CẮT (vài MB) và ẢNH.
+TRAN_VIDEO_MB = 60
+
+
+def _bo_qua(rel, co):
+    """Tệp này có nằm ngoài phạm vi gương không."""
+    return rel.startswith("video-chu-the/") and co > TRAN_VIDEO_MB * 1_000_000
+
+
 def _quet(goc):
-    """{đường tương đối (NFC): cỡ tệp} — bỏ rác hệ điều hành."""
+    """{đường tương đối (NFC): cỡ tệp} — bỏ rác hệ điều hành và thứ ngoài phạm vi."""
     ra = {}
     if not os.path.isdir(goc):
         return ra
@@ -59,9 +70,13 @@ def _quet(goc):
                 continue
             p = os.path.join(thu, t)
             try:
-                ra[_nfc(os.path.relpath(p, goc))] = os.path.getsize(p)
+                co = os.path.getsize(p)
             except OSError:
-                pass
+                continue
+            rel = _nfc(os.path.relpath(p, goc))
+            if _bo_qua(rel, co):
+                continue
+            ra[rel] = co
     return ra
 
 

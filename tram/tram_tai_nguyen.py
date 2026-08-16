@@ -57,6 +57,7 @@ _CLAUDE = NT.tim_claude()   # MỘT nguồn — nen_tang lo cả macOS lẫn Win
 import nhip_canh as NC                                        # noqa: E402 — nhịp DÙNG CHUNG với xưởng
 import gap_anh                                                # noqa: E402
 import kich_ban as KB_SO                                      # noqa: E402 — cửa ghi kịch bản có khoá
+from chuan_ten import slug_hoa                                # noqa: E402 — tên tệp theo nội dung
 import dong_ho as DH                                          # noqa: E402 — đo thời gian sản xuất
 import lay_anh                                                # noqa: E402 — cổng OCR watermark
 import concurrent.futures as cf                               # noqa: E402
@@ -3221,7 +3222,16 @@ def _nhan_video_job(ma_job, ma, trang, src, cookies):
             except FileExistsError:
                 continue
         p_giu = os.path.join(thu, f"tay_{n:02d}.giu")
-        tep = os.path.join(thu, f"tay_{n:02d}.mp4")
+        # TÊN THEO NỘI DUNG (anh đặt 16/08: "tên video lấy về phải đặt theo nội dung bài
+        # để dễ nhận diện"). GIỮ NGUYÊN tiền tố `tay_NN` — mọi phép đếm số và glob trong
+        # hệ đều dựa vào nó; đổi cả tên là gãy hàng loạt chỗ không liên quan.
+        try:
+            kb_t = json.load(open(os.path.join(viec, "kich-ban.json"), encoding="utf-8"))
+            ten_noi_dung = slug_hoa(kb_t.get("tieu_de", ""), 46)
+        except Exception:
+            ten_noi_dung = ""
+        cuoi = f"tay_{n:02d}" + (f"_{ten_noi_dung}" if ten_noi_dung else "")
+        tep = os.path.join(thu, f"{cuoi}.mp4")
         if cookies:
             fd, p_ck = tempfile.mkstemp(prefix="soc-ck-", suffix=".txt")
             os.write(fd, _cookie_netscape(cookies).encode())
@@ -3252,7 +3262,7 @@ def _nhan_video_job(ma_job, ma, trang, src, cookies):
                     "-f", "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/bv*[height<=1080]+ba"
                           "/b[height<=1080]/b",
                     "--merge-output-format", "mp4", "--user-agent", UA_CLIP,
-                    "-o", os.path.join(thu, f"tay_{n:02d}.%(ext)s"), u] + them
+                    "-o", os.path.join(thu, f"{cuoi}.%(ext)s"), u] + them
             if p_ck:
                 lenh[1:1] = ["--cookies", p_ck]
             if u == src and url:
@@ -3575,6 +3585,9 @@ class Tay(BaseHTTPRequestHandler):
                 # theo chữ của bài (tiêu đề + từ khoá + hồ sơ), phạt đội lạ như ảnh.
                 ma_vb = (q.get("ma") or [""])[0]
                 q_vb = (q.get("q") or [""])[0]
+                # BỘ LỌC GỐC / ĐÃ CẮT (anh đặt 16/08). Lọc ở ĐÂY chứ không ở trang: danh
+                # sách bị cắt còn 60 đoạn trước khi trả về, lọc phía trang là mất bớt.
+                loc_vb = (q.get("loai") or [""])[0]        # "" | goc | cat
                 viec_vb = os.path.join(DD.VIEC, ma_vb)
                 chuoi_bai = ""
                 try:
@@ -3597,6 +3610,11 @@ class Tay(BaseHTTPRequestHandler):
                     # đăng-ký-kênh lọt đề xuất. CHỈ lọc mô tả MỞ ĐẦU vậy: cảnh thật có
                     # biển quảng cáo sau lưng cầu thủ vẫn phải được bày, lọc theo chữ
                     # ở giữa câu là oan.
+                    # mục cũ không ghi `loai` thì coi là ĐOẠN CẮT — kho sinh ra từ
+                    # việc cắt, video gốc mới là ngoại lệ và luôn được ghi nhãn rõ.
+                    loai_m = "goc" if m.get("loai") == "goc" else "cat"
+                    if loc_vb in ("goc", "cat") and loai_m != loc_vb:
+                        continue
                     mo_v = (m.get("mo_ta", "") or "").strip().lower()
                     if mo_v.startswith(("quảng cáo", "khung quảng cáo")):
                         continue
@@ -3621,6 +3639,10 @@ class Tay(BaseHTTPRequestHandler):
                         diem *= 0.4
                     ds_vb.append((diem, m))
                 ds_vb.sort(key=lambda x: -x[0])
+                _tat = [m for m in _so_video_ct()
+                        if not (m.get("mo_ta", "") or "").strip().lower()
+                        .startswith(("quảng cáo", "khung quảng cáo"))]
+                so_goc = len([m for m in _tat if m.get("loai") == "goc"])
                 ra_vb = [{"tep": m["tep"], "tu": m.get("tu", 0), "den": m.get("den", 0),
                           "giay": round(float(m.get("den", 0)) - float(m.get("tu", 0)), 1),
                           "loai": m.get("loai", ""),   # goc | cat — nhãn phân biệt (11/08)
@@ -3629,7 +3651,8 @@ class Tay(BaseHTTPRequestHandler):
                           "nhan": (m.get("nhan") or [])[:4],
                           "mo_ta": (m.get("mo_ta", "") or "")[:140]}
                          for diem, m in ds_vb[:60]]
-                return self._js({"tong": len(ds_vb), "ds": ra_vb})
+                return self._js({"tong": len(ds_vb), "ds": ra_vb,
+                                 "so_goc": so_goc, "so_cat": len(_tat) - so_goc})
             if d == "/api/kho-wm-quet":
                 # 🧽 QUÉT WATERMARK CẢ KHO (anh đặt 11/08: "tìm tất cả ảnh có watermark
                 # để cắt/xoá một lần, định kỳ quét lại"). Dùng ĐÚNG cổng OCR của cửa

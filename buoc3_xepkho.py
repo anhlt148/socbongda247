@@ -19,11 +19,7 @@ import nen_tang as NT
 KHO_PY = DD.nap(DD.KHO_VIDEO_PY, "kho_video")
 
 
-def slug_hoa(s, dai=42):
-    s = unicodedata.normalize("NFD", s)
-    s = "".join(c for c in s if unicodedata.category(c) != "Mn").replace("đ", "d").replace("Đ", "D")
-    s = re.sub(r"[^a-zA-Z0-9]+", "-", s).strip("-").lower()
-    return s[:dai].strip("-")
+from chuan_ten import slug_hoa                    # noqa: E402 — não một nguồn (16/08)
 
 
 def _bo_sung_seo(viec, kb):
