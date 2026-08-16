@@ -150,7 +150,24 @@ Ra dòng **"✅ ĐẠT HẾT"** là cài xong. Có dòng ❌ thì chụp màn h�
 | Trạm không mở được | `schtasks /Run /TN SocBongDa247-Tram` |
 | Lấy bản nâng cấp mới của anh | `cd $env:USERPROFILE\socbongda247; git pull; .\capnhat.ps1` |
 
-### Nhận bản nâng cấp — **một lệnh, nó lo đủ ba phần**
+### Không cần nhớ — trạm tự nhắc
+
+Anh Tuấn Anh nâng cấp ở máy Mac rồi đẩy lên GitHub. Trạm ở máy này **tự hỏi GitHub 20
+phút một lần**; có bản mới thì hiện dải xanh ở góc phải dưới trang:
+
+> ⬆ **Có bản nâng cấp mới** — 2 bản mới trên GitHub
+> [⬇ Cập nhật ngay] [để sau]
+
+Bấm **⬇ Cập nhật ngay** là xong: máy kéo mã mới, khởi động lại trạm, trang tự nạp lại.
+Mất khoảng 15 giây.
+
+Nếu đang có việc chạy dở (chuỗi sau Duyệt lời), nó **từ chối và nói rõ** — chờ việc xong
+rồi bấm lại, không thì mất bài đang làm.
+
+Riêng **extension Chrome** thì vẫn phải bấm ⟳ tay một lần (`chrome://extensions`) — trạm
+sẽ tự nhắc khi phát hiện Chrome chạy bản cũ.
+
+### Cách cũ, khi cần làm bằng tay — **một lệnh, lo đủ ba phần**
 
 ```powershell
 cd $env:USERPROFILE\socbongda247; git pull; .\capnhat.ps1

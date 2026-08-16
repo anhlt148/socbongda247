@@ -448,6 +448,43 @@ def _get(d):
         return r.status, json.loads(r.read().decode())
 
 
+def tang_bao_ban_moi():
+    """MÁY PHỤ CÓ BIẾT KHI ANH ĐẨY BẢN MỚI KHÔNG (anh hỏi 16/08).
+
+    Trước nay: không. Anh nâng cấp ở máy Mac, máy phụ phải tự nhớ chạy `git pull` —
+    nhớ vài hôm rồi quên, làm cả tuần trên bản cũ mà không hay biết. Cùng họ với lỗi
+    extension chạy bản cũ (15/08): thứ được nạp một lần thì phải TỰ KHAI phiên bản.
+    """
+    print("⑫ NHẮC NÂNG CẤP CHO MÁY PHỤ")
+    src = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
+    ui = open(os.path.join(TRAM, "tram-tai-nguyen.html"), encoding="utf-8").read()
+    goc = os.path.dirname(TRAM)
+
+    _bao("def _do_ban_moi(" in src and "ls-remote" in src,
+         "trạm tự hỏi GitHub xem có bản mới (ls-remote, không tải mã)")
+    _bao("threading.Thread(target=_canh_ban_moi" in src,
+         "hỏi trong LUỒNG NỀN — mỗi lượt mất ~1,1 giây, đừng để nó chặn trang")
+    _bao('d_k["ban_moi"] = dict(BAN_MOI)' in src,
+         "đi nhờ lượt gọi /api/dang-keo đã có sẵn, không đẻ đường hỏi mới")
+    _bao('"/api/cap-nhat"' in src, "có cửa cập nhật một nút")
+    _bao("đang có" in src and "việc chạy dở" in src,
+         "cửa cập nhật TỪ CHỐI khi có việc đang chạy (restart giữa chừng là mất bài)")
+    _bao('"pull", "--ff-only"' in src,
+         "pull --ff-only: máy phụ lỡ sửa mã thì dừng và nói thẳng, không tự trộn")
+    _bao("bangBanMoi" in ui and "bmCapNhat" in ui, "trang có dải nhắc + nút cập nhật")
+
+    # Thoát xong PHẢI có ai bật lại, không thì cập nhật = tắt hẳn trạm
+    plist = os.path.expanduser("~/Library/LaunchAgents/com.socbongda247.tram.plist")
+    if os.path.exists(plist):
+        _bao("<key>KeepAlive</key><true/>" in open(plist, encoding="utf-8").read(),
+             "macOS: launchd tự bật lại trạm sau khi nó thoát")
+    cai = open(os.path.join(goc, "cai-windows.ps1"), encoding="utf-8").read()
+    _bao("-RestartCount" in cai, "Windows: bộ cài đăng ký Task CÓ tự bật lại")
+    cn = open(os.path.join(goc, "capnhat.ps1"), encoding="utf-8").read()
+    _bao("RestartCount = 999" in cn,
+         "Windows: capnhat.ps1 vá được Task đã cài trước 16/08 (thiếu tự bật lại)")
+
+
 def tang_vua_o():
     """NÚT ⇥ VỪA Ô — kéo đoạn cắt về đúng độ dài ô cảnh.
 
@@ -1070,6 +1107,7 @@ if __name__ == "__main__":
     tang_dua_ghi()          # nhận nhiều tấm cùng lúc có mất không (16/08)
     tang_kho_video()        # kho video: lọc gốc/cắt + video gốc có vào kho (16/08)
     tang_vua_o()            # nút ⇥ vừa ô còn hiện lại được không (16/08)
+    tang_bao_ban_moi()      # máy phụ có biết khi anh đẩy bản mới không (16/08)
     if sau:
         tang4_luong(ma)
     else:

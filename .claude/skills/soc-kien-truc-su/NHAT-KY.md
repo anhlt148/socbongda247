@@ -736,3 +736,29 @@ Sửa: `tuDoiThiDenTheo` giao trọn cho `capNhatMc`; `oGiay` tự tách `:` nga
 
 **Đã kiểm:** ba vòng tua → kéo lệch → bấm vừa ô, cả trên ô chính lẫn ô phụ, nút hiện/ẩn
 đúng từng bước và bấm ăn mọi lần. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp.
+
+## 16/08/2026 — máy phụ tự biết khi có bản nâng cấp
+
+**Anh hỏi:** "mỗi lần update như này có auto lên git và auto về máy kia không? nếu ko
+thì làm gì để nó auto hoặc có thông báo để máy kia biết mà update."
+
+**Thực trạng:** lên git thì đã tự động (em push mỗi lần xong việc). Về máy kia thì
+KHÔNG — phải tự nhớ chạy `git pull`, nhớ vài hôm rồi quên.
+
+**Đã làm:**
+- `_do_ban_moi()` + luồng nền `_canh_ban_moi()` trong trạm: hỏi `git ls-remote` mỗi 20
+  phút (đo thật 1,1 giây/lượt nên không được để chặn trang), kết quả nằm trong `BAN_MOI`.
+- `/api/dang-keo` trả kèm `ban_moi` — ĐI NHỜ lượt poll 4 giây đã có sẵn, đúng lối đã
+  dùng cho cơ chế nhắc extension 15/08.
+- Dải nhắc góc phải dưới + nút "⬇ Cập nhật ngay" / "để sau".
+- `/api/cap-nhat`: từ chối 409 khi còn việc chạy dở · `pull --ff-only` · rồi tự thoát
+  cho bộ quản lý dịch vụ bật lại; trang chờ trạm sống rồi tự nạp lại.
+- **Windows chưa tự bật lại được** — Task Scheduler đăng ký từ 15/08 không có
+  `RestartCount`, trạm thoát là chết luôn. Bổ sung vào `cai-windows.ps1`, và
+  `capnhat.ps1` vá Task đã cài sẵn (bộ cài không áp dụng ngược được).
+
+**Đã kiểm bằng cảnh THẬT:** đẩy một bản rỗng lên GitHub rồi lùi máy về bản trước → trạm
+báo đúng "1 bản mới · máy đang chạy 0a3499e" → dải hiện trên trang → bấm nút → pull →
+trạm tự thoát → launchd bật lại → máy về đúng bản mới → trạm báo "đã là bản mới nhất".
+Chốt an toàn: bật một việc chạy nền rồi gọi cửa cập nhật → HTTP 409 kèm lời giải thích.
+Bản thử đã gỡ khỏi GitHub. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp; cổng ⑫ 10 mục.

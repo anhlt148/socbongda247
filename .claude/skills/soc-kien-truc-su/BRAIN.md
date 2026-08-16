@@ -749,3 +749,18 @@ phụ. Đúng họ lỗi "cảnh chính có gì cảnh phụ có nấy" mà anh 
 
 **Luật:** hàm nào nhận mã Ô thì tự chuẩn hoá mã ấy bên trong, đừng bắt nơi gọi nhớ hộ.
 Mười nơi gọi là mười cơ hội quên.
+
+## Tự cập nhật thì phải chắc CÓ AI BẬT LẠI (16/08/2026)
+
+Nút "Cập nhật ngay" hoạt động theo lối: kéo mã → **tự thoát** → bộ quản lý dịch vụ bật
+lại (mã `.py` chỉ đọc lúc khởi động, không thoát thì mã mới nằm trên ổ mà trạm vẫn chạy
+bản cũ trong bộ nhớ).
+
+Điều suýt bỏ sót: **macOS có `KeepAlive` trong plist nên tự bật lại, còn Task Scheduler
+trên Windows thì không** — cấu hình đăng ký hôm 15/08 thiếu `RestartCount`. Nếu không rà,
+người ngồi máy phụ bấm "Cập nhật ngay" là trạm tắt hẳn, không biết đường bật lại.
+
+**Luật:** thiết kế nào dựa vào "tiến trình tự thoát rồi được bật lại" thì phải kiểm ĐỦ
+MỌI NỀN nơi nó chạy, và phải có đường vá cho máy đã cài từ trước — sửa bộ cài không áp
+dụng ngược cho máy cài rồi. Cùng họ với bài học "tài liệu cài đặt là mã chạy trên máy
+người khác".
