@@ -96,6 +96,30 @@ DANG_KEO = {}
 # lượt mất ~1,1 giây đường mạng. Kết quả nằm sẵn trong bộ nhớ, trang đọc tức thì và
 # ĐI NHỜ lượt gọi `/api/dang-keo` vốn đã poll 4 giây/lần — không đẻ thêm đường hỏi mới.
 BAN_MOI = {"co": False, "sha": "", "dang": "", "so": 0, "luc": "", "loi": ""}
+
+# ── VÉT KHO BÀI VỪA RỜI (anh hỏi 16/08) ──────────────────────────────────────
+# "Làm thế nào để tài nguyên của video 1 hiện luôn trong kho để phục vụ video 2?"
+# Chuỗi sau Duyệt lời đã nhập ảnh vào kho, nhưng thứ anh GẮP THÊM TAY sau đó (ảnh qua
+# extension, video gốc kéo từ MXH) thì chưa. Mốc tự nhiên để vét nốt là lúc anh CHUYỂN
+# SANG BÀI KHÁC — bài cũ coi như tạm xong, và đó đúng là khoảnh khắc anh cần kho đầy.
+BAI_VUA_MO = [""]
+
+
+def _vet_kho_bai(ma_cu):
+    """Đẩy nốt ảnh + video gốc của bài vừa rời vào kho chung. Chạy nền, im lặng."""
+    if not ma_cu:
+        return
+    viec_cu = os.path.join(DD.VIEC, ma_cu)
+    if not os.path.isdir(viec_cu):
+        return
+    for tep_py, doi in (("nhap_kho_chu_the.py", [ma_cu]),
+                        ("nhap_kho_video.py", ["--goc-bai", ma_cu])):
+        try:
+            subprocess.Popen([sys.executable, os.path.join(DD.MAY, tep_py)] + doi,
+                             stdout=open(os.path.join(viec_cu, "vet-kho.log"), "a"),
+                             stderr=subprocess.STDOUT, start_new_session=True)
+        except Exception as e:
+            print(f"  ⚠ vét kho {ma_cu} · {tep_py}: {e}")
 GOC_MA = os.path.dirname(TRAM)
 
 
@@ -2651,6 +2675,25 @@ def _sau_duyet_loi(ma_job, ma):
     except Exception as e:
         tin.append(f"không gán nháp được: {e}")
 
+    # ẢNH CỦA BÀI VÀO KHO CHUNG NGAY, KHÔNG CHỜ BẤM NÚT KHO (anh hỏi 16/08: "làm thế
+    # nào để tài nguyên của video 1 hiện luôn trong kho để phục vụ video 2").
+    #
+    # Trước nay ảnh chỉ vào kho lúc XẾP KHO — tức sau khi dựng xong hẳn. Anh làm bài 4
+    # rồi sang bài 5 mà chưa xếp kho bài 4 thì 29 tấm vừa tải về là vô hình với bài 5:
+    # công tìm mất trắng, mà hai bài liên tiếp thường CÙNG chủ đề nên ảnh dư của bài
+    # trước là thứ hợp bài sau nhất.
+    #
+    # Không cần luồng mới: `nhap_kho_chu_the.py` vốn quét TOÀN BỘ `<bài>/anh/`, kể cả
+    # tấm chưa gán cảnh nào — chỉ cần gọi SỚM HƠN. Nó tự có cổng loại tấm bẩn/nhỏ/trùng
+    # và tự bỏ qua tấm đã nhập, nên gọi hai lượt (ở đây + lúc xếp kho) cũng không tốn gì.
+    try:
+        subprocess.Popen([sys.executable, os.path.join(DD.MAY, "nhap_kho_chu_the.py"), ma],
+                         stdout=open(os.path.join(viec, "nhap-kho-som.log"), "w"),
+                         stderr=subprocess.STDOUT, start_new_session=True)
+        tin.append("ảnh của bài đang vào kho chung (bài sau dùng được ngay)")
+    except Exception as e:
+        tin.append(f"không nhập kho sớm được: {e}")
+
     with KHOA:
         VIEC_JOB[ma_job] = {"xong": True, "tin": tin}
     # BÁO KHI XONG HẾT (anh đặt 12/08: "tìm xong hết thì thông báo") — chuỗi này chạy
@@ -4231,7 +4274,14 @@ class Tay(BaseHTTPRequestHandler):
                 return self._js({"so": len(ds),
                                  "moi": max((os.path.getmtime(x) for x in ds), default=0)})
             if d.startswith("/api/viec/"):
-                return self._js(_chi_tiet(urllib.parse.unquote(d.split("/", 3)[3])))
+                ma_v = urllib.parse.unquote(d.split("/", 3)[3])
+                # đổi bài → vét kho bài vừa rời (xem chú thích ở _vet_kho_bai)
+                if ma_v and BAI_VUA_MO[0] and BAI_VUA_MO[0] != ma_v:
+                    threading.Thread(target=_vet_kho_bai, args=(BAI_VUA_MO[0],),
+                                     daemon=True).start()
+                if ma_v:
+                    BAI_VUA_MO[0] = ma_v
+                return self._js(_chi_tiet(ma_v))
             if (d.startswith("/api/gap/") or d.startswith("/api/goi-y/")
                     or d.startswith("/api/dung/") or d.startswith("/api/loc/")
                     or d.startswith("/api/xem-truoc/") or d.startswith("/api/lay-chon/")

@@ -791,3 +791,27 @@ thấy tăng là `napViec` — không trượt được dù poll thưa cỡ nào
 **Đã kiểm:** chạy chuỗi thật rồi KHÔNG đụng gì thêm → trang tự nạp lại 3 lần (nhiều
 đường cùng báo, chấp nhận được) rồi ĐỨNG YÊN 20 giây — không vòng lặp. Gọi xen GET liên
 tục lúc job đang chạy: sổ vẫn đúng. Cổng ⑬ 8 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần.
+
+## 16/08/2026 — tài nguyên bài trước dùng được cho bài sau
+
+**Anh hỏi:** "làm thế nào để tài nguyên cho video 1 hiện luôn kho ảnh/video để phục vụ
+cho video 2?"
+
+**Đo thật:** ảnh chỉ vào kho chung khi bấm nút KHO (`buoc3_xepkho` gọi
+`nhap_kho_chu_the.py`). Bài `video-4` hôm nay có 29 ảnh, chưa xếp kho → 29 tấm ấy vô
+hình với mọi bài khác. Mà hai bài liên tiếp thường CÙNG chủ đề, nên ảnh dư của bài
+trước lại đúng là thứ hợp bài sau nhất — công tìm mất trắng.
+
+**Không viết luồng mới.** `nhap_kho_chu_the.py` vốn quét TOÀN BỘ `<bài>/anh/` (`[nt]*.jpg`),
+kể cả tấm chưa gán cảnh nào — chỉ cần **gọi sớm hơn**. Hai mốc:
+- **Cuối chuỗi sau Duyệt lời**: bài vừa có đủ ảnh tải về → đẩy vào kho ngay.
+- **Lúc đổi bài** (`/api/viec/<ma>` thấy mã khác lần trước): vét nốt thứ anh gắp thêm
+  bằng tay sau chuỗi — ảnh qua extension, video gốc kéo từ MXH. Vét cả `--goc-bai` cho
+  video, theo luật "chính có gì phụ có nấy". Chạy nền, không chặn trang.
+
+Kho vẫn sạch vì `nhap_kho_chu_the` giữ nguyên cổng lọc sẵn có (bẩn · nhỏ · trùng · lạc đề).
+
+**Đã kiểm bằng cảnh thật:** mở bài video-4 (chưa xếp kho, kho có 0 tấm từ bài này) →
+chuyển sang bài video-3 → trạm tự vét: **+2 tấm mới vào kho**, 24 tấm bỏ đúng vì đã có
+sẵn (vốn lấy từ kho ra), 1 bẩn 1 nhỏ bị cổng loại. Cổng ⑭ 6 mục.
+`kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp.

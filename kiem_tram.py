@@ -448,6 +448,45 @@ def _get(d):
         return r.status, json.loads(r.read().decode())
 
 
+def tang_kho_lien_bai():
+    """TÀI NGUYÊN BÀI TRƯỚC CÓ DÙNG ĐƯỢC CHO BÀI SAU KHÔNG (anh hỏi 16/08).
+
+    Trước nay ảnh chỉ vào kho chung lúc XẾP KHO — tức sau khi dựng xong hẳn. Anh làm
+    bài 4 rồi sang bài 5 mà chưa xếp kho bài 4 thì mọi tấm vừa tải về là VÔ HÌNH với
+    bài 5, công tìm mất trắng. Mà hai bài liên tiếp thường cùng chủ đề, nên ảnh dư của
+    bài trước lại đúng là thứ hợp bài sau nhất.
+
+    Hai mốc mới, không đẻ luồng nào: `nhap_kho_chu_the.py` vốn quét TOÀN BỘ `<bài>/anh/`
+    kể cả tấm chưa gán — chỉ cần gọi sớm hơn.
+    """
+    print("⑭ TÀI NGUYÊN BÀI TRƯỚC DÙNG ĐƯỢC CHO BÀI SAU")
+    src = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
+
+    _bao("nhap-kho-som.log" in src,
+         "chuỗi sau Duyệt lời xong → ảnh của bài vào kho chung ngay")
+    _bao("def _vet_kho_bai(" in src, "có đường vét kho cho bài vừa rời")
+    _bao("BAI_VUA_MO[0] != ma_v" in src,
+         "đổi bài là vét kho bài cũ (mốc tự nhiên nhất: lúc anh cần kho đầy)")
+    _bao('"--goc-bai", ma_cu' in src or '["--goc-bai", ma_cu]' in src,
+         "vét CẢ video gốc, không chỉ ảnh (luật: chính có gì phụ có nấy)")
+
+    # Nhập kho là việc NẶNG (gắn nhãn mắt máy) — phải chạy nền, đừng chặn trang
+    i = src.find("def _vet_kho_bai(")
+    than = src[i:i + 1400]
+    _bao("subprocess.Popen" in than and "start_new_session=True" in than,
+         "vét kho chạy NỀN, không chặn trang đang mở")
+
+    # Kho thật: có bài nào vừa nhập sớm không
+    try:
+        import duong_dan as _DD
+        so = os.path.join(_DD.KHO_TAI_NGUYEN, "anh-chu-the", "so-chu-the.jsonl")
+        bai = {json.loads(l).get("nguon_bai", "") for l in open(so, encoding="utf-8")
+               if l.strip()}
+        _bao(len(bai) >= 20, f"kho gom ảnh từ {len(bai)} bài — dùng chéo được")
+    except Exception as e:
+        _bao(False, "đọc được sổ kho ảnh", str(e)[:60])
+
+
 def tang_chuoi_xong_bao():
     """CHUỖI MÁY TỰ CHẠY XONG THÌ TRANG CÓ BIẾT KHÔNG.
 
@@ -1146,6 +1185,7 @@ if __name__ == "__main__":
     tang_vua_o()            # nút ⇥ vừa ô còn hiện lại được không (16/08)
     tang_bao_ban_moi()      # máy phụ có biết khi anh đẩy bản mới không (16/08)
     tang_chuoi_xong_bao()   # chuỗi máy tự chạy xong → trang tự nạp lại (16/08)
+    tang_kho_lien_bai()     # tài nguyên bài trước dùng cho bài sau (16/08)
     if sau:
         tang4_luong(ma)
     else:

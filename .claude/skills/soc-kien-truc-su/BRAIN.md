@@ -783,3 +783,20 @@ sẽ viết sau này. Dấu hiệu cần làm vậy: đếm được nhiều hơ
 kể cả thứ mình không nghĩ tới: một route GET cũng trả khoá `"job"` nhưng là dict, và
 kết nối keep-alive dùng lại handler nên dấu vết lượt trước còn dính. Hai lỗi ấy em tự
 tìm ra bằng cách đọc lại mã vừa viết, trước khi chúng kịp gây chuyện.
+
+## Đừng viết luồng mới trước khi hỏi "luồng cũ chạy sớm hơn có được không" (16/08/2026)
+
+Anh cần ảnh của bài trước dùng được cho bài sau. Phản xạ đầu tiên là viết một nguồn ứng
+viên mới: quét ảnh các bài gần đây, chấm điểm liên quan, thêm ngăn trên giao diện — vài
+trăm dòng, thêm một chỗ để hỏng.
+
+Đọc kỹ mới thấy `nhap_kho_chu_the.py` **vốn đã** quét toàn bộ thư mục ảnh của bài, kể cả
+tấm chưa dùng. Nó không thiếu năng lực — nó chỉ bị gọi QUÁ MUỘN (lúc xếp kho, tức sau khi
+dựng xong hẳn). Việc phải làm là dời MỐC GỌI, không phải viết thêm.
+
+**Câu hỏi nên đặt trước khi thiết kế:** thứ mình cần đã có ai làm được chưa, và nếu có
+thì nó đang chạy SAI LÚC hay THIẾU NĂNG LỰC? Sai lúc thì dời mốc — rẻ hơn hàng chục lần
+và không đẻ đường thứ hai để sau này lệch nhau.
+
+**Chọn mốc theo THÓI QUEN NGƯỜI DÙNG, không theo sơ đồ kỹ thuật.** Mốc "đổi bài" đắt giá
+vì đó đúng là khoảnh khắc anh cần kho đầy — không phải mốc nào đẹp trong luồng dữ liệu.
