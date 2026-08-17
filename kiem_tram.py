@@ -448,6 +448,35 @@ def _get(d):
         return r.status, json.loads(r.read().decode())
 
 
+def tang_canh_dau_clip():
+    """CẢNH ĐẦU LÀ CLIP THÌ CÓ DỰNG ĐƯỢC KHÔNG (anh bắt 17/08).
+
+    Bấm Dựng báo "câu MỞ (câu 1) chưa có ảnh — cảnh đầu là cảnh giữ người xem", trong
+    khi câu 1 ĐANG có clip 2,6 giây. Gốc: mọi phép đếm trong trạm chỉ nhìn `ban_do` —
+    bản đồ của ẢNH. Clip nằm ở sổ riêng `clip-canh.json` nên câu chỉ có clip bị coi là
+    trống: cổng duyệt chặn, bộ đếm báo "12/15" trong khi bài đủ 15/15.
+
+    Đúng họ lỗi "cảnh chính có gì cảnh phụ có nấy", nhưng ở tầng LOẠI TÀI NGUYÊN: ảnh
+    có đường đi, clip thì không.
+    """
+    print("⑮ CẢNH ĐẦU LÀ CLIP (đếm ảnh + clip chung một thước)")
+    src = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
+
+    _bao("def _cau_da_co(" in src, "có MỘT thước đo 'câu này đã có tài nguyên chưa'")
+    _bao('"clip-canh.json"' in src and "_doc_clip_canh" in src, "thước đo đọc cả sổ clip")
+    _bao('int(str(k).split(":")[0])' in src,
+         "clip ở Ô PHỤ ('3:0') vẫn tính cho câu 3")
+
+    # Không nơi nào được tự đếm lấy bằng ban_do nữa — đó chính là gốc bệnh
+    _bao("co_gi = _cau_da_co(viec, nh)" in src, "cổng DUYỆT dùng thước đo chung")
+    _bao('"da_gan": len(_cau_da_co(' in src, "bộ đếm 'x/y câu đã gán' dùng thước đo chung")
+    _bao("da = len(_cau_da_co(viec, nh_x)" in src,
+         "báo cuối chuỗi máy tự chạy dùng thước đo chung")
+    _bao("chưa gán ảnh hay clip cho câu nào" in src
+         and "chưa có ảnh hay clip" in src,
+         "lời báo lỗi nói đúng sự thật (ảnh HAY clip), không chỉ nhắc ảnh")
+
+
 def tang_kho_lien_bai():
     """TÀI NGUYÊN BÀI TRƯỚC CÓ DÙNG ĐƯỢC CHO BÀI SAU KHÔNG (anh hỏi 16/08).
 
@@ -1200,6 +1229,7 @@ if __name__ == "__main__":
     tang_bao_ban_moi()      # máy phụ có biết khi anh đẩy bản mới không (16/08)
     tang_chuoi_xong_bao()   # chuỗi máy tự chạy xong → trang tự nạp lại (16/08)
     tang_kho_lien_bai()     # tài nguyên bài trước dùng cho bài sau (16/08)
+    tang_canh_dau_clip()    # cảnh đầu là clip có dựng được không (17/08)
     if sau:
         tang4_luong(ma)
     else:

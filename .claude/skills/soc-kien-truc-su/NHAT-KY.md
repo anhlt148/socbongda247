@@ -846,3 +846,24 @@ chỉ sống trong tab. Không có meta og:video. **Chỉ lớp JSON-LD ăn**, c
 **Đã kiểm toàn tuyến:** gửi đúng dữ liệu extension sẽ gửi → video về kho `200.9s · 63.7 MB`
 (khớp 3:20), tên mang nội dung bài. Đã dọn tệp thử khỏi bài của anh. Cổng ⑧m 6 mục.
 `kiem_tram.py --sau` ĐẠT HẾT hai lần. manifest 1.4 → **1.5**.
+
+## 17/08/2026 — cảnh đầu là CLIP thì không dựng được
+
+**Anh bắt:** bấm Dựng báo *"Chưa duyệt được — câu MỞ (câu 1) chưa có ảnh — cảnh đầu là
+cảnh giữ người xem"*, trong khi câu 1 ĐANG có clip 2,6 giây (thumbnail hiện rõ trên trạm).
+
+**Gốc:** mọi phép đếm trong trạm chỉ nhìn `ban_do` — bản đồ của ẢNH. Clip nằm ở sổ riêng
+`clip-canh.json`, nên câu chỉ có clip bị coi như trống. Đo trên bài anh: 12 câu có ảnh +
+4 câu có clip (gồm câu 1) = **15/15 đủ cả bài**, mà trạm báo "12/15" rồi chặn.
+
+Đúng họ lỗi "cảnh chính có gì cảnh phụ có nấy" nhưng ở tầng **LOẠI TÀI NGUYÊN**: ảnh có
+đường đi, clip thì không.
+
+**Sửa:** dựng `_cau_da_co(viec, nh)` — MỘT thước đo "câu này đã có tài nguyên chưa" =
+ảnh HOẶC clip (clip ở ô phụ `"3:0"` vẫn tính cho câu 3). Bốn chỗ trước đây tự đếm lấy
+bằng `ban_do` nay đều hỏi nó: cổng `_duyet` · `da_gan` trong danh sách việc · báo cuối
+chuỗi máy tự chạy. Lời báo lỗi cũng sửa cho đúng sự thật ("ảnh hay clip").
+
+**Đã kiểm:** chốt duyệt bài của anh → CHO QUA; dựng thật → **video.mp4 1080×1920 · 63,7s
+· 23,5 MB**, nhịp hình cho thấy cảnh 1 là clip (`1:▶`), 6/19 cảnh là clip, cảnh 1 có áp
+đúng khung cắt anh chọn. Cổng ⑮ 7 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp.

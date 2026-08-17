@@ -825,3 +825,21 @@ thứ tự thử của trạm chọn nhầm nguồn. Không thử thì cả hai 
 **Luật:** mã phải ĐOÁN thay người (không có con trỏ chỉ, không có lựa chọn tường minh)
 thì bắt buộc thử trên ít nhất một trang thật thuộc đúng họ trang người dùng hay mở —
 đọc mã không bao giờ thấy được `width = 0` hay `src` là `blob:`.
+
+## Hai loại tài nguyên, hai cuốn sổ, một phép đếm — là gãy (17/08/2026)
+
+**Bệnh:** ảnh gán cảnh ghi vào `ban_do`; clip gán cảnh ghi vào `clip-canh.json`. Mọi phép
+đếm trong trạm chỉ đọc `ban_do`. Kết quả: cảnh chỉ có clip bị coi như trống — cổng duyệt
+chặn không cho dựng, bộ đếm báo "12/15" trong khi bài đủ 15/15.
+
+**Gốc:** clip là loại tài nguyên đến SAU. Lúc thêm nó, người viết chỉ lo phần "gán được
+và dựng được", quên rằng khắp hệ còn hàng loạt chỗ hỏi câu *"cảnh này đã có gì chưa"* —
+và tất cả những chỗ ấy đều đang hỏi sai cuốn sổ.
+
+**Cách phòng:** thêm một LOẠI tài nguyên mới thì phải grep mọi nơi đang trả lời câu hỏi
+"cảnh này đã có gì chưa" và cho chúng dùng chung MỘT thước đo. Đây là biến thể của luật
+"cảnh chính có gì cảnh phụ có nấy", ở tầng loại tài nguyên thay vì tầng ô.
+
+**Dấu hiệu nhận ra sớm:** thấy nhiều chỗ cùng viết `nh.get("ban_do")` rồi tự đếm — mỗi
+chỗ như thế là một nơi sẽ quên loại tài nguyên tiếp theo. Gom về một hàm ngay, đừng chờ
+tới lúc nó chặn người dùng giữa việc.

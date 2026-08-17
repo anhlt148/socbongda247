@@ -1380,7 +1380,7 @@ def _ds_viec():
         nh = _nhap(d)
         ra.append({
             "ma": os.path.relpath(d, DD.VIEC), "tieu_de": k.get("tieu_de", ""),
-            "so_cau": len(cau), "da_gan": len(nh.get("ban_do", {})),
+            "so_cau": len(cau), "da_gan": len(_cau_da_co(d, nh)),
             "so_anh": len(_danh_sach_anh(d)),
             "co_giong": os.path.exists(os.path.join(d, "giong.mp3")),
             "da_duyet": os.path.exists(os.path.join(d, "anh", "ban-do-cau.json")),
@@ -2704,7 +2704,7 @@ def _sau_duyet_loi(ma_job, ma):
         bd_x = nh_x.get("ban_do") or {}
         kb_x = json.load(open(os.path.join(viec, "kich-ban.json"), encoding="utf-8"))
         so_cau = len(_tach_cau(kb_x.get("loi_binh", "")))
-        da = sum(1 for i in range(so_cau) if (bd_x.get(str(i)) or "").strip())
+        da = len(_cau_da_co(viec, nh_x) & set(range(so_cau)))
         _bao_ve(f"✅ Xong chuỗi sau Duyệt lời — {kb_x.get('tieu_de','')[:52]}\n"
                 f"{da}/{so_cau} cảnh đã có ảnh nháp"
                 + (f" · {so_cau - da} cảnh còn trống" if da < so_cau else " · đủ cả bài")
@@ -2719,10 +2719,12 @@ def _duyet(ma, bo_qua_dau_nguon=False, bo_qua_nhap=False):
     viec = os.path.join(DD.VIEC, ma)
     nh = _nhap(viec)
     ban_do = {int(k): v for k, v in nh.get("ban_do", {}).items() if v}
-    if not ban_do:
-        return {"ok": False, "loi": "chưa gán ảnh cho câu nào"}
-    if 0 not in ban_do:
-        return {"ok": False, "loi": "câu MỞ (câu 1) chưa có ảnh — cảnh đầu là cảnh giữ người xem"}
+    co_gi = _cau_da_co(viec, nh)          # ảnh HOẶC clip — xem chú thích ở _cau_da_co
+    if not co_gi:
+        return {"ok": False, "loi": "chưa gán ảnh hay clip cho câu nào"}
+    if 0 not in co_gi:
+        return {"ok": False,
+                "loi": "câu MỞ (câu 1) chưa có ảnh hay clip — cảnh đầu là cảnh giữ người xem"}
 
     # CỔNG NHÁP (Phương án ① 10/08): cảnh ◌ máy gán mà anh chưa ✓ nhận thì chưa được chốt
     # — nháp là thứ MẮT NGƯỜI chưa xem, cho qua im lặng là phản bội chính chữ "duyệt".
@@ -3185,6 +3187,29 @@ def _danh_sach_clip(viec):
         ra.append({"tep": ten, "giay": m.get("giay", 0),
                    "mb": round(os.path.getsize(p) / 1048576, 1),
                    "trang": m.get("trang", "")})
+    return ra
+
+
+def _cau_da_co(viec, nh=None):
+    """Tập chỉ số câu ĐÃ CÓ TÀI NGUYÊN — ảnh HOẶC clip. Một thước đo duy nhất.
+
+    Anh bắt 17/08: cảnh đầu gán CLIP thì bấm Dựng báo "câu MỞ (câu 1) chưa có ảnh",
+    không dựng được. Gốc: mọi phép đếm trong trạm chỉ nhìn `ban_do` — bản đồ của ẢNH.
+    Clip nằm ở sổ riêng `clip-canh.json`, nên câu chỉ có clip bị coi như trống: cổng
+    duyệt chặn, bộ đếm báo "12/15" trong khi thực tế đủ.
+
+    Đúng họ lỗi "cảnh chính có gì cảnh phụ có nấy" nhưng ở tầng LOẠI TÀI NGUYÊN: ảnh có
+    đường đi, clip thì không. Nay ai cần biết "câu này có gì chưa" đều hỏi hàm này —
+    thêm loại tài nguyên thứ ba sau này cũng chỉ sửa ở đây.
+    """
+    nh = nh if nh is not None else _nhap(viec)
+    ra = {int(k) for k, v in (nh.get("ban_do") or {}).items() if str(v or "").strip()}
+    for k, v in (_doc_clip_canh(viec) or {}).items():
+        if v and str(v.get("tep") or "").strip():
+            try:
+                ra.add(int(str(k).split(":")[0]))     # ô phụ "3:0" vẫn tính cho câu 3
+            except ValueError:
+                pass
     return ra
 
 
@@ -4414,7 +4439,8 @@ class Tay(BaseHTTPRequestHandler):
                     cu_m = json.load(open(p_m, encoding="utf-8"))
                 except Exception:
                     cu_m = {}
-                for k_m in ("nguoi", "drive", "kho_nang", "viec", "kho_tai_nguyen"):
+                for k_m in ("nguoi", "drive", "kho_nang", "viec", "kho_tai_nguyen",
+                            "kho_drive", "dich_anh", "dich_video"):
                     if k_m in than:
                         v_m = str(than[k_m] or "").strip()
                         if v_m:

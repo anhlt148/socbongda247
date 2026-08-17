@@ -165,6 +165,13 @@ KHO_TAI_NGUYEN = _CH.get("kho_tai_nguyen") or \
 # BẢN SAO KHO TRÊN DRIVE — chỗ `dong_bo_kho.py` soi gương sang. Máy anh giữ kho ở ổ
 # trong cho nhanh (KHO_TAI_NGUYEN), Drive là bản để máy khác đọc; máy nào đã trỏ thẳng
 # KHO_TAI_NGUYEN vào Drive rồi thì để trống, khỏi tự soi gương với chính mình.
+# ĐÍCH LƯU THỨ GẮP VỀ (anh chốt 17/08): "viec" = kho của bài đang mở (mặc định) ·
+# "kho" = kho chủ thể dùng chung · đường dẫn tuyệt đối = thư mục riêng anh tự đặt.
+# Vì sao cần: có lúc anh gắp tư liệu chẳng thuộc video nào — ép nó vào bài đang mở là
+# làm bẩn bài, mà bỏ qua thì mất tư liệu.
+DICH_ANH = str(_CH.get("dich_anh") or "viec").strip() or "viec"
+DICH_VIDEO = str(_CH.get("dich_video") or "viec").strip() or "viec"
+
 KHO_DRIVE = _CH.get("kho_drive") or (
     "" if "CloudStorage" in KHO_TAI_NGUYEN else os.path.join(DRIVE, "kho-tai-nguyen"))
 NHAC = os.path.join(KHO_TAI_NGUYEN, "nhac")
