@@ -15,7 +15,7 @@ chia không trùng nhau. Mỗi khối GPT có kèm chính câu thoại (trong ng
 so chuỗi để biết đoạn ấy ứng với câu nào. Đoạn nào không khớp được thì BỎ, không đoán
 bừa — dặt vào sai câu còn hại hơn không có.
 
-Dùng:  boc(chu_dan, cac_cau) -> {"tu_khoa": {i: "..."}, "tu_khoa_en": {i: "..."},
+Dùng:  boc(chu_dan, cac_cau) -> {"tu_khoa": {i: "EN"}, "tu_khoa_vi": {i: "VI"},
                                  "khop": n, "truot": [câu GPT không khớp được]}
 """
 import json
@@ -186,14 +186,18 @@ def _boc_bang_model(chu_dan, cac_cau):
             vi[str(i)] = str(v["vi"]).strip()
         if str(v.get("en") or "").strip():
             en[str(i)] = str(v["en"]).strip()
-    return {"tu_khoa": vi, "tu_khoa_en": en,
+    # ĐẢO VAI 17/08: `tu_khoa` (câu anh bấm tìm) nay là TIẾNG ANH; tiếng Việt lui về
+    # `tu_khoa_vi`, chỉ dùng tra kho nhà. GPT trả câu nào thiếu thì lấy câu kia bù —
+    # thà có một câu còn hơn để ô trống.
+    return {"tu_khoa": en or vi, "tu_khoa_vi": vi,
             "khop": len(set(vi) | set(en)), "truot": [], "so_cau": len(cac_cau)}
 
 
 def boc(chu_dan, cac_cau, cho_model=True):
     """Khối anh dán + danh sách câu của bài → từ khoá theo chỉ số câu.
 
-    Tiếng Việt vào `tu_khoa`, tiếng Anh vào `tu_khoa_en` (dựa vào dấu tiếng Việt).
+    Tiếng ANH vào `tu_khoa` (câu anh bấm tìm — anh chốt 17/08), tiếng Việt vào
+    `tu_khoa_vi` (chỉ để tra kho nhà, nơi nhãn ghi tiếng Việt).
     Mỗi câu lấy MỘT từ khoá mỗi loại — dài nhất trong khối, vì câu dài mang nhiều
     danh từ neo hơn (cùng lối chọn với bộ gợi ý của trạm).
     """
@@ -216,7 +220,7 @@ def boc(chu_dan, cac_cau, cho_model=True):
             ra_vi[str(i)] = max(vi, key=len)
         if en:
             ra_en[str(i)] = max(en, key=len)
-    ra = {"tu_khoa": ra_vi, "tu_khoa_en": ra_en, "cach": "khuôn",
+    ra = {"tu_khoa": ra_en or ra_vi, "tu_khoa_vi": ra_vi, "cach": "khuôn",
           "khop": len(da_dung), "truot": truot, "so_cau": len(cac_cau)}
     # KHUÔN BÓ TAY → NHỜ MODEL ĐỌC. Ngưỡng nửa số câu: bóc được vài câu lẻ tẻ nghĩa là
     # khuôn đang đoán sai chỗ chứ không phải khối chỉ có bấy nhiêu.

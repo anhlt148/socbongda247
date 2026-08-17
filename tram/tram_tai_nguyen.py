@@ -603,7 +603,8 @@ def _kho_nha_bai(ma, gioi_han=150, bo_qua=0, q=""):
         # anh gõ tay là anh biết mình muốn gì, đừng để từ khoá bài kéo kết quả đi chỗ khác
         truy.append((None, _mo_rong_q(q).split()))
     else:
-        for k, v in (nh.get("tu_khoa") or {}).items():
+        for k in set(nh.get("tu_khoa") or {}) | set(nh.get("tu_khoa_vi") or {}):
+            v = _tk_kho(nh, k)              # tra kho bằng câu VIỆT (xem _tk_kho)
             if (v or "").strip():
                 truy.append((int(k), _mo_rong_q(v).split()))
         for k, o in (nh.get("tu_khoa_phu") or {}).items():
@@ -635,8 +636,7 @@ def _kho_nha_bai(ma, gioi_han=150, bo_qua=0, q=""):
     cau_ds = _tach_cau(kb.get("loi_binh", ""))
     tu_cau_hoc = {}
     for i_c, c_txt in enumerate(cau_ds):
-        tu_cau_hoc[i_c] = set(_bo_dau_k(
-            c_txt + " " + str((nh.get("tu_khoa") or {}).get(str(i_c), ""))).split())
+        tu_cau_hoc[i_c] = set(_bo_dau_k(c_txt + " " + _tk_kho(nh, i_c)).split())
     tu_q_hoc = set(_bo_dau_k(q).split()) if (q or "").strip() else set()
     ra, loai_doi, loai_clb = [], 0, 0
     for dong in open(SO_CHU_THE, encoding="utf-8"):
@@ -927,12 +927,14 @@ def _xep_kho_nghia(ma, bao_tien=None, so_ung_vien=140):
     # quên lần thứ tư 11/08). Ô phụ dùng khoá "3:0" và phải mang ẢNH KHÁC ô chính dù
     # cùng câu thoại, vì nó sinh ra chính để đổi hình cho đúng nhịp 2,5–5s.
     dong_cau = []
-    tk = nh.get("tu_khoa") or {}
+    # MÁY XẾP KHO ĐỌC NHÃN TIẾNG VIỆT → đưa nó câu VIỆT (anh nhắc 17/08: "tìm trong kho
+    # có sẵn thì dùng từ khoá tiếng Việt"). Đưa câu tiếng Anh thì model vẫn hiểu, nhưng
+    # phải bắc cầu qua một lần dịch trong đầu — trúng kém hơn hẳn khi so với nhãn Việt.
     tkp = nh.get("tu_khoa_phu") or {}
     giay = _moc_cau(cau, _do_dai_giong(viec)
                     or sum(len(c.split()) for c in cau) / TIENG_MOT_PHUT * 60)
     for i, c in enumerate(cau):
-        tkc = (tk.get(str(i)) or "").strip()
+        tkc = _tk_kho(nh, i).strip()
         dong_cau.append(f"({i}) {c}" + (f"   ⟨từ khoá: {tkc}⟩" if tkc else ""))
         d_i = giay[i] - (giay[i - 1] if i else 0.0)
         so_phan = NC.chia_nhip([d_i], [False])[0]["so_phan"] if d_i else 1
@@ -1357,7 +1359,7 @@ def _nhap(viec):
             return d
         except Exception:
             pass
-    return {"ban_do": {}, "ghi_chu": {}, "tu_khoa": {}, "tu_khoa_en": {},
+    return {"ban_do": {}, "ghi_chu": {}, "tu_khoa": {}, "tu_khoa_vi": {},
             "tu_khoa_2": {}, "goi_y_xong": False}
 
 
@@ -1484,7 +1486,7 @@ def _chi_tiet(ma):
             "ghep_canh": nh.get("ghep_canh", {}),
             "tu_khoa": nh.get("tu_khoa", {}), "goi_y_xong": nh.get("goi_y_xong", False),
             # từ khoá TIẾNG ANH + góc phụ — trang cần để hiện và để tìm lại (14/08)
-            "tu_khoa_en": nh.get("tu_khoa_en", {}), "tu_khoa_2": nh.get("tu_khoa_2", {}),
+            "tu_khoa_vi": nh.get("tu_khoa_vi", {}), "tu_khoa_2": nh.get("tu_khoa_2", {}),
             "tu_khoa_nguoi": nh.get("tu_khoa_nguoi", {}),
             "nhap": nh.get("nhap", {}),
             "tu_khoa_phu": nh.get("tu_khoa_phu", {}),
@@ -1692,7 +1694,7 @@ def _luu_nhap(ma, d):
           "tu_khoa": d.get("tu_khoa", cu.get("tu_khoa", {})),
           # từ khoá TIẾNG ANH cho từng câu (anh chốt 14/08 — ảnh báo chí Anh ngữ đẹp
           # hơn hẳn). Phải khai ở đây, không thì lưu xong MẤT (luật whitelist).
-          "tu_khoa_en": d.get("tu_khoa_en", cu.get("tu_khoa_en", {})),
+          "tu_khoa_vi": d.get("tu_khoa_vi", cu.get("tu_khoa_vi", {})),
           # câu nào từ khoá do ANH dán từ GPT — máy không được đè (14/08)
           "tu_khoa_nguoi": d.get("tu_khoa_nguoi", cu.get("tu_khoa_nguoi", {})),
           "tu_khoa_2": d.get("tu_khoa_2", cu.get("tu_khoa_2", {})),
@@ -1881,16 +1883,16 @@ def _tim_san(ma, chi_cau=None, bao_tien=None, chi_thieu=False, tk_ep=None):
             # thích tiếng Anh — tìm tiếng Việt là chỉ quét được báo Việt.
             # Gộp hai rổ, tiếng Việt đứng trước (sát nội dung câu hơn), tiếng Anh
             # bù phần ảnh đẹp. Trùng URL thì bỏ.
-            tk_en = (nh.get("tu_khoa_en") or {}).get(str(i), "").strip()
-            if tk_en and not tk_ep:
+            tk_vi = (nh.get("tu_khoa_vi") or {}).get(str(i), "").strip()
+            if tk_vi and not tk_ep:
                 time.sleep(_rd.uniform(2.0, 4.5))
                 try:
-                    r_en = gap_anh.xem_truoc(tk_en)
+                    r_en = gap_anh.xem_truoc(tk_vi)
                     if not (r_en.get("loi") or "").startswith("CAPTCHA"):
                         co = {a["u"] for a in r.get("anh", [])}
                         r["anh"] = list(r.get("anh", [])) + [
                             a for a in r_en.get("anh", []) if a["u"] not in co]
-                        r["tu_khoa_en"] = tk_en
+                        r["tu_khoa_vi"] = tk_vi
                 except Exception:
                     pass                          # tiếng Anh hỏng thì vẫn còn rổ Việt
         except Exception as e:
@@ -1914,7 +1916,7 @@ def _tim_san(ma, chi_cau=None, bao_tien=None, chi_thieu=False, tk_ep=None):
             if len(ds) >= 60:           # hai rổ (Việt + Anh) nên nới trần từ 40
                 break
         cache[str(i)] = {"tu_khoa": tk[i], "anh": ds, "loi": r.get("loi", ""),
-                         **({"tu_khoa_en": r["tu_khoa_en"]} if r.get("tu_khoa_en") else {}),
+                         **({"tu_khoa_vi": r["tu_khoa_vi"]} if r.get("tu_khoa_vi") else {}),
                          "luc": datetime.now().strftime("%H:%M:%S")}
     os.makedirs(os.path.dirname(p_uv), exist_ok=True)
     json.dump(cache, open(p_uv, "w", encoding="utf-8"), ensure_ascii=False)
@@ -2541,14 +2543,14 @@ def _sau_duyet_loi(ma_job, ma):
         # TỪ KHOÁ TIẾNG ANH phải ghi vào sổ, không thì vòng tìm không thấy mà dùng
         # (anh bắt 14/08: "chưa thấy tìm từ khoá theo tiếng anh" — bộ gợi ý CÓ sinh ra,
         # nhưng chỗ này chỉ nhặt tu_khoa + ghi_chu rồi vứt phần tiếng Anh đi).
-        tk_en = dict(nh.get("tu_khoa_en", {}))
-        for k_r, v_r in (r.get("tu_khoa_en") or {}).items():
+        tk_vi = dict(nh.get("tu_khoa_vi", {}))
+        for k_r, v_r in (r.get("tu_khoa_vi") or {}).items():
             if not nguoi.get(k_r):
-                tk_en[k_r] = v_r
+                tk_vi[k_r] = v_r
         tk_2 = dict(nh.get("tu_khoa_2", {}))
         tk_2.update(r.get("tu_khoa_2") or {})
         _luu_nhap(ma, {"ban_do": nh.get("ban_do", {}), "ghi_chu": gc, "tu_khoa": tk,
-                       "tu_khoa_en": tk_en, "tu_khoa_2": tk_2,
+                       "tu_khoa_vi": tk_vi, "tu_khoa_2": tk_2,
                        "tu_khoa_nguoi": nguoi, "goi_y_xong": True})
         tin.append(f"gợi từ khoá cho {len(r['tu_khoa'])} câu")
     except Exception as e:
@@ -3024,16 +3026,16 @@ def _chay_goi_y(ma_job, ma, de_len=False):
         for k, v in r["ghi_chu"].items():
             if de_len or not gc.get(k):
                 gc[k] = v
-        tk_en = dict(nh.get("tu_khoa_en", {}))
-        for k, v in (r.get("tu_khoa_en") or {}).items():
-            if de_len or not tk_en.get(k):
-                tk_en[k] = v
+        tk_vi = dict(nh.get("tu_khoa_vi", {}))
+        for k, v in (r.get("tu_khoa_vi") or {}).items():
+            if de_len or not tk_vi.get(k):
+                tk_vi[k] = v
         tk_2 = dict(nh.get("tu_khoa_2", {}))
         for k, v in (r.get("tu_khoa_2") or {}).items():
             if de_len or not tk_2.get(k):
                 tk_2[k] = v
         _luu_nhap(ma, {"ban_do": nh.get("ban_do", {}), "ghi_chu": gc, "tu_khoa": tk,
-                       "tu_khoa_en": tk_en, "tu_khoa_2": tk_2,
+                       "tu_khoa_vi": tk_vi, "tu_khoa_2": tk_2,
                        "goi_y_xong": True})
         with KHOA:
             VIEC_JOB[ma_job] = {"xong": True, "loi": r.get("loi", ""), "cach": r["cach"],
@@ -3188,6 +3190,22 @@ def _danh_sach_clip(viec):
                    "mb": round(os.path.getsize(p) / 1048576, 1),
                    "trang": m.get("trang", "")})
     return ra
+
+
+def _tk_kho(nh, i_cau):
+    """Câu dùng để TRA KHO NHÀ cho câu thứ `i_cau`.
+
+    Từ 17/08 `tu_khoa` là TIẾNG ANH (anh đo thật: tìm ảnh web bằng tiếng Anh ăn hơn
+    hẳn). Nhưng kho ảnh nhà gắn nhãn TIẾNG VIỆT — "Xuân Sơn ăn mừng", "sân Bukit
+    Jalil". Đem câu tiếng Anh đi chấm điểm với nhãn tiếng Việt là trượt sạch: máy xếp
+    kho báo "kho không có" rồi đi tải lại đúng thứ kho đang có sẵn.
+
+    Tách vai: tìm web dùng `tu_khoa`, tra kho dùng `tu_khoa_vi`. Thiếu câu Việt (bài
+    cũ, hoặc model quên) thì lùi về `tu_khoa` — thà chấm yếu còn hơn không chấm.
+    """
+    k = str(i_cau)
+    return ((nh.get("tu_khoa_vi") or {}).get(k)
+            or (nh.get("tu_khoa") or {}).get(k) or "")
 
 
 def _dich_luu(loai, viec=""):
@@ -4592,11 +4610,11 @@ class Tay(BaseHTTPRequestHandler):
                                      **r_g}, 400)
                 nh_g = _nhap(viec_g)
                 tk_g = dict(nh_g.get("tu_khoa", {})); tk_g.update(r_g["tu_khoa"])
-                en_g = dict(nh_g.get("tu_khoa_en", {})); en_g.update(r_g["tu_khoa_en"])
+                en_g = dict(nh_g.get("tu_khoa_vi", {})); en_g.update(r_g["tu_khoa_vi"])
                 nguoi = dict(nh_g.get("tu_khoa_nguoi", {}))
-                for k_g in list(r_g["tu_khoa"]) + list(r_g["tu_khoa_en"]):
+                for k_g in list(r_g["tu_khoa"]) + list(r_g["tu_khoa_vi"]):
                     nguoi[k_g] = True
-                _luu_nhap(ma_g, {**nh_g, "tu_khoa": tk_g, "tu_khoa_en": en_g,
+                _luu_nhap(ma_g, {**nh_g, "tu_khoa": tk_g, "tu_khoa_vi": en_g,
                                  "tu_khoa_nguoi": nguoi})
                 return self._js({"ok": True, **r_g})
             if d == "/api/bai-moi":

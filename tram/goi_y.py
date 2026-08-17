@@ -111,9 +111,11 @@ Từ khoá cả video: {tu_khoa_kb}
    "highlight", "review", "tổng hợp" — chúng trả về ảnh đầy chữ, logo to giữa hình,
    ảnh ghép nhiều khung. Ảnh dính logo GIỮA khung thì cắt mép không cứu được.
 
-**7. THÊM MỘT CÂU LỆNH TIẾNG ANH** (`tu_khoa_en`) — anh đo thật 14/08: từ khoá tiếng Anh ra
-   ảnh ưng ý hơn hẳn. Lý do: ảnh báo chí thể thao chất lượng cao (Getty, AFP, Reuters, các
-   báo Anh ngữ) gắn chú thích tiếng Anh; tìm tiếng Việt là chỉ quét được báo Việt.
+**7. CÂU LỆNH TÌM ẢNH LÀ TIẾNG ANH** — anh chốt 17/08 sau khi đo thật nhiều bài: *"từ khoá
+   tiếng Anh dễ tìm thấy ảnh phù hợp hơn"*. Nên từ nay **`tu_khoa` và `tu_khoa_2` đều viết
+   BẰNG TIẾNG ANH** — đó là hai câu lệnh anh bấm tìm.
+   Lý do: ảnh báo chí thể thao chất lượng cao (Getty, AFP, Reuters, các báo Anh ngữ) gắn
+   chú thích tiếng Anh; tìm tiếng Việt là chỉ quét được báo Việt.
    · Dùng TÊN QUỐC TẾ chuẩn: "Vietnam national team", "Nguyen Xuan Son", "Kim Sang-sik",
      "My Dinh Stadium", "ASEAN Cup 2026" (KHÔNG viết "AFF Cup" nếu giải đã đổi tên).
    · Cùng luật như trên: 4–7 từ, toàn danh từ, có mốc giải/năm khi nói về một trận cụ thể.
@@ -141,7 +143,12 @@ LỜI BÌNH:
 {cac_cau}
 
 Trả về DUY NHẤT một mảng JSON đúng {so_cau} phần tử, phần tử thứ i ứng với câu i:
-[{{"tu_khoa": "...", "tu_khoa_2": "...", "tu_khoa_en": "...", "ghi_chu": "..."}}, ...]
+[{{"tu_khoa": "...", "tu_khoa_2": "...", "tu_khoa_vi": "...", "ghi_chu": "..."}}, ...]
+
+`tu_khoa` · `tu_khoa_2`: TIẾNG ANH — hai câu lệnh anh bấm tìm ảnh trên web.
+`tu_khoa_vi`: TIẾNG VIỆT — KHÔNG dùng để tìm web. Nó chỉ để tra KHO ẢNH NHÀ, nơi mọi
+tấm đã gắn nhãn tiếng Việt ("Xuân Sơn ăn mừng", "sân Bukit Jalil"). Thiếu nó là máy
+tra kho mù, phải đi tải lại thứ kho đã có. Viết ngắn 3–6 từ, sát nội dung câu.
 Không giải thích gì thêm."""
 
 
@@ -341,9 +348,12 @@ def _hoi_model(kb, cau):
     ds = _boc_json(r.stdout)
     if len(ds) != len(cau):                                   # thiếu/thừa câu là hỏng bản đồ
         raise ValueError(f"model trả {len(ds)} mục, cần đúng {len(cau)}")
+    # `tu_khoa_en` là tên cũ (trước 17/08 nó là câu tiếng Anh PHỤ). Nay tiếng Anh thành
+    # câu chính nên trường ấy không còn, nhưng vẫn đỡ lấy nếu model lỡ trả tên cũ —
+    # đổi luật mà để model trả sai khuôn một lượt là mất cả bài gợi từ khoá.
     return [{"tu_khoa": str(d.get("tu_khoa", "")).strip(),
-             "tu_khoa_2": str(d.get("tu_khoa_2", "")).strip(),
-             "tu_khoa_en": str(d.get("tu_khoa_en", "")).strip(),
+             "tu_khoa_2": str(d.get("tu_khoa_2") or d.get("tu_khoa_en", "")).strip(),
+             "tu_khoa_vi": str(d.get("tu_khoa_vi", "")).strip(),
              "ghi_chu": str(d.get("ghi_chu", "")).strip()} for d in ds]
 
 
@@ -409,7 +419,7 @@ def goi_y(viec, dung_model=True):
             break
     if ten_la and doi_chinh:
         for d in ds:
-            for khoa in ("tu_khoa", "tu_khoa_2", "tu_khoa_en"):
+            for khoa in ("tu_khoa", "tu_khoa_2", "tu_khoa_vi"):
                 la = _ten_la_trong(d.get(khoa, ""), ten_la)
                 if not la:
                     continue
@@ -424,7 +434,9 @@ def goi_y(viec, dung_model=True):
                 da_co_doi = any(_bo_dau_nk(x) in k_con for x in _EN_DOI) or \
                     any(_bo_dau_nk(x) in k_con for x in _EN_DOI.values())
                 if not da_co_doi:
-                    doi_v = doi_chinh if khoa != "tu_khoa_en" \
+                    # hai câu chính là TIẾNG ANH nên chèn tên đội tiếng Anh; riêng
+                    # `tu_khoa_vi` (dùng tra kho, nhãn tiếng Việt) thì chèn tên Việt
+                    doi_v = doi_chinh if khoa == "tu_khoa_vi" \
                         else _EN_DOI.get(doi_chinh, "")
                     if doi_v:
                         con = f"{doi_v} {con}".strip()
@@ -435,28 +447,31 @@ def goi_y(viec, dung_model=True):
     # TÊN GIẢI ĐÃ ĐỔI (quy chuẩn anh): giải nay là ASEAN Cup, model hay quen tay viết
     # "AFF Cup" — ảnh trả về là ảnh mùa cũ. Sửa cứng, khỏi trông chờ model nhớ.
     for d in ds:
-        for khoa in ("tu_khoa", "tu_khoa_2", "tu_khoa_en"):
+        for khoa in ("tu_khoa", "tu_khoa_2", "tu_khoa_vi"):
             if d.get(khoa):
                 d[khoa] = re.sub(r"\bAFF\s*Cup\b", "ASEAN Cup", d[khoa], flags=re.I)
     for d in ds:
-        for khoa in ("tu_khoa", "tu_khoa_2", "tu_khoa_en"):
+        for khoa in ("tu_khoa", "tu_khoa_2", "tu_khoa_vi"):
             if d.get(khoa):
-                d[khoa] = _neo_thoi_diem(d[khoa], hs_n, khoa == "tu_khoa_en")
+                d[khoa] = _neo_thoi_diem(d[khoa], hs_n, khoa != "tu_khoa_vi")
     for d in ds:
-        d["tu_khoa"] = _chac_neo(d.get("tu_khoa", ""), neo_phu)
-        d["tu_khoa_2"] = _chac_neo(d.get("tu_khoa_2", ""), neo_phu)
-        # TIẾNG ANH có neo riêng — chắp "football" chứ không chắp "bóng đá" vào câu
-        # tiếng Anh (trộn hai thứ tiếng làm Google loãng cả hai). Anh chốt 14/08.
-        en = d.get("tu_khoa_en", "")
-        if en and not any(n in en.lower() for n in
-                          ("football", "soccer", "match", "stadium", "cup", "team")):
-            en = (en + " football").strip()
-        d["tu_khoa_en"] = en
+        # HAI CÂU CHÍNH LÀ TIẾNG ANH (anh chốt 17/08) → neo bằng "football", tuyệt đối
+        # không chắp "bóng đá" vào câu tiếng Anh: trộn hai thứ tiếng làm Google loãng
+        # cả hai (bài học 14/08).
+        for khoa in ("tu_khoa", "tu_khoa_2"):
+            en = d.get(khoa, "")
+            if en and not any(n in en.lower() for n in
+                              ("football", "soccer", "match", "stadium", "cup", "team",
+                               "player", "coach", "fans")):
+                en = (en + " football").strip()
+            d[khoa] = en
+        # câu VIỆT chỉ để tra kho nhà → neo tiếng Việt như cũ
+        d["tu_khoa_vi"] = _chac_neo(d.get("tu_khoa_vi", ""), neo_phu)
     return {"tu_khoa": {str(i): d["tu_khoa"] for i, d in enumerate(ds) if d["tu_khoa"]},
             "tu_khoa_2": {str(i): d["tu_khoa_2"] for i, d in enumerate(ds)
                           if d.get("tu_khoa_2") and d["tu_khoa_2"] != d["tu_khoa"]},
-            "tu_khoa_en": {str(i): d["tu_khoa_en"] for i, d in enumerate(ds)
-                           if d.get("tu_khoa_en")},
+            "tu_khoa_vi": {str(i): d["tu_khoa_vi"] for i, d in enumerate(ds)
+                           if d.get("tu_khoa_vi")},
             "ghi_chu": {str(i): d["ghi_chu"] for i, d in enumerate(ds) if d["ghi_chu"]},
             "cach": cach, "loi": loi, "so_cau": len(cau)}
 

@@ -3826,7 +3826,7 @@ $('#tgNhan').onclick = async () => {
     + `</span> · <span style="color:#9c8a63">${r.cach === 'mắt máy đọc hiểu'
         ? '🧠 mắt máy đọc hiểu' : '⚡ khuôn (0 token)'}</span>`
     + ` · tiếng Việt ${Object.keys(r.tu_khoa || {}).length}`
-    + ` · tiếng Anh ${Object.keys(r.tu_khoa_en || {}).length}`
+    + ` · câu Việt tra kho ${Object.keys(r.tu_khoa_vi || {}).length}`
     + (tr ? ` · <span style="color:#e8c46a">${tr} đoạn không khớp được câu nào</span>` : '');
   await napViec(ma);
   bao(`Đã điền từ khoá GPT cho ${r.khop} cảnh — máy sẽ KHÔNG đè lên các cảnh này nữa`);

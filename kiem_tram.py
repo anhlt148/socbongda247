@@ -48,7 +48,7 @@ PY = ["tram/tram_tai_nguyen.py", "tram/gap_anh.py", "xuong.py", "chuyen_dong.py"
 HTML = ["tram-tai-nguyen.html", "tram-chon-anh.html", "kho-nha-duyet.html"]
 # trường sổ tram.json — thêm trường mới mà quên khai ở _luu_nhap là LƯU XONG MẤT
 TRUONG_SO = ["ban_do", "ghi_chu", "tu_khoa", "the_so", "anh_phu", "lat_anh",
-             "ghep_canh", "nhap", "tu_khoa_phu", "ghi_chu_phu", "tu_khoa_en",
+             "ghep_canh", "nhap", "tu_khoa_phu", "ghi_chu_phu", "tu_khoa_vi",
              "tu_khoa_nguoi"]
 
 loi, canh = [], []
@@ -356,7 +356,7 @@ def tang_chinh_phu():
             _r = _bg.boc('ĐOẠN 1\n"Câu thử nghiệm dài đủ để khớp được với bài."\n'
                          'Từ khóa:\n- Vietnam U17 striker\n- tiền đạo u17 việt nam',
                          ["Câu thử nghiệm dài đủ để khớp được với bài.", "Câu khác."])
-            _bao(_r["khop"] == 1 and _r["tu_khoa_en"].get("0") and _r["tu_khoa"].get("0"),
+            _bao(_r["khop"] == 1 and _r["tu_khoa_vi"].get("0") and _r["tu_khoa"].get("0"),
                  "bộ bóc khớp câu + tách đúng hai thứ tiếng")
         except Exception as _e:
             _bao(False, "bộ bóc gói GPT chạy được", str(_e)[:60])
@@ -446,6 +446,44 @@ def tang_chinh_phu():
 def _get(d):
     with urllib.request.urlopen(CONG + d, timeout=30) as r:
         return r.status, json.loads(r.read().decode())
+
+
+def tang_tu_khoa_anh():
+    """TỪ KHOÁ TÌM ẢNH LÀ TIẾNG ANH (anh chốt 17/08: "tìm bằng tiếng Anh dễ ra ảnh phù
+    hợp hơn"), nhưng KHO NHÀ gắn nhãn TIẾNG VIỆT nên phải giữ một câu Việt riêng để tra
+    kho — không thì máy xếp kho trượt sạch rồi đi tải lại thứ kho đang có.
+    """
+    print("⑰ TỪ KHOÁ TÌM ẢNH BẰNG TIẾNG ANH")
+    gy = open(os.path.join(TRAM, "goi_y.py"), encoding="utf-8").read()
+    src = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
+    bg = open(os.path.join(TRAM, "boc_goi_gpt.py"), encoding="utf-8").read()
+
+    _bao("tu_khoa` và `tu_khoa_2` đều viết" in gy or "đều viết\n   BẰNG TIẾNG ANH" in gy,
+         "luật gợi ý: hai câu chính viết bằng TIẾNG ANH")
+    _bao('"tu_khoa_vi"' in gy, "vẫn sinh câu VIỆT riêng để tra kho")
+    _bao('d[khoa] = _chac_neo' not in gy.split('d["tu_khoa_vi"] = _chac_neo')[0][-400:],
+         "câu tiếng Anh KHÔNG bị chắp neo tiếng Việt (trộn tiếng làm loãng cả hai)")
+    _bao('"football"' in gy, "câu tiếng Anh neo bằng 'football'")
+
+    _bao("def _tk_kho(" in src, "trạm có MỘT hàm quyết 'tra kho thì dùng câu nào'")
+    _bao("tu_khoa_vi" in src and "or (nh.get(\"tu_khoa\") or {}).get(k)" in src,
+         "thiếu câu Việt thì lùi về câu Anh, không trả rỗng")
+    _bao(src.count("_tk_kho(") >= 4, "mọi chỗ tra kho đều đi qua hàm ấy")
+    # anh nhắc thêm 17/08: "tìm online dùng tiếng Anh, tìm trong kho dùng tiếng Việt"
+    i_x = src.find("def _xep_kho_nghia")
+    _bao("_tk_kho(nh, i)" in src[i_x:i_x + 3500],
+         "máy xếp kho theo NGHĨA nhận câu VIỆT (nó đọc nhãn kho vốn ghi tiếng Việt)")
+    i_t = src.find("def _tim_san")
+    _bao('nh.get("tu_khoa", {})' in src[i_t:i_t + 1200],
+         "tìm ảnh Google vẫn dùng câu ANH (đường ONLINE)")
+    _bao("tu_khoa_en" not in src, "trạm không còn tên trường cũ (đổi vai thì đổi tên)")
+
+    _bao('"tu_khoa": en or vi' in bg, "cầu dán GPT: câu ANH vào ô tìm")
+    _bao('"tu_khoa_vi": vi' in bg, "cầu dán GPT: câu VIỆT lui về ô tra kho")
+
+    # sổ nháp phải khai trường mới, không khai là lưu xong MẤT
+    _bao('"tu_khoa_vi"' in src.split("def _luu_nhap")[1][:3000] if "def _luu_nhap" in src
+         else False, "_luu_nhap khai tu_khoa_vi vào whitelist")
 
 
 def tang_dich_luu():
@@ -1274,6 +1312,7 @@ if __name__ == "__main__":
     tang_kho_lien_bai()     # tài nguyên bài trước dùng cho bài sau (16/08)
     tang_canh_dau_clip()    # cảnh đầu là clip có dựng được không (17/08)
     tang_dich_luu()         # chọn được nơi lưu thứ gắp về (17/08)
+    tang_tu_khoa_anh()      # từ khoá tìm ảnh bằng tiếng Anh (17/08)
     if sau:
         tang4_luong(ma)
     else:
