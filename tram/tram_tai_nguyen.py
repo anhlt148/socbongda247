@@ -1360,6 +1360,7 @@ def _nhap(viec):
         except Exception:
             pass
     return {"ban_do": {}, "ghi_chu": {}, "tu_khoa": {}, "tu_khoa_vi": {},
+            "tu_khoa_video": {}, "tu_khoa_dia": {},
             "tu_khoa_2": {}, "goi_y_xong": False}
 
 
@@ -1490,6 +1491,10 @@ def _chi_tiet(ma):
             "tu_khoa_nguoi": nh.get("tu_khoa_nguoi", {}),
             "nhap": nh.get("nhap", {}),
             "tu_khoa_phu": nh.get("tu_khoa_phu", {}),
+            # câu lệnh tìm VIDEO + câu TIẾNG BẢN ĐỊA (18/08) — trang phải thấy thì mới
+            # hiện cho anh sửa được, và luồng tìm clip mới có cái mà dùng
+            "tu_khoa_video": nh.get("tu_khoa_video", {}),
+            "tu_khoa_dia": nh.get("tu_khoa_dia", {}),
             "ghi_chu_phu": nh.get("ghi_chu_phu", {}),
             "the_so": nh.get("the_so", {}),
             "video": _tin_video(viec),
@@ -1692,9 +1697,15 @@ def _luu_nhap(ma, d):
     ra = {"ban_do": bd,
           "ghi_chu": d.get("ghi_chu", cu.get("ghi_chu", {})),
           "tu_khoa": d.get("tu_khoa", cu.get("tu_khoa", {})),
-          # từ khoá TIẾNG ANH cho từng câu (anh chốt 14/08 — ảnh báo chí Anh ngữ đẹp
-          # hơn hẳn). Phải khai ở đây, không thì lưu xong MẤT (luật whitelist).
+          # câu TIẾNG VIỆT dùng TRA KHO (anh chốt 17/08: tìm online bằng tiếng Anh,
+          # tra kho có sẵn bằng tiếng Việt). Phải khai ở đây, không thì lưu xong MẤT.
           "tu_khoa_vi": d.get("tu_khoa_vi", cu.get("tu_khoa_vi", {})),
+          # câu lệnh TÌM VIDEO — khác câu tìm ảnh (anh chốt 18/08): ảnh cần khoảnh khắc
+          # đứng yên, video cần diễn biến ("highlights", "trophy ceremony").
+          "tu_khoa_video": d.get("tu_khoa_video", cu.get("tu_khoa_video", {})),
+          # câu TIẾNG BẢN ĐỊA khi bài nói về nước khác (18/08): báo Thái có ảnh sân
+          # Rajamangala mà báo Anh không có.
+          "tu_khoa_dia": d.get("tu_khoa_dia", cu.get("tu_khoa_dia", {})),
           # câu nào từ khoá do ANH dán từ GPT — máy không được đè (14/08)
           "tu_khoa_nguoi": d.get("tu_khoa_nguoi", cu.get("tu_khoa_nguoi", {})),
           "tu_khoa_2": d.get("tu_khoa_2", cu.get("tu_khoa_2", {})),
@@ -1877,24 +1888,42 @@ def _tim_san(ma, chi_cau=None, bao_tien=None, chi_thieu=False, tk_ep=None):
             time.sleep(_rd.uniform(2.5, 6.0))      # giãn nhịp người thật — Google nghi máy
         try:
             r = gap_anh.xem_truoc(tk[i])
-            # ── QUÉT THÊM BẰNG TIẾNG ANH (anh chốt 14/08) ────────────────────
-            # Anh đo thật: từ khoá tiếng Anh ra ảnh ưng ý hơn hẳn, vì ảnh báo chí
-            # thể thao chất lượng cao (Getty/AFP/Reuters, báo Anh ngữ) gắn chú
-            # thích tiếng Anh — tìm tiếng Việt là chỉ quét được báo Việt.
-            # Gộp hai rổ, tiếng Việt đứng trước (sát nội dung câu hơn), tiếng Anh
-            # bù phần ảnh đẹp. Trùng URL thì bỏ.
+            # ── RỔ THỨ HAI: TIẾNG VIỆT ───────────────────────────────────────
+            # Rổ chính `tk[i]` nay là TIẾNG ANH (anh chốt 17/08 — ảnh báo chí Anh ngữ
+            # Getty/AFP/Reuters đẹp hơn hẳn). Rổ Việt quét thêm để bắt ảnh mà chỉ báo
+            # Việt có: cầu thủ ít tên tuổi, sự kiện nội địa. Trùng URL thì bỏ.
             tk_vi = (nh.get("tu_khoa_vi") or {}).get(str(i), "").strip()
             if tk_vi and not tk_ep:
                 time.sleep(_rd.uniform(2.0, 4.5))
                 try:
-                    r_en = gap_anh.xem_truoc(tk_vi)
-                    if not (r_en.get("loi") or "").startswith("CAPTCHA"):
+                    r_v = gap_anh.xem_truoc(tk_vi)
+                    if not (r_v.get("loi") or "").startswith("CAPTCHA"):
                         co = {a["u"] for a in r.get("anh", [])}
                         r["anh"] = list(r.get("anh", [])) + [
-                            a for a in r_en.get("anh", []) if a["u"] not in co]
+                            a for a in r_v.get("anh", []) if a["u"] not in co]
                         r["tu_khoa_vi"] = tk_vi
                 except Exception:
-                    pass                          # tiếng Anh hỏng thì vẫn còn rổ Việt
+                    pass                          # rổ Việt hỏng thì vẫn còn rổ Anh
+
+            # ── RỔ THỨ BA: TIẾNG BẢN ĐỊA — CHỈ KHI HAI RỔ TRÊN CHƯA ĐỦ ──────
+            # Anh chốt 18/08: báo Thái có ảnh sân Rajamangala mà báo Anh không có.
+            # Nhưng mỗi lượt tìm mất ~6 giây cộng giãn nhịp; quét bản địa cho MỌI câu
+            # là cộng thêm 2–3 phút mỗi bài, trong khi hệ vốn đã lấy ~60 ảnh/câu —
+            # thừa ảnh chứ không thiếu. Nên đây là "hiệp hai": chỉ bung khi hai rổ
+            # trên gom chưa nổi 20 tấm. Đúng tinh thần search budget mà không làm
+            # chậm ca thường.
+            tk_dia = (nh.get("tu_khoa_dia") or {}).get(str(i), "").strip()
+            if tk_dia and not tk_ep and len(r.get("anh") or []) < 20:
+                time.sleep(_rd.uniform(2.0, 4.5))
+                try:
+                    r_d = gap_anh.xem_truoc(tk_dia)
+                    if not (r_d.get("loi") or "").startswith("CAPTCHA"):
+                        co = {a["u"] for a in r.get("anh", [])}
+                        r["anh"] = list(r.get("anh", [])) + [
+                            a for a in r_d.get("anh", []) if a["u"] not in co]
+                        r["tu_khoa_dia"] = tk_dia
+                except Exception:
+                    pass
         except Exception as e:
             cache[str(i)] = {"tu_khoa": tk[i], "anh": [], "loi": str(e)}
             continue
@@ -2549,10 +2578,37 @@ def _sau_duyet_loi(ma_job, ma):
                 tk_vi[k_r] = v_r
         tk_2 = dict(nh.get("tu_khoa_2", {}))
         tk_2.update(r.get("tu_khoa_2") or {})
+
+        # ══ MỐC HÌNH → TỪ KHOÁ RIÊNG CHO TỪNG Ô PHỤ (anh chốt 18/08) ══
+        # Câu kể nhiều chuyện ("2008 … 2018 … 2024") trước nay chỉ có MỘT câu lệnh, nên
+        # mọi ô phụ của nó cùng tìm một thứ → ba cảnh liền nhau ra ảnh na ná, mà lại lẫn
+        # ba mùa giải. Nay mỗi mốc rót vào một ô phụ: cảnh 2b tìm 2008, 2c tìm 2018…
+        #
+        # KHÔNG ĐÈ Ô ANH ĐÃ GÕ. Ô phụ là chỗ anh hay sửa tay nhất; máy ghi đè lên đó là
+        # xoá công anh mà chẳng báo gì (đúng họ tai nạn "xoá mất 19 chủ thể anh đặt tay"
+        # hôm 14/08). Chỉ điền vào ô ĐANG TRỐNG.
+        tkp = {k: dict(v) for k, v in (nh.get("tu_khoa_phu") or {}).items()}
+        so_moc = 0
+        for k_c, ds_moc in (r.get("moc_hinh") or {}).items():
+            o_cu = tkp.setdefault(k_c, {})
+            # mốc ĐẦU đã nằm ở `tu_khoa` của ô chính rồi → ô phụ lấy từ mốc thứ hai
+            for j, m in enumerate(ds_moc[1:]):
+                if not (o_cu.get(str(j)) or "").strip():
+                    o_cu[str(j)] = m
+                    so_moc += 1
+
         _luu_nhap(ma, {"ban_do": nh.get("ban_do", {}), "ghi_chu": gc, "tu_khoa": tk,
-                       "tu_khoa_vi": tk_vi, "tu_khoa_2": tk_2,
+                       "tu_khoa_vi": tk_vi, "tu_khoa_2": tk_2, "tu_khoa_phu": tkp,
+                       "tu_khoa_video": r.get("tu_khoa_video") or {},
+                       "tu_khoa_dia": r.get("tu_khoa_dia") or {},
                        "tu_khoa_nguoi": nguoi, "goi_y_xong": True})
-        tin.append(f"gợi từ khoá cho {len(r['tu_khoa'])} câu")
+        tin.append(f"gợi từ khoá cho {len(r['tu_khoa'])} câu"
+                   + (f", tách {len(r.get('moc_hinh') or {})} câu thành mốc hình "
+                      f"({so_moc} ô phụ)" if r.get("moc_hinh") else "")
+                   + (f", {len(r.get('tu_khoa_video') or {})} câu có câu lệnh tìm video"
+                      if r.get("tu_khoa_video") else "")
+                   + (f", {len(r.get('tu_khoa_dia') or {})} câu có tiếng bản địa"
+                      if r.get("tu_khoa_dia") else ""))
     except Exception as e:
         tin.append(f"không gợi được từ khoá: {e}")
 

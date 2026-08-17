@@ -49,7 +49,7 @@ HTML = ["tram-tai-nguyen.html", "tram-chon-anh.html", "kho-nha-duyet.html"]
 # trường sổ tram.json — thêm trường mới mà quên khai ở _luu_nhap là LƯU XONG MẤT
 TRUONG_SO = ["ban_do", "ghi_chu", "tu_khoa", "the_so", "anh_phu", "lat_anh",
              "ghep_canh", "nhap", "tu_khoa_phu", "ghi_chu_phu", "tu_khoa_vi",
-             "tu_khoa_nguoi"]
+             "tu_khoa_nguoi", "tu_khoa_video", "tu_khoa_dia"]
 
 loi, canh = [], []
 
@@ -185,12 +185,28 @@ def tang2_bay_cu():
         _bao(not xau, f"không import đè module — {f}", " · ".join(xau[:3]))
     # ②b trường sổ khai đủ ở cả ba cửa
     src = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
-    i_luu = src.find("def _luu_nhap")
-    than_luu = src[i_luu:i_luu + 3000]
+
+    def _than_ham(ten):
+        """Thân hàm theo RANH GIỚI THẬT, không cắt bằng số ký tự.
+
+        Bản cũ lấy `src[i : i+3000]`. Ngày 18/08 thêm mấy dòng chú thích vào
+        `_luu_nhap` là `tu_khoa_phu` bị đẩy ra ngoài cửa sổ ấy → cổng báo TRƯỢT OAN
+        một whitelist vẫn đang đủ. Cổng báo oan còn nguy hơn cổng không có: nó dạy
+        người ta bỏ qua lời cảnh báo.
+        """
+        try:
+            for nd in ast.walk(ast.parse(src)):
+                if isinstance(nd, ast.FunctionDef) and nd.name == ten:
+                    return ast.get_source_segment(src, nd) or ""
+        except Exception:
+            pass
+        i = src.find(f"def {ten}")
+        return src[i:i + 6000] if i >= 0 else ""
+
+    than_luu = _than_ham("_luu_nhap")
     thieu = [t for t in TRUONG_SO if f'"{t}"' not in than_luu]
     _bao(not thieu, "trường sổ khai đủ trong _luu_nhap", " · ".join(thieu))
-    i_ct = src.find("def _chi_tiet")
-    than_ct = src[i_ct:src.find("def _chot_khop")] if i_ct > 0 else ""
+    than_ct = _than_ham("_chi_tiet")
     thieu2 = [t for t in TRUONG_SO if f'"{t}"' not in than_ct]
     _bao(not thieu2, "trường sổ trả về trong _chi_tiet", " · ".join(thieu2))
     # ②d ROUTE TRÙNG TÊN — bẫy 11/08: em thêm "/api/xep-kho" cho máy-xếp-nghĩa trong
@@ -446,6 +462,62 @@ def tang_chinh_phu():
 def _get(d):
     with urllib.request.urlopen(CONG + d, timeout=30) as r:
         return r.status, json.loads(r.read().decode())
+
+
+def tang_query_thong_minh():
+    """QUERY THÔNG MINH (anh duyệt 18/08 sau khi em đối chiếu tài liệu nâng cấp).
+
+    Ba mục em đánh giá là ĐÁNG làm trong 32 mục của tài liệu:
+      ① tách câu nhiều mốc thành nhiều câu lệnh (mục 8)
+      ② câu lệnh tìm VIDEO khác câu tìm ẢNH (mục 17)
+      ③ một câu tiếng bản địa khi bài nói về nước khác (mục 21)
+
+    Hai mục CỐ Ý BỎ: 8 nhóm query và search budget 3 vòng — hệ đang lấy ~60 ảnh/câu,
+    thừa ảnh chứ không thiếu; nhân năm số lượt tìm là phình đúng chỗ đang tắc (đo thật:
+    duyệt ảnh chiếm 71% thời gian sản xuất một video).
+    """
+    print("⑱ QUERY THÔNG MINH (mốc hình · câu video · tiếng bản địa)")
+    gy = open(os.path.join(TRAM, "goi_y.py"), encoding="utf-8").read()
+    src = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
+
+    _bao("moc_hinh" in gy and "tu_khoa_video" in gy and "tu_khoa_dia" in gy,
+         "bộ gợi ý sinh đủ ba trường mới")
+    _bao("def _cau_chi(" in gy,
+         "có CẦU CHÌ bằng code — model quên luật thì code làm thay")
+
+    # cầu chì phải kiểm được và phải đúng ở ba ca xương nhất
+    sys.path.insert(0, TRAM)
+    try:
+        import goi_y as _GY
+        d1 = {"tu_khoa": "Vietnam champions AFF Cup 2008, 2018, 2024", "tu_khoa_2": "",
+              "moc_hinh": [], "tu_khoa_video": ""}
+        b1 = _GY._cau_chi([d1], ["Đăng quang 2008, 2018, rồi 2024."])
+        _bao(len(re.findall(r"\b20[0-4]\d\b", d1["tu_khoa"])) == 1,
+             "câu lệnh chính chỉ còn MỘT mốc thời gian")
+        _bao(len(d1["moc_hinh"]) == 3 and "," not in " ".join(d1["moc_hinh"]),
+             "tách đúng 3 mốc và mốc SẠCH dấu phẩy (thứ tự dọn→tách)")
+
+        d2 = {"tu_khoa": "Malaysia ticket price football", "tu_khoa_2": "",
+              "moc_hinh": [], "tu_khoa_video": ""}
+        _GY._cau_chi([d2], ["Vé tăng từ 30 lên 50 ringgit."])
+        _bao(not d2["moc_hinh"] and not d2["tu_khoa_video"],
+             "câu TĨNH (giá vé) thì cầu chì IM — không ép tìm video cho thứ không có video")
+
+        d3 = {"tu_khoa": "Vietnam champions 2024", "tu_khoa_2": "",
+              "moc_hinh": ["x 2008", "y 2024"], "tu_khoa_video": "Vietnam highlights"}
+        b3 = _GY._cau_chi([d3], ["Vô địch 2008 và 2024."])
+        _bao(d3["moc_hinh"] == ["x 2008", "y 2024"] and sum(b3.values()) == 0,
+             "model đã làm đủ thì cầu chì KHÔNG đè lên")
+    except Exception as e:
+        _bao(False, "chạy thử cầu chì", str(e)[:70])
+
+    _bao('"tu_khoa_video": d.get("tu_khoa_video"' in src
+         and '"tu_khoa_dia": d.get("tu_khoa_dia"' in src,
+         "hai trường mới khai vào whitelist (không khai là lưu xong MẤT)")
+    _bao("if not (o_cu.get(str(j)) or \"\").strip():" in src,
+         "mốc hình chỉ điền vào ô phụ ĐANG TRỐNG — không đè thứ anh gõ tay")
+    _bao("len(r.get(\"anh\") or []) < 20" in src,
+         "rổ tiếng bản địa chỉ bung khi chưa đủ 20 ảnh (đừng làm chậm ca thường)")
 
 
 def tang_tu_khoa_anh():
@@ -1313,6 +1385,7 @@ if __name__ == "__main__":
     tang_canh_dau_clip()    # cảnh đầu là clip có dựng được không (17/08)
     tang_dich_luu()         # chọn được nơi lưu thứ gắp về (17/08)
     tang_tu_khoa_anh()      # từ khoá tìm ảnh bằng tiếng Anh (17/08)
+    tang_query_thong_minh() # mốc hình · câu video · tiếng bản địa (18/08)
     if sau:
         tang4_luong(ma)
     else:

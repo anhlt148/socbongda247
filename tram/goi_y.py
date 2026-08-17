@@ -143,7 +143,47 @@ LỜI BÌNH:
 {cac_cau}
 
 Trả về DUY NHẤT một mảng JSON đúng {so_cau} phần tử, phần tử thứ i ứng với câu i:
-[{{"tu_khoa": "...", "tu_khoa_2": "...", "tu_khoa_vi": "...", "ghi_chu": "..."}}, ...]
+**8. CÂU KỂ NHIỀU MỐC THÌ TÁCH RA NHIỀU CÂU LỆNH** (`moc_hinh`) — anh chốt 18/08.
+   Một câu thoại có thể kể ba bốn chuyện khác nhau. Gộp tất cả vào MỘT câu lệnh là
+   Google phải chiều cả ba, kết quả chẳng trúng cái nào.
+   ✗ Lời: *"lần đầu đăng quang 2008, trở lại đỉnh cao 2018, rồi vô địch thứ ba 2024"*
+     → một câu lệnh "Vietnam champions 2008 2018 2024" ra ảnh lẫn lộn cả ba mùa.
+   ✓ Tách thành ba mốc hình, mỗi mốc một câu lệnh RIÊNG:
+     `["Vietnam AFF Cup 2008 champions trophy", "Vietnam AFF Cup 2018 final celebration",
+       "Vietnam ASEAN Cup 2024 trophy ceremony"]`
+   **Khi nào tách:** câu nhắc **nhiều năm · nhiều trận · nhiều người · nhiều nơi chốn ·
+   nhiều sự kiện**. Câu chỉ có một ý thì để `moc_hinh` rỗng — đừng tách cho có.
+   **Tách tối đa 4 mốc.** Mỗi mốc vẫn theo đủ luật 1–7 (tiếng Anh, danh từ nhìn thấy
+   được, có mốc giải/năm). Mốc đầu tiên nên trùng ý với `tu_khoa`.
+   Mốc hình dùng cho CẢNH PHỤ — cùng lời thoại nhưng đổi hình theo nhịp, nên mỗi mốc
+   phải cho ra ảnh KHÁC HẲN nhau.
+
+**9. CÂU LỆNH TÌM VIDEO KHÁC CÂU LỆNH TÌM ẢNH** (`tu_khoa_video`) — anh chốt 18/08.
+   Tìm ảnh và tìm video là hai ý định khác nhau; dùng chung một câu là hỏng cả hai.
+   · Ảnh: khoảnh khắc đứng yên → `"Vietnam Thailand ASEAN Cup 2024 celebration photo"`
+   · Video: đoạn có diễn biến → `"Vietnam Thailand ASEAN Cup 2024 final highlights"`
+   Từ hay dùng cho video: *highlights · full match · goals · press conference ·
+   interview · training session · trophy ceremony · fan reaction · behind the scenes*.
+   Chỉ viết khi câu này thật sự cần HÌNH ĐỘNG (bàn thắng, ăn mừng, tranh chấp, phát
+   biểu, không khí khán đài). Câu tả trạng thái tĩnh (bảng xếp hạng, giá vé, thống kê)
+   thì để rỗng — đừng ép tìm video cho thứ vốn không có video.
+
+**10. MỘT CÂU BẰNG TIẾNG BẢN ĐỊA KHI BÀI NÓI VỀ NƯỚC KHÁC** (`tu_khoa_dia`) — anh chốt
+   18/08. Báo Thái có ảnh sân Rajamangala mà báo Anh không có; `Timnas Indonesia` ra
+   thứ `Indonesia national team` không ra.
+   · Thái Lan → tiếng Thái · Indonesia → tiếng Indonesia · Malaysia → tiếng Mã Lai ·
+     Hàn Quốc → tiếng Hàn · Nhật Bản → tiếng Nhật · Trung Quốc → tiếng Trung.
+   · CHỈ viết khi câu nói về nước ấy, và chỉ **một** câu. Bài về Việt Nam thuần thì để
+     rỗng (câu tiếng Việt đã có ở `tu_khoa_vi`).
+   · Phải là tiếng bản địa THẬT, dùng tên đội/giải người bản xứ thật sự gõ:
+     ✓ `"ทีมชาติไทย เวียดนาม อาเซียนคัพ 2026"` · ✓ `"Timnas Indonesia Vietnam Piala AFF"`
+     ✓ `"Harimau Malaya lawan Vietnam Piala ASEAN 2026"`
+   · **Không chắc thì để RỖNG.** Câu bịa bằng thứ tiếng mình không nắm còn hại hơn
+     không có — nó kéo về ảnh chẳng liên quan mà mình không đọc nổi để biết là sai.
+
+[{{"tu_khoa": "...", "tu_khoa_2": "...", "tu_khoa_vi": "...",
+  "moc_hinh": ["...", "..."], "tu_khoa_video": "...", "tu_khoa_dia": "...",
+  "ghi_chu": "..."}}, ...]
 
 `tu_khoa` · `tu_khoa_2`: TIẾNG ANH — hai câu lệnh anh bấm tìm ảnh trên web.
 `tu_khoa_vi`: TIẾNG VIỆT — KHÔNG dùng để tìm web. Nó chỉ để tra KHO ẢNH NHÀ, nơi mọi
@@ -237,12 +277,75 @@ def _ten_rieng(cau):
     return ra
 
 
+def _cau_chi(ds, cau):
+    """BÙ PHẦN MODEL BỎ QUÊN. Trả về số chỗ đã bù — có số mới đo được là cầu chì có ăn.
+
+    Đo thật 18/08: cùng model, cùng prompt — lượt trả `moc_hinh` đầy đủ, lượt sau bỏ
+    trắng dù câu rõ ràng kể ba mốc. Model là hàm ngẫu nhiên; luật mới nằm cuối một
+    prompt dài mười mục thì càng dễ trôi.
+
+    Nguyên tắc của hệ: thứ gì CODE quyết được thì đừng để model quyết.
+    """
+    bu = {"moc": 0, "video": 0, "nam": 0}
+    DONG = ("ăn mừng", "ghi bàn", "bàn thắng", "sút", "đánh đầu", "cản phá", "thắng",
+            "thua", "vô địch", "nâng cúp", "khóc", "ôm nhau", "phát biểu", "trả lời",
+            "họp báo", "cổ vũ", "khán đài", "ra sân", "tập luyện", "chung kết",
+            "bán kết", "trận", "đăng quang", "lượt về", "lượt đi")
+    for i_d, d in enumerate(ds):
+        c_goc = cau[i_d] if i_d < len(cau) else ""
+
+        # ① CÂU LỆNH CHÍNH CHỈ ĐƯỢC MỘT MỐC THỜI GIAN — LÀM TRƯỚC MỌI VIỆC KHÁC.
+        # Đo thật 18/08: model nhét cả ba năm vào một câu —
+        #   "Vietnam national team ASEAN Cup champions trophy AFF Cup 2008, 2018, 2024"
+        # Google phải chiều cả ba mùa nên chẳng trúng mùa nào. Giữ MỐC MỚI NHẤT (bài
+        # đang nói về hiện tại); các mốc kia sẽ nằm ở `moc_hinh` ngay bên dưới.
+        # THỨ TỰ QUAN TRỌNG: dọn xong mới tách mốc, không thì mốc thừa hưởng cả dấu
+        # phẩy lẫn năm rác của bản gốc (QC bắt được ngay lượt thử đầu).
+        for khoa in ("tu_khoa", "tu_khoa_2"):
+            v = d.get(khoa) or ""
+            cac = re.findall(r"\b(19[5-9]\d|20[0-4]\d)\b", v)
+            if len(set(cac)) >= 2:
+                giu = max(cac)
+                v = re.sub(r"\b(19[5-9]\d|20[0-4]\d)\b",
+                           lambda m: m.group() if m.group() == giu else " ", v)
+                v = re.sub(r"[,;]+", " ", v)          # dấu phẩy vô nghĩa với Google
+                d[khoa] = " ".join(v.split())
+                bu["nam"] += 1
+
+        # ② CÂU NHIỀU NĂM mà model không tách → tự tách theo năm (luật 8)
+        nam = []
+        for m_n in re.finditer(r"\b(19[5-9]\d|20[0-4]\d)\b", c_goc):
+            if m_n.group() not in nam:
+                nam.append(m_n.group())
+        if len(nam) >= 2 and len(d.get("moc_hinh") or []) < 2:
+            than_en = re.sub(r"\b(19[5-9]\d|20[0-4]\d)\b", " ", d.get("tu_khoa") or "")
+            than_en = " ".join(re.sub(r"[,;]+", " ", than_en).split())
+            if than_en:
+                d["moc_hinh"] = [f"{than_en} {n}".strip() for n in nam[:4]]
+                d["ghi_chu"] = (d.get("ghi_chu", "")
+                                + f" · tự tách {len(nam[:4])} mốc theo năm").strip(" ·")
+                bu["moc"] += 1
+
+        # ③ CÂU CÓ HÌNH ĐỘNG mà model không cho câu video → dựng từ câu ảnh (luật 9).
+        # Câu tả trạng thái tĩnh (giá vé, bảng xếp hạng) thì để rỗng — ép tìm video
+        # cho thứ vốn không có video chỉ tổ kéo về clip lạc đề.
+        if not (d.get("tu_khoa_video") or "").strip():
+            if any(t in c_goc.lower() for t in DONG) and (d.get("tu_khoa") or ""):
+                d["tu_khoa_video"] = (d["tu_khoa"] + " highlights").strip()
+                bu["video"] += 1
+    return bu
+
+
 def _meo(cau, neo):
     ra = []
     for c in cau:
         ten = _ten_rieng(c)
+        # ĐƯỜNG LÙI khi model hỏng — phải trả ĐỦ mọi khoá mà hậu xử lý sẽ đụng tới.
+        # Thiếu một khoá là cả bài gợi từ khoá chết theo, đúng lúc model đã hỏng sẵn:
+        # đường lùi mà cũng gãy thì coi như không có đường lùi.
         ra.append({"tu_khoa": (" ".join(ten[:2]) + " " + neo).strip() if ten else neo,
-                   "tu_khoa_2": neo, "ghi_chu": ""})
+                   "tu_khoa_2": neo, "tu_khoa_vi": "", "moc_hinh": [],
+                   "tu_khoa_video": "", "tu_khoa_dia": "", "ghi_chu": ""})
     return ra
 
 
@@ -351,9 +454,26 @@ def _hoi_model(kb, cau):
     # `tu_khoa_en` là tên cũ (trước 17/08 nó là câu tiếng Anh PHỤ). Nay tiếng Anh thành
     # câu chính nên trường ấy không còn, nhưng vẫn đỡ lấy nếu model lỡ trả tên cũ —
     # đổi luật mà để model trả sai khuôn một lượt là mất cả bài gợi từ khoá.
+    def _moc(v):
+        """`moc_hinh` phải là danh sách chuỗi. Model thỉnh thoảng trả một chuỗi, hoặc
+        trả list lồng list — nhận bừa là vỡ ở tận trạm, xa chỗ gây lỗi."""
+        if isinstance(v, str):
+            v = [v]
+        if not isinstance(v, (list, tuple)):
+            return []
+        ra = []
+        for x in v:
+            t = str(x).strip()
+            if t and t not in ra:
+                ra.append(t)
+        return ra[:4]                       # trần 4 mốc (luật 8)
+
     return [{"tu_khoa": str(d.get("tu_khoa", "")).strip(),
              "tu_khoa_2": str(d.get("tu_khoa_2") or d.get("tu_khoa_en", "")).strip(),
              "tu_khoa_vi": str(d.get("tu_khoa_vi", "")).strip(),
+             "moc_hinh": _moc(d.get("moc_hinh")),
+             "tu_khoa_video": str(d.get("tu_khoa_video", "")).strip(),
+             "tu_khoa_dia": str(d.get("tu_khoa_dia", "")).strip(),
              "ghi_chu": str(d.get("ghi_chu", "")).strip()} for d in ds]
 
 
@@ -447,13 +567,21 @@ def goi_y(viec, dung_model=True):
     # TÊN GIẢI ĐÃ ĐỔI (quy chuẩn anh): giải nay là ASEAN Cup, model hay quen tay viết
     # "AFF Cup" — ảnh trả về là ảnh mùa cũ. Sửa cứng, khỏi trông chờ model nhớ.
     for d in ds:
-        for khoa in ("tu_khoa", "tu_khoa_2", "tu_khoa_vi"):
+        for khoa in ("tu_khoa", "tu_khoa_2", "tu_khoa_vi", "tu_khoa_video"):
             if d.get(khoa):
                 d[khoa] = re.sub(r"\bAFF\s*Cup\b", "ASEAN Cup", d[khoa], flags=re.I)
+        # MỐC HÌNH cũng phải sửa tên giải — trừ mốc nói về mùa CŨ (2008, 2018) thì
+        # "AFF Cup" mới là tên đúng của giải năm ấy, sửa thành ASEAN Cup là sai lịch sử.
+        d["moc_hinh"] = [m if re.search(r"\b(19|20)[0-2]\d\b", m)
+                         and int(re.search(r"\b(19|20)[0-2]\d\b", m).group()) < 2024
+                         else re.sub(r"\bAFF\s*Cup\b", "ASEAN Cup", m, flags=re.I)
+                         for m in (d.get("moc_hinh") or [])]
     for d in ds:
         for khoa in ("tu_khoa", "tu_khoa_2", "tu_khoa_vi"):
             if d.get(khoa):
                 d[khoa] = _neo_thoi_diem(d[khoa], hs_n, khoa != "tu_khoa_vi")
+    _cau_chi(ds, cau)
+
     for d in ds:
         # HAI CÂU CHÍNH LÀ TIẾNG ANH (anh chốt 17/08) → neo bằng "football", tuyệt đối
         # không chắp "bóng đá" vào câu tiếng Anh: trộn hai thứ tiếng làm Google loãng
@@ -472,6 +600,14 @@ def goi_y(viec, dung_model=True):
                           if d.get("tu_khoa_2") and d["tu_khoa_2"] != d["tu_khoa"]},
             "tu_khoa_vi": {str(i): d["tu_khoa_vi"] for i, d in enumerate(ds)
                            if d.get("tu_khoa_vi")},
+            # MỐC HÌNH (luật 8): câu kể nhiều chuyện thì mỗi chuyện một câu lệnh riêng.
+            # Chỉ giữ câu THẬT SỰ có nhiều mốc — một mốc thì đã nằm ở `tu_khoa` rồi.
+            "moc_hinh": {str(i): d["moc_hinh"] for i, d in enumerate(ds)
+                         if len(d.get("moc_hinh") or []) >= 2},
+            "tu_khoa_video": {str(i): d["tu_khoa_video"] for i, d in enumerate(ds)
+                              if d.get("tu_khoa_video")},
+            "tu_khoa_dia": {str(i): d["tu_khoa_dia"] for i, d in enumerate(ds)
+                            if d.get("tu_khoa_dia")},
             "ghi_chu": {str(i): d["ghi_chu"] for i, d in enumerate(ds) if d["ghi_chu"]},
             "cach": cach, "loi": loi, "so_cau": len(cau)}
 

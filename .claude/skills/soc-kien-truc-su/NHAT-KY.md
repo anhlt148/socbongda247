@@ -906,3 +906,48 @@ Cổng ⑯ 14 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp.
 **Vấp một lần đáng ghi:** script test restart trạm liên tiếp 3 lần trong ít giây làm
 tiến trình cũ TREO GIỮ CỔNG 8756 — trạm mới không bind được, `launchctl print` vẫn báo
 "running" nên trông như bình thường. Phải `lsof -ti :8756 | xargs kill -9` mới dọn được.
+
+## 18/08/2026 — query thông minh: mốc hình · câu video · tiếng bản địa
+
+**Anh giao:** đọc tài liệu "NÂNG CẤP MODULE TẠO TỪ KHÓA VÀ TÌM TƯ LIỆU", đối chiếu hệ
+hiện tại, đánh giá có nên triển khai. Anh đi ngủ, dặn tự làm phần nên làm.
+
+**Đánh giá (đã trình anh):** tài liệu chuẩn cho hệ ĐANG THIẾU ẢNH; hệ Sóc đang **thừa
+ảnh mà chọn khó** — đo thật ~60 ảnh ứng viên/câu, còn duyệt ảnh chiếm **71%** thời gian
+sản xuất. 6/7 mục quan trọng nhất của tài liệu hệ đã đạt (1 LLM call cả bài, tiếng Anh
+là chính, dedupe bằng vân tay, có đường lùi khi AI hỏng, editor sửa được, không đổi UI).
+→ Triển khai **3 mục**, cố ý BỎ 3 mục:
+
+| làm | bỏ |
+|---|---|
+| ① tách câu nhiều mốc (mục 8) | 8 nhóm query — biến 60 ảnh/câu thành 300+, phình đúng chỗ đang tắc |
+| ② câu tìm VIDEO khác câu tìm ẢNH (mục 17) | search budget 3 vòng — cơ chế tiết kiệm cho hệ tìm nhiều |
+| ③ một câu tiếng bản địa (mục 21) | stop condition 10–15 ứng viên — hệ đang lấy 60 |
+
+**Đã làm:** ba luật mới trong prompt (8·9·10) + ba trường `moc_hinh` / `tu_khoa_video` /
+`tu_khoa_dia`. Mốc hình rót vào **ô phụ đang trống** (không đè thứ anh gõ tay). Rổ tiếng
+bản địa chỉ bung khi hai rổ trên chưa nổi 20 ảnh — đúng tinh thần search budget mà không
+làm chậm ca thường.
+
+**Phát hiện quan trọng — MODEL KHÔNG ĐÁNG TIN ĐỂ NHỚ LUẬT MỚI.** Cùng model, cùng prompt:
+lượt trả `moc_hinh` đủ, lượt sau bỏ trắng dù câu rõ ràng kể ba mốc; và có lượt nhét cả ba
+năm vào MỘT câu lệnh — đúng con bệnh luật 8 sinh ra để chữa. Nên dựng `_cau_chi(ds, cau)`
+làm hàm RIÊNG (kiểm được): ① câu lệnh chính chỉ giữ một mốc thời gian · ② câu nhiều năm
+mà model không tách thì code tự tách · ③ câu có hình động mà thiếu câu video thì dựng từ
+câu ảnh. Thứ tự **dọn → tách → video** (QC bắt được: tách trước thì mốc thừa hưởng dấu
+phẩy của bản gốc).
+
+**QC 4 ca xương:** model quên sạch → cầu chì bù đủ · câu TĨNH (giá vé) → cầu chì IM ·
+câu ĐỘNG → sinh câu video · model đã làm đủ → cầu chì KHÔNG đè.
+
+**Bài test bắt buộc của tài liệu (mục 27):** đạt **7/7 visual concept** — Vietnam
+champions · AFF Cup 2008 · AFF Cup 2018 · ASEAN Cup 2024 · Vietnam Thailand final ·
+trophy/celebration · tiếng Thái thật. Ô phụ 2b/2c/2d mang ba mốc khác nhau.
+Giữ đúng "AFF Cup 2008/2018" (tên giải năm ấy), chỉ 2024 mới đổi thành ASEAN Cup.
+
+**Vá kèm — CỔNG KIỂM BÁO OAN:** cổng ②b cắt thân `_luu_nhap` bằng `src[i:i+3000]`; thêm
+mấy dòng chú thích là `tu_khoa_phu` bị đẩy ra ngoài cửa sổ → báo trượt một whitelist vẫn
+đủ. Nay cắt theo ranh giới hàm thật bằng `ast`. Cổng sửa xong bắt được lỗi THẬT: `_chi_tiet`
+chưa trả hai trường mới cho trang.
+
+Cổng ⑱ 9 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp. Đã dọn bài test.

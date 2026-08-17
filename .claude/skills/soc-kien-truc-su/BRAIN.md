@@ -872,3 +872,31 @@ rồi kickstart lại.
 
 **Cách phòng:** đừng restart liên tiếp trong script test. Tốt hơn: thiết kế sao cho test
 KHÔNG CẦN restart (xem bài học "đọc tươi" ở trên) — sửa gốc thay vì chờ giữa các lượt.
+
+## Thêm luật vào prompt thì phải kèm CẦU CHÌ bằng code (18/08/2026)
+
+**Bệnh:** thêm luật 8/9/10 vào prompt gợi từ khoá. Lượt thử đầu model làm đủ, mừng. Lượt
+sau — cùng model, cùng prompt, cùng bài — bỏ trắng cả ba. Rồi lượt nữa lại nhét cả ba năm
+vào một câu lệnh, đúng con bệnh mà luật vừa thêm sinh ra để chữa.
+
+**Gốc:** model là hàm ngẫu nhiên. Prompt đã dài mười mục thì luật thêm sau nằm cuối, càng
+dễ trôi. Không có gì bảo đảm lượt nào cũng nhớ.
+
+**Cách phòng:** luật nào KIỂM ĐƯỢC BẰNG CODE thì phải có cầu chì code chạy sau model —
+"câu có ≥2 năm mà không tách" là điều kiện regex, không cần model. Cầu chì phải:
+- là **hàm riêng** (kiểm được bằng ca thử; cầu chì không test được là chỗ hỏng thầm lặng)
+- **trả về số chỗ đã bù** (đo được mới biết nó có ăn hay nằm im vô ích)
+- **không đè khi model đã làm đúng** — chỉ bù chỗ trống
+- có ca thử cho cả **chiều ngược**: thứ KHÔNG nên bù thì phải im (câu giá vé không được
+  ép sinh câu tìm video)
+
+Đây là dạng cụ thể của luật nền "thứ gì CODE quyết được thì đừng để model quyết".
+
+## Cổng kiểm cắt thân hàm bằng SỐ KÝ TỰ sẽ báo oan (18/08/2026)
+
+Cổng canh whitelist lấy `src[i : i+3000]` từ `def _luu_nhap`. Thêm mấy dòng chú thích vào
+hàm ấy là trường cuối bị đẩy ra ngoài cửa sổ → cổng báo TRƯỢT một whitelist vẫn đang đủ.
+
+**Cổng báo oan nguy hơn cổng không có**: nó dạy người ta bỏ qua lời cảnh báo, rồi lần sau
+cảnh báo thật cũng bị bỏ qua. Cắt theo **ranh giới cú pháp thật** (`ast.get_source_segment`),
+đừng đếm ký tự. Sửa xong cổng ấy bắt được ngay một lỗi thật đang nằm im.
