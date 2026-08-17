@@ -184,6 +184,45 @@
     </div>
     <div class="ds-do" id="ds_drive"></div>
 
+    <hr style="border:0;border-top:1px solid #2a2520;margin:16px 0 12px">
+    <p class="giai" style="margin-bottom:10px"><b>📥 Nơi lưu thứ gắp về</b> — ảnh bấm
+      <b>Alt+S</b>, video bấm <b>Alt+V</b> sẽ vào đâu. Mặc định là <b>kho việc</b>: dùng
+      ngay được cho bài đang mở.<br>
+      Chọn <b>Kho chung</b> khi gắp tư liệu để dành, chưa thuộc video nào — nó vào ngăn chờ
+      gắn nhãn.<br>
+      Chọn <b>Thư mục riêng</b> khi gắp thứ không liên quan dây chuyền — <b>lưu ý:</b> ra
+      đó là nằm NGOÀI hệ, không nhãn, không sổ, trạm không thấy để gán cảnh.</p>
+
+    <div class="num" style="grid-template-columns:1fr 300px">
+      <label>🖼 Ảnh gắp về
+        <span class="ph">Alt+S · chuột phải → 📥</span></label>
+      <select id="m_dich_anh">
+        <option value="viec">📁 Kho VIỆC đang mở (mặc định)</option>
+        <option value="kho">🏠 KHO CHUNG (chờ gắn nhãn)</option>
+        <option value="rieng">📂 Thư mục riêng…</option>
+      </select>
+    </div>
+    <div class="num" id="hang_dich_anh" style="grid-template-columns:1fr 300px;display:none">
+      <label>↳ thư mục cho ảnh
+        <span class="ph">đường dẫn đầy đủ · không có thật thì trạm vẫn lưu về kho việc</span></label>
+      <input id="m_dich_anh_duong" placeholder="vd: /Users/letuananh/Desktop/tu-lieu">
+    </div>
+
+    <div class="num" style="grid-template-columns:1fr 300px">
+      <label>🎬 Video gắp về
+        <span class="ph">Alt+V · chuột phải → 🎬</span></label>
+      <select id="m_dich_video">
+        <option value="viec">📁 Kho VIỆC đang mở (mặc định)</option>
+        <option value="kho">🏠 KHO VIDEO chung (có nhãn mắt máy)</option>
+        <option value="rieng">📂 Thư mục riêng…</option>
+      </select>
+    </div>
+    <div class="num" id="hang_dich_video" style="grid-template-columns:1fr 300px;display:none">
+      <label>↳ thư mục cho video
+        <span class="ph">đường dẫn đầy đủ · không có thật thì trạm vẫn lưu về kho việc</span></label>
+      <input id="m_dich_video_duong" placeholder="vd: /Volumes/DATA/video-tu-lieu">
+    </div>
+
     <p id="mBao" class="giai" style="min-height:18px;margin-top:10px"></p>
     <button id="mLuu">💾 Lưu đường dẫn máy này</button>
   </div>
@@ -317,8 +356,29 @@ $('#luu').onclick = async () => {
       const o = document.querySelector('#m_' + k);
       if (o) { o.value = c[k] || ''; o.placeholder = dd[k] ? `tự dò ra: ${dd[k]}` : 'máy tự dò'; }
     }
+    // ĐÍCH LƯU (anh chốt 17/08): giá trị lưu trong sổ là "viec" | "kho" | ĐƯỜNG DẪN.
+    // Ô chọn chỉ có ba mục, nên đường dẫn hiện thành mục "rieng" + ô nhập bên dưới.
+    for (const loai of ['anh', 'video']) {
+      const v = String(c['dich_' + loai] || 'viec');
+      const sel = document.querySelector('#m_dich_' + loai);
+      const inp = document.querySelector('#m_dich_' + loai + '_duong');
+      const rieng = v !== 'viec' && v !== 'kho';
+      sel.value = rieng ? 'rieng' : v;
+      if (rieng) inp.value = v;
+      veDich(loai);
+    }
   } catch (e) {}
 })();
+
+// ô nhập thư mục chỉ hiện khi chọn "Thư mục riêng" — bày sẵn ô vô dụng là làm rối mắt
+function veDich(loai) {
+  const chon = document.querySelector('#m_dich_' + loai).value;
+  document.querySelector('#hang_dich_' + loai).style.display =
+    chon === 'rieng' ? 'grid' : 'none';
+}
+['anh', 'video'].forEach(loai => {
+  document.querySelector('#m_dich_' + loai).onchange = () => veDich(loai);
+});
 const esc = t => String(t ?? '').replace(/[&<>"]/g,
   c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 
@@ -352,14 +412,23 @@ document.querySelector('#mLuu').onclick = async () => {
   const than = {};
   for (const k of ['nguoi', 'viec', 'kho_tai_nguyen', 'drive'])
     than[k] = (document.querySelector('#m_' + k) || {}).value || '';
+  for (const loai of ['anh', 'video']) {
+    const chon = document.querySelector('#m_dich_' + loai).value;
+    const duong = (document.querySelector('#m_dich_' + loai + '_duong').value || '').trim();
+    // chọn "riêng" mà bỏ trống đường dẫn → về mặc định, đừng lưu chuỗi rỗng rồi để
+    // trạm phải đoán (chuỗi rỗng là thứ dễ hiểu sai nhất trong mọi cấu hình)
+    than['dich_' + loai] = chon === 'rieng' ? (duong || 'viec') : chon;
+  }
   try {
     const r = await api('/api/may', than);
     const xau = Object.entries(r.co_that || {})
       .filter(([k, v]) => !v).map(([k]) => k);
     document.querySelector('#mBao').innerHTML = xau.length
       ? `<span style="color:#e88">⚠ Đã lưu, nhưng KHÔNG thấy thư mục: ${xau.join(', ')}</span>`
-      : `<span style="color:#7fdc8a">✓ Đã lưu — mọi đường đều có thật.</span>
-         <span style="color:#e8c46a">Khởi động lại trạm để có hiệu lực.</span>`;
+      : `<span style="color:#7fdc8a">✓ Đã lưu — mọi đường đều có thật.</span> `
+        + (r.can_bat_lai
+            ? `<span style="color:#e8c46a">Khởi động lại trạm để có hiệu lực.</span>`
+            : `<span style="color:#9ec9a9">Đích lưu ăn ngay, khỏi khởi động lại.</span>`);
   } catch (e) { bao('Lưu hỏng: ' + e.message, true); }
 };
 $('#lai').onclick = () => { veForm(MD); veThu(); bao('Đã đưa về mặc định — nhớ bấm Lưu'); };

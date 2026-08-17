@@ -867,3 +867,42 @@ chuỗi máy tự chạy. Lời báo lỗi cũng sửa cho đúng sự thật ("
 **Đã kiểm:** chốt duyệt bài của anh → CHO QUA; dựng thật → **video.mp4 1080×1920 · 63,7s
 · 23,5 MB**, nhịp hình cho thấy cảnh 1 là clip (`1:▶`), 6/19 cảnh là clip, cảnh 1 có áp
 đúng khung cắt anh chọn. Cổng ⑮ 7 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp.
+
+## 17/08/2026 — chọn được nơi lưu ảnh/video gắp về
+
+**Anh chốt** (sau khi em hỏi 3 cách): chọn đích — **kho việc** (mặc định) · **kho chung**
+· **thư mục riêng**.
+
+**Đã làm:**
+- `duong_dan.py`: `DICH_ANH` / `DICH_VIDEO`, mặc định `"viec"`. Khai `dich_anh`/`dich_video`
+  vào whitelist `/api/may` — thiếu bước này là lưu xong MẤT (luật cũ đã trả giá).
+- `_dich_luu(loai, viec)` — MỘT hàm quyết đích cho cả ảnh lẫn video. **Đọc tươi may.json
+  mỗi lượt**, nên đổi đích là ăn ngay, khỏi khởi động lại trạm (mà restart giữa lúc đang
+  dựng thì mất bài — càng ít lý do restart càng tốt).
+- Đích KHO cho ảnh: gọi lại `/api/kho-nha-tai-len` qua `_chay_post` — KHÔNG viết đường
+  thứ hai vào cùng một kho.
+- Đích KHO cho video: tải về thư mục kho rồi đưa qua `_nhap_tep_video` (3 lớp chống trùng
+  + nhãn mắt máy) và xoá bản thô. Luồng tải giữ NGUYÊN.
+- Đường riêng không tồn tại → lùi về kho việc, in cảnh báo. Sổ nguồn của BÀI chỉ ghi khi
+  tệp nằm trong bài.
+- Trang phong cách: hai ô chọn + ô nhập thư mục (chỉ hiện khi chọn "riêng").
+
+**Ba lỗi tự bắt trong lúc test:**
+1. `class="num an"` — class `.an` KHÔNG có trong CSS trang phong-cach (chỉ trang trạm mới
+   có). Đúng bẫy anh bắt 15/08. Sửa: `style="display:none"`.
+2. Nhánh đích KHO cho video **xoá bản thô rồi trạm vẫn `os.path.getsize(tep)`** →
+   FileNotFoundError, job báo lỗi trong khi video ĐÃ vào kho. Cùng họ "xoá rồi vẫn đọc"
+   của cửa nhận ảnh 16/08. Sửa: đo cỡ NGAY sau khi tải, trước mọi nhánh đích.
+3. `/api/may` đem `os.path.isdir("viec")` ra hỏi rồi báo oan *"KHÔNG thấy thư mục:
+   dich_video"*. Sửa: chỉ kiểm tồn tại với giá trị LÀ đường dẫn; và chỉ nhắc khởi động
+   lại khi ĐƯỜNG DẪN GỐC đổi.
+
+**Đã kiểm 6 tổ hợp thật (2 loại × 3 đích):** ảnh viec/kho/riêng ✅✅✅ · video
+viec/kho/riêng ✅✅✅ (đích kho thử bằng video MỚI hoàn toàn để không bị cổng chống trùng
+che mất kết quả). Giao diện: nạp lại đúng giá trị đã lưu · ô nhập hiện/ẩn đúng · thông
+báo đúng cho cả đường thật và đường không có thật. Đã dọn sạch mọi dữ liệu thử.
+Cổng ⑯ 14 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp.
+
+**Vấp một lần đáng ghi:** script test restart trạm liên tiếp 3 lần trong ít giây làm
+tiến trình cũ TREO GIỮ CỔNG 8756 — trạm mới không bind được, `launchctl print` vẫn báo
+"running" nên trông như bình thường. Phải `lsof -ti :8756 | xargs kill -9` mới dọn được.

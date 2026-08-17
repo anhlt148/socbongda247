@@ -843,3 +843,32 @@ và tất cả những chỗ ấy đều đang hỏi sai cuốn sổ.
 **Dấu hiệu nhận ra sớm:** thấy nhiều chỗ cùng viết `nh.get("ban_do")` rồi tự đếm — mỗi
 chỗ như thế là một nơi sẽ quên loại tài nguyên tiếp theo. Gom về một hàm ngay, đừng chờ
 tới lúc nó chặn người dùng giữa việc.
+
+## Cấu hình người dùng đổi thường xuyên thì ĐỌC TƯƠI, đừng nạp lúc khởi động (17/08/2026)
+
+Bản đầu để `DICH_ANH`/`DICH_VIDEO` đọc một lần lúc nạp module — y như các đường dẫn gốc.
+Hệ quả: anh đổi đích trên trang là phải khởi động lại trạm mới ăn. Mà restart giữa lúc
+đang dựng thì mất bài, nên mỗi lý do phải restart là một cái bẫy chờ sẵn.
+
+**Phân biệt hai loại cấu hình:**
+- **Đổi hiếm, ảnh hưởng sâu** (thư mục việc, kho, Drive): nạp lúc khởi động là đúng —
+  đổi giữa phiên còn nguy hiểm hơn.
+- **Đổi thường, ảnh hưởng một thao tác** (đích lưu, núm vặn): đọc tươi mỗi lượt. Tệp cấu
+  hình vài trăm byte, đọc mỗi lần gắp ảnh là chi phí không đáng kể so với việc bắt người
+  dùng restart.
+
+Và lời nhắc trên giao diện phải nói đúng loại: nhắc "khởi động lại" cho thứ ăn ngay là
+bắt người ta làm việc vô ích, rồi lần sau họ không tin lời nhắc nào nữa.
+
+## Hai bên chưa nhả cổng thì bên mới không bind được — mà launchd vẫn báo "running" (17/08/2026)
+
+Script test restart trạm ba lần trong vài giây. Tiến trình cũ treo, giữ cổng 8756;
+tiến trình mới `OSError: [Errno 48] Address already in use` rồi chết. `launchctl print`
+vẫn hiện `state = running` (vì launchd đã spawn), nên nhìn vào đó tưởng trạm sống.
+
+**Cách nhận ra:** `curl` không vào được nhưng `lsof -ti :8756` CÓ tiến trình → đó là
+tiến trình treo, không phải trạm đang phục vụ. Dọn bằng `lsof -ti :8756 | xargs kill -9`
+rồi kickstart lại.
+
+**Cách phòng:** đừng restart liên tiếp trong script test. Tốt hơn: thiết kế sao cho test
+KHÔNG CẦN restart (xem bài học "đọc tươi" ở trên) — sửa gốc thay vì chờ giữa các lượt.

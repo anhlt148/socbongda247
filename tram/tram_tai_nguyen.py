@@ -3190,6 +3190,41 @@ def _danh_sach_clip(viec):
     return ra
 
 
+def _dich_luu(loai, viec=""):
+    """Thứ gắp về thì lưu ĐI ĐÂU (anh chốt 17/08: "tùy chọn được đường dẫn lưu về của
+    ảnh và video, mặc định là về kho việc").
+
+    Trả (kiểu, thư_mục):
+      ("viec", <bài>/anh | <bài>/clip/tay)   — mặc định, dùng ngay cho video đang làm
+      ("kho",  kho chủ thể dùng chung)       — để dành, không thuộc bài nào
+      ("rieng", thư mục anh tự đặt)          — tư liệu ngoài hệ
+
+    Cấu hình ở `may.json` (`dich_anh` / `dich_video`), sửa trên trang phong cách. Đường
+    dẫn riêng mà KHÔNG TỒN TẠI thì lặng lẽ về "viec" — thà lưu đúng chỗ cũ còn hơn ném
+    tệp vào hư không rồi báo xong.
+    """
+    # ĐỌC TƯƠI mỗi lượt, không dùng giá trị nạp lúc khởi động. Anh đổi đích trên trang
+    # phong cách là ăn NGAY — khỏi phải khởi động lại trạm (mà khởi động lại giữa lúc
+    # đang dựng thì mất bài, nên càng ít lý do phải restart càng tốt).
+    # Tệp cấu hình vài trăm byte, đọc mỗi lượt gắp ảnh là chuyện không đáng kể.
+    dat = getattr(DD, "DICH_ANH" if loai == "anh" else "DICH_VIDEO", "viec")
+    try:
+        with open(os.path.expanduser("~/.config/socbongda247/may.json"),
+                  encoding="utf-8") as f:
+            dat = str((json.load(f) or {}).get("dich_" + loai) or dat).strip() or "viec"
+    except Exception:
+        pass
+    if dat == "kho":
+        return "kho", (KHO_CHU_THE if loai == "anh" else KHO_VIDEO_CT)
+    if dat and dat not in ("viec", "kho"):
+        p_r = os.path.expanduser(dat)
+        if os.path.isdir(p_r):
+            return "rieng", p_r
+        print(f"  ⚠ đích riêng không có thật: {p_r} — lưu về kho việc")
+    return "viec", (os.path.join(viec, "anh") if loai == "anh"
+                    else os.path.join(viec, "clip", "tay"))
+
+
 def _cau_da_co(viec, nh=None):
     """Tập chỉ số câu ĐÃ CÓ TÀI NGUYÊN — ảnh HOẶC clip. Một thước đo duy nhất.
 
@@ -3309,7 +3344,10 @@ def _nhan_video_job(ma_job, ma, trang, src, cookies):
     dung, nhưng bản quyền vẫn là của người quay — ghi sổ nguồn để cổng QC và phần ghi công soi.
     """
     viec = os.path.join(DD.VIEC, ma)
-    thu = os.path.join(viec, "clip", "tay")
+    # ĐÍCH LƯU (anh chốt 17/08) — mặc định `<bài>/clip/tay`. Giữ NGUYÊN toàn bộ luồng
+    # tải (xí số nguyên tử, dọn rác .part, ảnh mồi): chỉ đổi thư mục đến và bỏ ghi sổ
+    # bài khi tệp ra ngoài bài. Sửa luồng tải là đụng vào thứ đã ổn định — không đáng.
+    kieu_d, thu = _dich_luu("video", viec)
     p_ck = p_giu = tep = None
     n = 0
     _keo(ma, "video", +1)
@@ -3404,6 +3442,11 @@ def _nhan_video_job(ma_job, ma, trang, src, cookies):
         else:
             raise RuntimeError(loi_cuoi or "không có đường nào để tải")
 
+        # ĐO CỠ NGAY, trước khi nhánh đích kịp dời hay xoá tệp. Bản đầu để phép đo ở
+        # cuối hàm, mà nhánh "vào kho chung" đã xoá bản thô trước đó → FileNotFoundError,
+        # job báo lỗi trong khi video ĐÃ vào kho thành công. Cùng họ lỗi "xoá rồi vẫn
+        # đọc" của cửa nhận ảnh sáng 16/08.
+        mb_x = round(os.path.getsize(tep) / 1048576, 1)
         giay = 0.0
         try:
             pr = subprocess.run(["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
@@ -3418,22 +3461,35 @@ def _nhan_video_job(ma_job, ma, trang, src, cookies):
                             tep[:-4] + ".jpg"], timeout=60)
         except Exception:
             pass
-        p_so = os.path.join(thu, "nguon-clip.json")
-        so = []
-        if os.path.exists(p_so):
+        if kieu_d == "viec":
+            # sổ nguồn là sổ CỦA BÀI — tệp không nằm trong bài thì đừng ghi vào đó
+            p_so = os.path.join(thu, "nguon-clip.json")
+            so = []
+            if os.path.exists(p_so):
+                try:
+                    so = json.load(open(p_so, encoding="utf-8"))
+                except Exception:
+                    so = []
+            so.append({"tep": os.path.basename(tep), "trang": url, "tang": 3,
+                       "cach": "extension", "giay": giay,
+                       "luc": datetime.now().isoformat(timespec="seconds"),
+                       "ghi_chu": "anh tự chỉ tay từ MXH — bản quyền của người quay, QC phải soi"})
+            json.dump(so, open(p_so, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        elif kieu_d == "kho":
+            # tải xong nằm ngay trong thư mục kho, nhưng CHƯA có nhãn và chưa vào sổ —
+            # đưa qua cửa nhập chuẩn (3 lớp chống trùng + nhãn mắt máy) rồi xoá bản thô
             try:
-                so = json.load(open(p_so, encoding="utf-8"))
-            except Exception:
-                so = []
-        so.append({"tep": os.path.basename(tep), "trang": url, "tang": 3,
-                   "cach": "extension", "giay": giay,
-                   "luc": datetime.now().isoformat(timespec="seconds"),
-                   "ghi_chu": "anh tự chỉ tay từ MXH — bản quyền của người quay, QC phải soi"})
-        json.dump(so, open(p_so, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+                sys.path.insert(0, DD.MAY)
+                import nhap_kho_video as _NKV
+                _NKV._nhap_tep_video(tep, tieu_de=(url or "")[:70], url=url, loai="goc",
+                                     nguon_doan=f"gắp tay từ {url[:60]}")
+                os.path.exists(tep) and os.remove(tep)
+            except Exception as e:
+                print(f"  ⚠ tải xong mà chưa nhập kho được: {e}")
         with KHOA:
             VIEC_JOB[ma_job] = {"xong": True, "loi": "", "tep": os.path.basename(tep),
-                                "giay": giay,
-                                "mb": round(os.path.getsize(tep) / 1048576, 1)}
+                                "giay": giay, "mb": mb_x,
+                                "dich": kieu_d, "thu_muc": thu}
     except Exception as e:
         with KHOA:
             VIEC_JOB[ma_job] = {"xong": True, "loi": str(e)}
@@ -4439,6 +4495,7 @@ class Tay(BaseHTTPRequestHandler):
                     cu_m = json.load(open(p_m, encoding="utf-8"))
                 except Exception:
                     cu_m = {}
+                truoc_m = dict(cu_m)          # bản CŨ, để biết khoá nào thật sự đổi
                 for k_m in ("nguoi", "drive", "kho_nang", "viec", "kho_tai_nguyen",
                             "kho_drive", "dich_anh", "dich_video"):
                     if k_m in than:
@@ -4453,10 +4510,32 @@ class Tay(BaseHTTPRequestHandler):
                 json.dump(cu_m, open(p_m, "w", encoding="utf-8"),
                           ensure_ascii=False, indent=1)
                 # soi ngay xem đường mới có thật không — đừng để anh lưu xong mới biết sai
-                kiem = {k_m: (os.path.isdir(v_m) if k_m != "nguoi" else True)
-                        for k_m, v_m in cu_m.items() if not k_m.startswith("_")}
+                # KHÔNG PHẢI KHOÁ NÀO CŨNG LÀ ĐƯỜNG DẪN. `nguoi` là tên; `dich_anh`
+                # / `dich_video` có thể là từ khoá "viec"/"kho" thay vì đường dẫn —
+                # đem os.path.isdir("viec") ra hỏi thì được False rồi báo oan "KHÔNG
+                # thấy thư mục: dich_video", làm anh tưởng cấu hình sai.
+                _tu_khoa = {"nguoi": True}
+                kiem = {}
+                for k_m, v_m in cu_m.items():
+                    if k_m.startswith("_"):
+                        continue
+                    if k_m in _tu_khoa or v_m in ("viec", "kho"):
+                        kiem[k_m] = True
+                    else:
+                        kiem[k_m] = os.path.isdir(os.path.expanduser(str(v_m)))
+                # CHỈ nhắc khởi động lại khi thật sự cần. Đường dẫn gốc (thư mục việc,
+                # kho, Drive) nạp một lần lúc trạm chạy nên phải restart; còn ĐÍCH LƯU
+                # thì đọc tươi mỗi lượt gắp — nhắc restart ở đó là bắt anh làm việc vô
+                # ích, mà restart giữa lúc đang dựng còn mất bài.
+                can_bat_lai = any(k_m in than and str(than[k_m] or "").strip()
+                                  and str(than[k_m]).strip() != str(truoc_m.get(k_m, ""))
+                                  for k_m in ("viec", "drive", "kho_tai_nguyen",
+                                              "kho_nang", "kho_drive"))
                 return self._js({"ok": True, "cau_hinh": cu_m, "co_that": kiem,
-                                 "nhac": "Khởi động lại trạm để đường mới có hiệu lực"})
+                                 "can_bat_lai": can_bat_lai,
+                                 "nhac": ("Khởi động lại trạm để đường mới có hiệu lực"
+                                          if can_bat_lai else
+                                          "Đích lưu ăn ngay — khỏi khởi động lại")})
             if d == "/api/phong-cach":                   # LƯU cấu hình phong cách
                 return self._js({"ok": True, "cau_hinh": PC.ghi(than)})
             if d == "/api/phong-cach-thu":               # BẢNG THỬ — xem trước, KHÔNG lưu
@@ -5830,11 +5909,21 @@ class Tay(BaseHTTPRequestHandler):
                       for t in than.get("tep", [])]
                 if not ds:
                     return self._js({"loi": "không có tệp nào"}, 400)
+                kieu_d, thu_d = _dich_luu("anh", viec)
+                # Đích KHO CHUNG: đi đúng đường `/api/kho-nha-tai-len` đã có (nó lo ngăn
+                # chờ nhãn + vân tay + sổ) chứ không viết đường thứ hai — hai đường vào
+                # cùng một kho là hai bộ luật sẽ lệch nhau.
+                if kieu_d == "kho":
+                    return self._chay_post("/api/kho-nha-tai-len", than)
                 _keo(than["ma"], "anh", +len(ds))
                 try:
-                    r = gap_anh.nhan_tep(ds, os.path.join(viec, "anh"))
+                    r = gap_anh.nhan_tep(ds, thu_d)
                 finally:
                     _keo(than["ma"], "anh", -len(ds))
+                if kieu_d == "rieng":
+                    # thư mục riêng nằm NGOÀI hệ: không sổ, không nhãn, không bản đồ cảnh
+                    return self._js({"anh": r.get("anh", []), "hong": r.get("hong", []),
+                                     "dich": "rieng", "thu_muc": thu_d})
                 # Trang nguồn là Google thì tham số q chính là TỪ KHOÁ anh đã gõ trong Chrome.
                 # Ghi sổ SAU nhan_tep và chỉ khi ảnh LƯU THÀNH CÔNG (anh dặn 06/08: gõ thì
                 # chưa học vội — lúc đầu có thể gõ trật; LƯU ĐƯỢC ẢNH mới chứng minh từ khoá

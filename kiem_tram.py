@@ -448,6 +448,49 @@ def _get(d):
         return r.status, json.loads(r.read().decode())
 
 
+def tang_dich_luu():
+    """CHỌN ĐƯỢC NƠI LƯU THỨ GẮP VỀ (anh chốt 17/08), mặc định KHO VIỆC.
+
+    Ba đích: "viec" (bài đang mở) · "kho" (kho chủ thể dùng chung) · đường dẫn riêng.
+    Cấu hình ở may.json, sửa trên trang phong cách.
+    """
+    print("⑯ ĐÍCH LƯU ẢNH / VIDEO GẮP VỀ")
+    src = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
+    ui = open(os.path.join(TRAM, "phong-cach.html"), encoding="utf-8").read()
+    goc = os.path.dirname(TRAM)
+    dd = open(os.path.join(goc, "duong_dan.py"), encoding="utf-8").read()
+
+    _bao("DICH_ANH" in dd and "DICH_VIDEO" in dd, "duong_dan khai hai đích")
+    _bao('"viec"' in dd and 'or "viec"' in dd, "MẶC ĐỊNH là kho việc")
+    _bao("def _dich_luu(" in src, "có MỘT hàm quyết đích, dùng cho cả ảnh lẫn video")
+    _bao('"dich_anh"' in src and '"dich_video"' in src,
+         "/api/may nhận được hai khoá đích (không khai whitelist là lưu xong MẤT)")
+
+    i = src.find("def _dich_luu(")
+    than = src[i:i + 2000]
+    _bao("may.json" in than, "đọc TƯƠI mỗi lượt — đổi đích là ăn ngay, khỏi khởi động lại")
+    _bao("lưu về kho việc" in than and "os.path.isdir" in than,
+         "đường riêng KHÔNG có thật thì lùi về kho việc, không ném tệp vào hư không")
+
+    _bao('return self._chay_post("/api/kho-nha-tai-len", than)' in src,
+         "đích KHO đi đúng đường kho chung đã có, không viết đường thứ hai")
+    _bao("mb_x = round(os.path.getsize(tep)" in src,
+         "đo cỡ tệp TRƯỚC khi nhánh đích kịp dời/xoá nó")
+    _bao('if kieu_d == "viec":' in src,
+         "sổ nguồn của BÀI chỉ ghi khi tệp nằm trong bài")
+
+    _bao('v_m in ("viec", "kho")' in src,
+         'không đem os.path.isdir("viec") ra hỏi rồi báo oan "không thấy thư mục"')
+    _bao("can_bat_lai" in src and "can_bat_lai" in ui,
+         "chỉ nhắc khởi động lại khi ĐƯỜNG DẪN GỐC đổi, không nhắc khi đổi đích")
+
+    _bao("m_dich_anh" in ui and "m_dich_video" in ui, "trang có hai ô chọn đích")
+    _bao('class="num an"' not in ui,
+         "không dùng class CSS không tồn tại (bài học 15/08)")
+    _bao("function veDich(" in ui,
+         "ô nhập thư mục chỉ hiện khi chọn 'thư mục riêng'")
+
+
 def tang_canh_dau_clip():
     """CẢNH ĐẦU LÀ CLIP THÌ CÓ DỰNG ĐƯỢC KHÔNG (anh bắt 17/08).
 
@@ -1230,6 +1273,7 @@ if __name__ == "__main__":
     tang_chuoi_xong_bao()   # chuỗi máy tự chạy xong → trang tự nạp lại (16/08)
     tang_kho_lien_bai()     # tài nguyên bài trước dùng cho bài sau (16/08)
     tang_canh_dau_clip()    # cảnh đầu là clip có dựng được không (17/08)
+    tang_dich_luu()         # chọn được nơi lưu thứ gắp về (17/08)
     if sau:
         tang4_luong(ma)
     else:
