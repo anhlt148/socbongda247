@@ -969,3 +969,19 @@ chỉ vì trong lời bình có chữ "bổ sung".
 **Phân loại thì đọc chỗ CÔ ĐỌNG NHẤT** — ở đây là tiêu đề. Văn bản dài chỉ dùng cho luật
 cần bằng chứng cụ thể (tìm giờ, tìm ngày). Càng nhiều chữ đưa vào bộ khớp từ khoá, tỷ lệ
 trúng nhầm càng cao — không phải càng nhiều dữ liệu càng chính xác.
+
+## str.replace KHÔNG có assert = thay trượt im lặng (18/08/2026)
+
+Vá bảy hàm bố cục trong một lượt `str.replace`. Sáu hàm ăn, hàm thứ bảy (`bo_cuc_B`)
+trượt vì chuỗi cũ đã đổi ở patch trước — và **không có gì báo**: `replace` không tìm thấy
+thì trả nguyên chuỗi cũ, script vẫn in "✅".
+
+Ba mươi phút sau mới lộ ra, nhờ cổng kiểm canh nội dung hàm ấy.
+
+**Luật:** mọi `str.replace` vá mã đều phải kèm `assert <chuỗi cũ> in s` NGAY TRƯỚC nó.
+Vá nhiều khối trong một lượt thì mỗi khối một assert — không gộp. Khối dài hoặc đã sửa
+nhiều lần thì đừng khớp chuỗi nữa: **cắt theo ranh giới hàm** (tìm `def x(` tới `def`
+kế tiếp) rồi thay cả khối, chắc hơn hẳn.
+
+Cùng họ với bài học "cổng cắt thân hàm bằng số ký tự" hôm nay — đều là chuyện **khớp
+chuỗi trên mã đang thay đổi thì không đáng tin**.

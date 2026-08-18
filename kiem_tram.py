@@ -488,7 +488,7 @@ def tang_anh_bia():
         _nao = open(os.path.join(_DD2.KHO_TAI_NGUYEN, "nao-thumbnail.md"),
                     encoding="utf-8").read()
         _bao(_nao.count("`") >= 16, "não mô tả đủ tám kiểu kèm mã")
-        _bao("CÁCH CHỌN KIỂU" in _nao, "não có thứ tự ưu tiên để chọn")
+        _bao("THỨ TỰ CHỌN KIỂU" in _nao, "não có thứ tự ưu tiên để chọn")
         _bao("KHÔNG phải điều kiện đối đầu" in _nao,
              "não ghi bài học: có hai đội KHÔNG đủ để gọi là đối đầu")
         _bao("GHI CHÚ CỦA ANH" in _nao, "não chừa chỗ cho anh ghi kinh nghiệm")
@@ -503,6 +503,33 @@ def tang_anh_bia():
         _bao(False, "đọc được bộ não ảnh bìa", str(e)[:70])
     _bao("chu_rong" in tn and "tit_l" in tn,
          "chỉ quét TIÊU ĐỀ (lời bình dài quét cả vào là kiểu nào cũng trúng)")
+    # HIỆU ỨNG THỊ GIÁC (anh chốt 18/08: học bố cục · lớp ảnh · ô tròn · điểm nhấn,
+    # KHÔNG cần học phần chữ vì hệ đang tốt)
+    for ten_hu, ham in (("vignette — nền lùi chủ thể tiến", "_vignette"),
+                        ("tối dần đáy — không có đường cắt cứng", "_toi_dan_day"),
+                        ("ám màu theo phe", "_am_mau"),
+                        ("vệt sáng ở đường chia", "_vet_sang"),
+                        ("viền phát sáng", "_vien_sang"),
+                        ("đổ bóng dưới chủ thể", "_do_bong")):
+        _bao(f"def {ham}(" in tn, f"có hiệu ứng: {ten_hu}")
+    _bao("MAU_PHE" in tn and "việt nam" in tn,
+         "bảng màu theo phe (đỏ VN · vàng Malaysia · xanh Thái)")
+    _bao("0.57" in tn and "chia CHÉO" in tn,
+         "đối đầu chia CHÉO, không chia thẳng đứng")
+    i_o = tn.find("def _o_tron(")
+    than_o = tn[i_o:i_o + 1500]
+    _bao("0.355" in than_o and "GaussianBlur" in than_o,
+         "ô tròn đúng thông số não: 32–38% bề ngang, có bóng quanh viền")
+    try:
+        _nao2 = open(os.path.join(_DD2.KHO_TAI_NGUYEN, "nao-thumbnail.md"),
+                     encoding="utf-8").read()
+        _bao("BẢY LỚP CỦA MỘT ẢNH BÌA" in _nao2,
+             "não mô tả bảy lớp xếp chồng")
+        _bao("NỀN PHẢI LÙI" in _nao2, "não ghi luật xuyên suốt về chiều sâu")
+        _bao("không bàn ở đây" in _nao2,
+             "não KHÔNG lấn sang phần chữ (anh chốt: phần đó đang tốt)")
+    except Exception:
+        pass
     _bao("KHÔNG phân biệt được gì" in tn,
          "không lấy 'có hai đội' làm điều kiện đối đầu")
     _bao("CO_NGUOI" in tn and "KHONG_NGUOI" in tn,

@@ -66,42 +66,48 @@ def _nen_mo(im, w, h):
     return Image.eval(n, lambda v: int(v * 0.72))
 
 
-def bo_cuc_A(anh, w, h):
-    return _phu_khung(_mo(anh[0]), w, h)
+def bo_cuc_A(anh, w, h, phe=None):
+    """① MỘT NGƯỜI — hiệu ứng bắt buộc: vignette (não mục E①)."""
+    return _vignette(_phu_khung(_mo(anh[0]), w, h))
 
 
-def bo_cuc_B(anh, w, h):
-    """ĐỐI ĐẦU: chia đôi theo đường CHÉO + vạch sáng giữa (kiểu ăn khách nhất)."""
+def bo_cuc_B(anh, w, h, phe=None):
+    """② ĐỐI ĐẦU — chia CHÉO 8–15° · vệt sáng đường chia · ám màu theo phe (não E②).
+
+    Chia chéo chứ không chia thẳng: chéo = động, thẳng = tĩnh. Vệt sáng biến đường chia
+    thành tia sét — thiếu nó thì trông như ghép ảnh vụng (não mục G③).
+    """
     ra = Image.new("RGB", (w, h), (12, 10, 10))
-    trai = _phu_khung(_mo(anh[0]), int(w * 0.60), h)
-    phai = _phu_khung(_mo(anh[1]), int(w * 0.60), h)
+    x_d, x_t = int(w * 0.46), int(w * 0.57)      # chia CHÉO ~11 độ
+    trai = _phu_khung(_mo(anh[0]), int(w * 0.62), h)
+    phai = _phu_khung(_mo(anh[1]), int(w * 0.62), h)
+    if phe:
+        m0 = _mau_cua_phe(phe[0]) if len(phe) > 0 else None
+        m1 = _mau_cua_phe(phe[1]) if len(phe) > 1 else None
+        if m0:
+            trai = _am_mau(trai, m0)
+        if m1:
+            phai = _am_mau(phai, m1)
     ra.paste(trai, (0, 0))
-    # mặt nạ chéo cho ảnh phải
     mn = Image.new("L", (w, h), 0)
-    d = ImageDraw.Draw(mn)
-    d.polygon([(int(w * 0.46), h), (int(w * 0.56), 0), (w, 0), (w, h)], fill=255)
-    ra.paste(phai, (w - phai.width, 0), mn.crop((w - phai.width, 0, w, h))
-             .resize(phai.size))
-    # vạch sáng ở đường chia
-    v = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    ImageDraw.Draw(v).line([(int(w * 0.46), h), (int(w * 0.56), 0)],
-                           fill=(255, 232, 150, 210), width=9)
-    ra = Image.alpha_composite(ra.convert("RGBA"),
-                               v.filter(ImageFilter.GaussianBlur(3))).convert("RGB")
-    return ra
+    ImageDraw.Draw(mn).polygon([(x_d, h), (x_t, 0), (w, 0), (w, h)], fill=255)
+    lop_p = Image.new("RGB", (w, h), (12, 10, 10))
+    lop_p.paste(phai, (w - phai.width, 0))
+    ra = Image.composite(lop_p, ra, mn)
+    ra = _vet_sang(ra, x_t, x_d)
+    return _vignette(ra, 0.30)
 
-
-def bo_cuc_C(anh, w, h):
-    """Hai khung ngang trên/dưới, vạch ngăn mảnh."""
+def bo_cuc_C(anh, w, h, phe=None):
+    """④ HAI KHUNG NGANG — vạch trắng 5–7px, tối dần đáy (não E④)."""
     ra = Image.new("RGB", (w, h), (12, 10, 10))
     cao = (h - 6) // 2
     ra.paste(_phu_khung(_mo(anh[0]), w, cao), (0, 0))
     ra.paste(_phu_khung(_mo(anh[1]), w, h - cao - 6), (0, cao + 6))
     ImageDraw.Draw(ra).rectangle([0, cao, w, cao + 6], fill=(248, 242, 232))
-    return ra
+    return _toi_dan_day(ra)
 
 
-def bo_cuc_D(anh, w, h):
+def bo_cuc_D(anh, w, h, phe=None):
     """Lưới bốn ô — bài điểm tin nhiều nhân vật."""
     ra = Image.new("RGB", (w, h), (12, 10, 10))
     cw, ch = (w - 5) // 2, (h - 5) // 2
@@ -112,30 +118,122 @@ def bo_cuc_D(anh, w, h):
     return ra
 
 
+# ══ HIỆU ỨNG THỊ GIÁC (mục B của não) ═══════════════════════════════════════
+# Luật xuyên suốt: NỀN PHẢI LÙI, CHỦ THỂ PHẢI TIẾN. Đây là khác biệt lớn nhất giữa bìa
+# nghiệp dư và bìa của kênh dẫn đầu — không phải màu mè hơn, mà CÓ CHIỀU SÂU.
+
+MAU_PHE = {                        # ám màu theo phe (mục B③)
+    "việt nam": (196, 30, 30), "vietnam": (196, 30, 30),
+    "malaysia": (212, 160, 20), "thái lan": (30, 70, 170), "thailand": (30, 70, 170),
+    "indonesia": (200, 40, 40), "singapore": (200, 40, 40),
+    "campuchia": (40, 90, 170), "philippines": (30, 110, 190),
+}
+
+
+def _vignette(im, manh=0.42):
+    """Tối bốn góc, sáng giữa — mắt tự dồn vào chủ thể (mục A)."""
+    w, h = im.size
+    import numpy as _np
+    yy, xx = _np.mgrid[0:h, 0:w]
+    cx, cy = w / 2.0, h / 2.0
+    r = _np.sqrt(((xx - cx) / cx) ** 2 + ((yy - cy) / cy) ** 2)
+    k = _np.clip(1.0 - manh * _np.clip(r - 0.42, 0, None) ** 1.6, 0.25, 1.0)
+    a = _np.asarray(im).astype(_np.float32)
+    a *= k[..., None]
+    return Image.fromarray(_np.clip(a, 0, 255).astype("uint8"))
+
+
+def _toi_dan_day(im, ty=0.26):
+    """Phần giáp dải chữ tối dần — không có đường cắt cứng (mục B⑤)."""
+    w, h = im.size
+    cao = int(h * ty)
+    lop = Image.new("L", (w, cao))
+    for y in range(cao):
+        lop.putpixel((0, y), int(210 * (y / max(1, cao - 1)) ** 1.5))
+    lop = lop.resize((w, cao))
+    den = Image.new("RGB", (w, cao), (0, 0, 0))
+    im.paste(den, (0, h - cao), lop)
+    return im
+
+
+def _am_mau(im, mau, manh=0.20):
+    """Ám màu theo phe — nhận ra bài nói về ai trước cả khi đọc chữ (mục B③)."""
+    lop = Image.new("RGB", im.size, mau)
+    return Image.blend(im, lop, manh)
+
+
+def _mau_cua_phe(ten):
+    t = (ten or "").lower()
+    for k, v in MAU_PHE.items():
+        if k in t:
+            return v
+    return None
+
+
+def _vet_sang(im, x_tren, x_duoi, rong=11):
+    """Vệt sáng ở đường chia — đường chia thành tia sét, không phải nét ghép (mục B②)."""
+    w, h = im.size
+    v = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(v)
+    d.line([(x_duoi, h), (x_tren, 0)], fill=(255, 236, 168, 225), width=rong)
+    d.line([(x_duoi, h), (x_tren, 0)], fill=(255, 255, 235, 255), width=max(2, rong // 4))
+    v = v.filter(ImageFilter.GaussianBlur(4))
+    return Image.alpha_composite(im.convert("RGBA"), v).convert("RGB")
+
+
+def _vien_sang(im, mau=(255, 210, 90), day=7, quang=30):
+    """Viền phát sáng quanh khung chủ thể (mục B①)."""
+    w, h = im.size
+    v = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    ImageDraw.Draw(v).rectangle([0, 0, w - 1, h - 1], outline=mau + (235,), width=day)
+    q = v.filter(ImageFilter.GaussianBlur(quang // 2))
+    return Image.alpha_composite(
+        Image.alpha_composite(im.convert("RGBA"), q), v).convert("RGB")
+
+
+def _do_bong(nen, o, xy, lech=16, mo=60):
+    """Bóng mềm dưới chủ thể — đứng trên nền chứ không dán phẳng (mục B④)."""
+    b = Image.new("RGBA", nen.size, (0, 0, 0, 0))
+    ImageDraw.Draw(b).rectangle(
+        [xy[0] + 6, xy[1] + lech, xy[0] + o.width - 6, xy[1] + o.height + lech],
+        fill=(0, 0, 0, mo))
+    b = b.filter(ImageFilter.GaussianBlur(18))
+    return Image.alpha_composite(nen.convert("RGBA"), b).convert("RGB")
+
+
 def _o_tron(nen, anh_ct, w, h):
     """Ô TRÒN góc trên phải chứa vật chứng (thẻ đỏ, bảng VAR, vật lạ).
 
     Kiểu ③ trong não: ô tròn tạo câu hỏi "cái gì trong đó?" — tò mò mạnh hơn cả tiêu đề.
     """
-    d_o = int(w * 0.36)
+    d_o = int(w * 0.355)          # não mục C: 32–38% bề ngang
     ct = _phu_khung(_mo(anh_ct), d_o, d_o)
     mn = Image.new("L", (d_o, d_o), 0)
     ImageDraw.Draw(mn).ellipse([0, 0, d_o - 1, d_o - 1], fill=255)
     x, y = w - d_o - int(w * 0.05), int(h * 0.05)
-    vien = Image.new("RGBA", (d_o + 14, d_o + 14), (0, 0, 0, 0))
-    ImageDraw.Draw(vien).ellipse([0, 0, d_o + 13, d_o + 13], fill=(255, 255, 255, 235))
-    nen.paste(vien.convert("RGB"), (x - 7, y - 7), vien)
+    # bóng đen mờ quanh viền (não mục C) — ô tròn nổi hẳn khỏi ảnh nền
+    bg = Image.new("RGBA", nen.size, (0, 0, 0, 0))
+    ImageDraw.Draw(bg).ellipse([x - 16, y - 8, x + d_o + 16, y + d_o + 22],
+                               fill=(0, 0, 0, 130))
+    nen = Image.alpha_composite(nen.convert("RGBA"),
+                                bg.filter(ImageFilter.GaussianBlur(15))).convert("RGB")
+    vien = Image.new("RGBA", (d_o + 16, d_o + 16), (0, 0, 0, 0))
+    ImageDraw.Draw(vien).ellipse([0, 0, d_o + 15, d_o + 15], fill=(255, 255, 255, 245))
+    nen.paste(vien.convert("RGB"), (x - 8, y - 8), vien)
     nen.paste(ct, (x, y), mn)
     return nen
 
 
-def bo_cuc_E(anh, w, h):
-    """③ NGƯỜI + BẰNG CHỨNG TRÒN."""
-    nen = _phu_khung(_mo(anh[0]), w, h)
+def bo_cuc_E(anh, w, h, phe=None):
+    """③ NGƯỜI + Ô TRÒN VẬT CHỨNG — ô tròn + vignette (não E③).
+
+    Ô tròn là chi tiết đắt nhất bộ mẫu: nó tạo câu hỏi mà tiêu đề không tạo được.
+    """
+    nen = _vignette(_phu_khung(_mo(anh[0]), w, h), 0.34)
     return _o_tron(nen, anh[1] if len(anh) > 1 else anh[0], w, h)
 
 
-def bo_cuc_F(anh, w, h, ten=None, co=None):
+def bo_cuc_F(anh, w, h, phe=None, ten=None, co=None):
     """⑤ DANH SÁCH NHÂN VẬT — 2–4 người kề nhau, nhãn tên dưới chân."""
     n = min(max(2, len(anh)), 4)
     ra = Image.new("RGB", (w, h), (12, 10, 10))
@@ -160,9 +258,19 @@ def bo_cuc_F(anh, w, h, ten=None, co=None):
     return ra
 
 
-def bo_cuc_G(anh, w, h):
-    """⑧ SO SÁNH ĐỘI HÌNH — hai đội, hai khung ngang (khác ④ ở chỗ ảnh là tập thể)."""
-    return bo_cuc_C(anh, w, h)
+def bo_cuc_G(anh, w, h, phe=None):
+    """⑧ SO SÁNH ĐỘI HÌNH — hai khung ngang, mỗi khung ám màu phe của đội (não E⑧)."""
+    ra = Image.new("RGB", (w, h), (12, 10, 10))
+    cao = (h - 6) // 2
+    for i, (p_a, y, ch) in enumerate([(anh[0], 0, cao),
+                                      (anh[1], cao + 6, h - cao - 6)]):
+        kh = _phu_khung(_mo(p_a), w, ch)
+        m = _mau_cua_phe(phe[i]) if phe and i < len(phe) else None
+        if m:
+            kh = _am_mau(kh, m, 0.17)
+        ra.paste(kh, (0, y))
+    ImageDraw.Draw(ra).rectangle([0, cao, w, cao + 6], fill=(248, 242, 232))
+    return _toi_dan_day(ra)
 
 
 BO_CUC = {"A": bo_cuc_A, "B": bo_cuc_B, "C": bo_cuc_C, "D": bo_cuc_D,
@@ -369,7 +477,16 @@ def lam(viec, ra=None, kieu=None):
 
     # ① phần ảnh
     cao_anh = int(H * TY_ANH)
-    nen = BO_CUC[kieu](anh, W, cao_anh)
+    # PHE = hai đội trong hồ sơ bài → bố cục ám màu theo phe (não mục B③): người xem
+    # nhận ra bài nói về ai trước cả khi đọc chữ.
+    phe = []
+    try:
+        _hs = json.load(open(os.path.join(viec, "anh", "ho-so-bai.json"),
+                             encoding="utf-8"))
+        phe = [x for x in (_hs.get("doi") or []) if x][:2]
+    except Exception:
+        pass
+    nen = BO_CUC[kieu](anh, W, cao_anh, phe)
     bia = Image.new("RGB", (W, H), (18, 14, 12))
     bia.paste(nen, (0, 0))
     # nền dưới lấy màu ảnh cho liền mạch, dải chữ sẽ phủ lên

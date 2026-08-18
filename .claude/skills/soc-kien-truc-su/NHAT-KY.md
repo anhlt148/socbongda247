@@ -1052,3 +1052,33 @@ Chọn đúng ý ở các ca kiểm được: "VAR cho quê ngang" → ô tròn 
 Việt Nam trả lời" → đối đầu · "Lê Giang thủ môn số 1" → chân dung.
 
 Cổng ⑳ nay 18 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp.
+
+## 18/08/2026 — não ảnh bìa viết lại theo hướng THỊ GIÁC
+
+**Anh chỉnh hướng:** "học tập trung vào bố cục sắp xếp hình ảnh, hiệu ứng thị giác, các
+lớp ảnh, những ô tròn, điểm nhấn. Còn nền tiêu đề và text thì không cần, mình đang rất
+tốt rồi."
+
+**Viết lại `nao-thumbnail.md` (9 KB)** — bỏ hẳn phần chữ, đào sâu phần hình:
+- **A · Bảy lớp** xếp chồng, kèm luật xuyên suốt **"NỀN PHẢI LÙI, CHỦ THỂ PHẢI TIẾN"** —
+  đây mới là khác biệt lớn nhất giữa bìa nghiệp dư và bìa của họ, không phải màu mè hơn.
+- **B · Năm hiệu ứng** đo từ mẫu: viền phát sáng theo phe · vệt sáng ở đường chia · ám
+  màu theo phe · đổ bóng dưới chủ thể · tối dần về đáy.
+- **C · Ô tròn** với thông số đo được: đường kính 32–38% bề ngang · góc trên phải · viền
+  trắng 6–9px · bóng quanh viền. Kèm luật *"ô tròn phải trả lời CHUYỆN GÌ ĐÃ XẢY RA,
+  không phải AI ĐANG NÓI"*.
+- **D · Vật thể phụ**: cờ chip / cờ nền lớn · cúp giữa có quầng sáng · nhãn tên đặt dưới
+  chân, không đè mặt.
+- **E · Tám kiểu**, mỗi kiểu ghi rõ **cách xếp lớp + hiệu ứng BẮT BUỘC**.
+- **G · Ba lỗi phải tránh**: ảnh không mặt người · nền và chủ thể cùng độ nét · đường
+  chia thẳng không vệt sáng.
+
+**Mã cài sáu hiệu ứng** (`_vignette` · `_toi_dan_day` · `_am_mau` · `_vet_sang` ·
+`_vien_sang` · `_do_bong`) + bảng `MAU_PHE` (đỏ VN · vàng Malaysia · xanh Thái), nối vào
+đúng "hiệu ứng bắt buộc" của từng kiểu. Ô tròn dựng lại theo thông số não.
+
+**Lỗi tự bắt:** patch thay `bo_cuc_B` **trượt im lặng** — em dùng `str.replace` mà KHÔNG
+đặt assert cho khối đó, nên chuỗi cũ không khớp và bản mới không vào. Bộ kiểm bắt được
+nhờ cổng "đối đầu chia CHÉO". Đã viết lại bằng cách cắt theo ranh giới hàm.
+
+Cổng ⑳ nay 29 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp.
