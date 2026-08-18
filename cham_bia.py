@@ -17,7 +17,7 @@ BẢY THƯỚC (tổng 100):
   ④ chữ nổi           14 — chữ có chìm vào nền không
   ⑤ mặt đặt đúng chỗ  10 — quy tắc một phần ba
   ⑥ cân bằng           8 — khối lượng thị giác có dồn hết về một bên không
-  ⑦ lớp phủ sạch      10 — ô tròn/nhãn có đè lên thứ quan trọng không
+  ⑦ lớp phủ đặt khéo  10 — ô tròn/nhãn: không đè (45%) · đúng tầm cao (35%) · thoáng (20%)
 
 Chạy tay:  python3 cham_bia.py <ảnh bìa> [<ảnh bìa> ...]
 """
@@ -138,17 +138,36 @@ def cham(p_bia, ctx=None):
                 f"khối lượng thị giác lệch {lech*100:.0f}% về " +
                 ("trái" if trai > 0.5 else "phải")))
 
-    # ⑦ LỚP PHỦ SẠCH ──────────────────────────────────────────────────────────
-    v = ctx.get("vuong_lop_phu")
-    if v is None:
+    # ⑦ LỚP PHỦ ĐẶT KHÉO ──────────────────────────────────────────────────────
+    # Anh bắt 18/08 (lần hai): "QC phải có thẩm mỹ cao chứ". Bản trước chỉ hỏi một
+    # câu — "có đè lên thứ quan trọng không?". Ô tròn nép sát mép dải chữ không đè
+    # lên gì cả, và vẫn xấu; bộ chấm cho nó điểm tuyệt đối. Tránh lỗi KHÁC đặt đẹp.
+    lp = ctx.get("lop_phu")
+    if not lp:
         muc.append(("phu_sach", 0.85, "bìa không có lớp phủ rời"))
+    elif lp.get("bo"):
+        muc.append(("phu_sach", 0.80, "ảnh kín người nên đã bỏ ô tròn — bìa thoáng"))
     else:
-        # Dưới 0,45 là chỗ đặt sạch — không có gì để trừ. Trừ tuyến tính từ 0 thì một
-        # ô tròn đặt đàng hoàng (0,32) vẫn mất nửa số điểm, và bìa có ô tròn luôn
-        # thua bìa trơn dù ô tròn đặt đúng chỗ.
-        muc.append(("phu_sach", 1.0 if v <= 0.45 else max(0.0, 1.0 - (v - 0.45) / 0.17),
-                    f"lớp phủ vướng {v:.2f}" +
-                    (" — đè lên chỗ quan trọng" if v > 0.45 else " — đặt sạch")))
+        v = lp.get("vuong", 0.0)
+        # ⓐ TRÁNH LỖI: dưới 0,45 là chỗ sạch, không có gì để trừ
+        sach = 1.0 if v <= 0.45 else max(0.0, 1.0 - (v - 0.45) / 0.17)
+        # ⓑ ĐÚNG TẦM: tâm ô tròn trong dải 60–70% chiều cao tính từ đáy (anh chốt)
+        cao = lp.get("cao_tu_day")
+        dung_tam = _mn(cao, 0.58, 0.72) if cao is not None else 0.8
+        # ⓒ THOÁNG: mép dưới ô tròn phải cách dải chữ ít nhất 8% chiều cao bìa, không
+        #    thì nhìn như bị dồn xuống đáy, lại còn bị lớp chuyển màu làm nhạt đi
+        cach = lp.get("cach_dai")
+        thoang = _mn(cach, 0.08, 1.0) if cach is not None else 0.8
+        loi = []
+        if v > 0.45:
+            loi.append("đè lên chỗ quan trọng")
+        if cao is not None and not 0.58 <= cao <= 0.72:
+            loi.append(f"lệch tầm — tâm ở {cao*100:.0f}% từ đáy, chuẩn là 60–70%")
+        if cach is not None and cach < 0.08:
+            loi.append(f"sát dải chữ, chỉ cách {cach*100:.0f}%")
+        muc.append(("phu_sach", 0.45 * sach + 0.35 * dung_tam + 0.20 * thoang,
+                    "; ".join(loi) or
+                    f"đặt khéo — tâm {cao*100:.0f}% từ đáy, cách dải chữ {cach*100:.0f}%"))
 
     # ÉP VỀ float THƯỜNG: numpy trả float32, mà float32 thì json.dump không ghi được —
     # bìa dựng xong rồi vẫn lăn ra lỗi ở bước ghi báo cáo.
@@ -161,7 +180,7 @@ def cham(p_bia, ctx=None):
 
 TEN_VIET = {"mat_ro": "mặt rõ", "co_mat": "cỡ mặt", "ro_nho": "rõ cỡ ngón tay",
             "chu_noi": "chữ nổi", "cho_dat": "mặt đúng chỗ",
-            "can_bang": "cân bằng", "phu_sach": "lớp phủ sạch"}
+            "can_bang": "cân bằng", "phu_sach": "lớp phủ khéo"}
 
 
 def in_bang(kq, ten=""):

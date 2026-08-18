@@ -1167,3 +1167,29 @@ chỗ tốt nhất cho lớp phủ — vượt được QC YouTube nhiều kinh 
 - `kiem_tram.py --sau` ✅ ĐẠT HẾT (hai lần liên tiếp)
 - Dựng bìa thật 3 bài, nhìn bằng mắt: mặt hiện trọn, logo nguyên, ô tròn xuống vùng trống
 - Bảng điểm từng góc khớp với đánh giá bằng mắt trên cả ba bài
+
+## 18/08/2026 (tối) — TẦM CAO Ô TRÒN + bộ chấm biết thẩm mỹ
+
+**Anh bắt:** ô tròn để thấp quá, sát mép nền mờ của chữ; chốt tâm phải ở **60–70% chiều
+cao tính từ đáy**. Kèm câu hỏi đúng chỗ đau: *"QC kinh nghiệm cũng chấp nhận sao?"*
+
+**Đo được trước khi sửa:** ô tròn đang ở 31–51% từ đáy, mép dưới cách dải chữ 52 px.
+
+**Sửa gì**
+- `lam_thumbnail.py`: bỏ lối thử BỐN GÓC. Nay tầm cao là **ràng buộc** (`DAI_CAO_O_TRON`
+  = 0,60–0,70, khai một nơi) — bốn nấc cao trong dải × trái/phải, chọn chỗ ít vướng nhất.
+- `_LOP_PHU` (thay `_VUONG_LOP_PHU`) khai đủ ba số: vướng · cao từ đáy · cách dải chữ.
+- `cham_bia.py`: thước ⑦ đổi từ "lớp phủ sạch" thành **"lớp phủ đặt khéo"** —
+  không đè (45%) + đúng tầm cao (35%) + cách dải chữ ≥8% (20%).
+- `kiem_tram.py`: cổng ㉒ thêm 4 mục; **sửa cổng cũ "thử bốn góc"** vốn đang báo ✅ oan
+  (nó bắt chuỗi "trên phải" trên cả tệp, mà chuỗi ấy còn sót trong chú thích hàm khác).
+
+**Kiểm ngược** (cùng một bìa, chỉ đổi chỗ đặt ô tròn):
+| | điểm ⑦ | máy nói gì |
+|---|---|---|
+| bìa cũ anh chê | 6,4/10 | lệch tầm — tâm ở 41% từ đáy; sát dải chữ, chỉ cách 3% |
+| bìa nay | 10/10 | đặt khéo — tâm 70% từ đáy, cách dải chữ 31% |
+| thử đặt quá cao | 6,8/10 | lệch tầm — tâm ở 85% từ đáy |
+
+**Đã kiểm:** `kiem_tram.py --sau` ✅ ĐẠT HẾT (hai lần) · dựng lại 3 bài thật, cả ba ô tròn
+đều rơi vào dải 60–70% (bài vướng mặt thì tự chọn nấc 60% thay vì 70%).

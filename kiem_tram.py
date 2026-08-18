@@ -560,6 +560,17 @@ def tang_mat_may_cham_bia():
              "" if _tong_tr == 100 else f"— đang là {_tong_tr}")
         _bao("168" in _cb and "cỡ ngón tay" in _cb,
              "có thước RÕ Ở CỠ NGÓN TAY — thu về cỡ thật trên điện thoại rồi đo")
+        # Anh bắt 18/08 lần hai: bộ chấm chỉ biết TRÁNH LỖI, không biết ĐẶT ĐẸP —
+        # ô tròn nép sát dải chữ vẫn được điểm tuyệt đối. Cổng canh cả ba vế.
+        _bao("DAI_CAO_O_TRON" in _tn3 and "def _muc_cao_o_tron(" in _tn3,
+             "tầm cao ô tròn là RÀNG BUỘC (60–70% từ đáy), không phải tiêu chí chấm")
+        _cd = _than_ham(_tn3, "_cho_dat_o_tron")
+        _bao("_muc_cao_o_tron()" in _cd and "dưới trái" not in _cd,
+             "chọn chỗ theo TẦM CAO chuẩn, đã bỏ lối dí bốn góc")
+        _bao(all(k in _cb for k in ("cao_tu_day", "cach_dai", "lệch tầm")),
+             "thước lớp phủ chấm cả THẨM MỸ: đúng tầm cao + cách dải chữ")
+        _bao('"cach_dai"' in _tn3 and '"cao_tu_day"' in _tn3,
+             "chỗ đặt ô tròn khai đủ số cho bộ chấm, không để bộ chấm đoán")
         _bao("float(v)" in _cb or "float(sum(" in _cb,
              "điểm ép về float thường, ghi được ra sổ json")
 
@@ -639,8 +650,9 @@ def tang_anh_bia():
          "có bản đồ 'chỗ nào KHÔNG được che' cho từng ảnh")
     _bao("da * 2.2" in tn or "da *" in tn,
          "màu da tính NẶNG hơn độ chi tiết — mặt người là thứ giữ chân người xem")
-    _bao("def _cho_dat_o_tron(" in tn and "trên phải" in tn and "dưới trái" in tn,
-         "thử CẢ BỐN GÓC, không dí cứng một chỗ")
+    _than_cd = _than_ham(tn, "_cho_dat_o_tron")
+    _bao("_muc_cao_o_tron()" in _than_cd and '"phải"' in _than_cd and '"trái"' in _than_cd,
+         "thử nhiều chỗ (tầm cao × trái/phải), không dí cứng một chỗ")
     # Logo chuyển từ "cộng điểm cho góc trên trái" sang ĐO GIAO với hộp logo thật
     # (18/08). Cổng canh theo cách mới, và canh chặt hơn: phải MỘT NGUỒN toạ độ, dùng
     # ở cả chỗ vẽ logo lẫn chỗ tránh logo — hai nơi ghi riêng là ngày nào đó lệch nhau.

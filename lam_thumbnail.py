@@ -205,7 +205,8 @@ def _do_bong(nen, o, xy, lech=16, mo=60):
 # khuôn mặt, đường đoán cũ chỉ tối đa 3,2. Nếu để nguyên thì ngưỡng "vướng quá thì bỏ ô
 # tròn" bên dưới sẽ đúng với đường này và CHẾT CÂM với đường kia. Nên cả hai cùng chia
 # về MỘT thước: 1,0 = chỗ cấm đè tuyệt đối.
-_VUONG_LOP_PHU = None    # điểm vướng của lớp phủ vừa đặt — bộ chấm đọc để cho điểm
+_LOP_PHU = None   # lớp phủ vừa đặt: vướng bao nhiêu · cao bao nhiêu · cách dải chữ mấy.
+                  # Bộ chấm đọc để chấm CẢ thẩm mỹ, không chỉ chấm "có đè lên gì không".
 
 LOGO_TY = 0.115          # bề ngang logo kênh, theo tỷ lệ bề ngang bìa
 
@@ -234,6 +235,16 @@ def _che_hop(hop, x, y, d):
 THANG_MAT, THANG_DOAN = 10.0, 3.2
 # Vướng tới đâu thì nhường: thu nhỏ còn ¾ → vẫn vướng thì bỏ hẳn vật thể đó.
 NG_THU_NHO, NG_BO_HAN = 0.45, 0.62
+# TẦM CAO ô tròn: tâm phải nằm trong dải này, tính theo chiều cao BÌA từ ĐÁY lên
+# (anh chốt 18/08). Đây là RÀNG BUỘC chứ không phải tiêu chí chấm điểm — đặt ngoài dải
+# thì dù không đè lên gì cũng vẫn xấu, mà bộ chấm cũ lại cho qua.
+DAI_CAO_O_TRON = (0.60, 0.70)
+
+
+def _muc_cao_o_tron(so=4):
+    """Các nấc cao được phép, xếp từ CAO xuống thấp trong dải anh chốt."""
+    a, b = DAI_CAO_O_TRON
+    return [b - (b - a) * i / (so - 1) for i in range(so)]
 
 def _ban_do_quan_trong(im, o_ngang=8, o_doc=12):
     """Bản đồ "chỗ nào KHÔNG được che" của một ảnh — lưới điểm, cao = cấm đè.
@@ -332,11 +343,19 @@ def _che_mat(hop_ds, x, y, d, W, H):
 
 
 def _cho_dat_o_tron(nen, d_o, le=0.05):
-    """Chọn GÓC ít quan trọng nhất để đặt ô tròn — thay vì luôn dí vào góc trên phải.
+    """Chọn chỗ đặt ô tròn: ĐÚNG TẦM CAO trước, rồi mới xét trái hay phải.
 
-    Thứ tự ưu tiên khi điểm ngang nhau: trên-phải (đúng thói quen đọc của 20 mẫu) →
-    trên-trái → dưới-phải → dưới-trái. Ô tròn nằm dưới thì gần dải chữ, nên chỉ chọn
-    khi hai góc trên đều vướng mặt người.
+    Anh bắt 18/08 (lần hai): ô tròn nằm thấp quá, nép sát mép dải chữ — "QC phải có
+    thẩm mỹ cao chứ". Anh đúng, và đây là chỗ tôi làm thiếu.
+
+    Bản trước thử BỐN GÓC và chấm bằng một câu hỏi duy nhất: "chỗ này có đè lên thứ
+    quan trọng không?". Đó là TRÁNH LỖI, không phải THẨM MỸ. Góc dưới không đè lên gì
+    thật — nhưng nó nằm ở 31–51% chiều cao tính từ đáy, mép dưới cách dải chữ vỏn vẹn
+    52 px, nhìn như bị dồn xuống đáy. Không phạm lỗi nào, mà vẫn xấu.
+
+    Nay tầm cao là RÀNG BUỘC, không phải thứ đem ra chấm điểm: tâm ô tròn phải nằm
+    trong dải 60–70% chiều cao bìa tính từ đáy (anh chốt 18/08). Trong dải ấy mới xét
+    tiếp trái hay phải, cao hay thấp hơn một chút, tuỳ chỗ nào ít vướng mặt người.
     """
     import numpy as _np
     W_n, H_n = nen.size
@@ -344,26 +363,29 @@ def _cho_dat_o_tron(nen, d_o, le=0.05):
     q = luoi_nen if luoi_nen is not None else _ban_do_quan_trong(nen)
     oh, ow = q.shape
     m = int(le * W_n)
-    goc = [("trên phải", W_n - d_o - m, m), ("trên trái", m, m),
-           ("dưới phải", W_n - d_o - m, H_n - d_o - m),
-           ("dưới trái", m, H_n - d_o - m)]
+
+    # ── các chỗ ĐƯỢC PHÉP đặt: bốn nấc cao trong dải anh chốt × hai bên trái/phải ──
+    cho = []
+    for i_t, t in enumerate(_muc_cao_o_tron()):
+        y = int(H * (1 - t) - d_o / 2)                  # H = chiều cao BÌA, không phải ảnh nền
+        y = max(m, min(y, H_n - d_o - m))               # vẫn phải nằm gọn trong ảnh nền
+        for i_x, (ten_x, x) in enumerate((("phải", W_n - d_o - m), ("trái", m))):
+            # phạt rất nhẹ: ngang điểm thì giữ thói quen đọc (phải trước, cao trước)
+            cho.append((f"{ten_x} · {t*100:.0f}% từ đáy", x, y, i_t * 0.008 + i_x * 0.016))
+
     tot, diem_tot, ten_tot = None, 1e9, ""
-    for i, (ten, x, y) in enumerate(goc):
+    for ten, x, y, phat in cho:
         c0, c1 = int(x / W_n * ow), max(1, int((x + d_o) / W_n * ow))
         r0, r1 = int(y / H_n * oh), max(1, int((y + d_o) / H_n * oh))
         o = q[r0:r1, c0:c1]
-        # CHỖ TỆ NHẤT quyết định, không phải điểm trung bình. Che một góc khuôn mặt
-        # cũng là hỏng cả tấm bìa — mà lấy trung bình thì một khuôn mặt lọt giữa vùng
-        # nền rộng sẽ bị pha loãng tới mức không ai thấy.
-        # NỀN — thân người, chi tiết, logo. Chỗ tệ nhất nặng hơn điểm trung bình:
-        # đè lên một góc số áo cũng là đè, dù phần còn lại toàn cỏ.
-        d = 0.35 * float(o.mean()) + 0.65 * float(o.max()) + i * 0.02
-        # MẶT — đo bằng giao hộp, chính xác tới pixel. Nhân 1,6 để một khuôn mặt bị
-        # che nửa (0,5) đủ vượt ngưỡng bỏ hẳn, còn chạm mép vài chục pixel (0,01) thì
-        # gần như không tính — đúng như mắt người nhìn.
+        # NỀN — thân người, chi tiết. Chỗ tệ nhất nặng hơn điểm trung bình: đè lên một
+        # góc số áo cũng là đè, dù phần còn lại toàn cỏ.
+        d = 0.35 * float(o.mean()) + 0.65 * float(o.max()) + phat
+        # MẶT — đo bằng giao hộp, chính xác tới pixel. Nhân 1,6 để một khuôn mặt bị che
+        # nửa (0,5) đủ vượt ngưỡng bỏ hẳn, còn chạm mép vài chục pixel thì gần như
+        # không tính — đúng như mắt người nhìn.
         d += 1.6 * _che_mat(hop_ds, x, y, d_o, W_n, H_n)
-        # LOGO KÊNH — dấu nhận biết của kênh, che là mất. Biết chắc toạ độ nên đo
-        # thẳng, không đoán: che trọn logo thì góc này thua mọi góc còn lại.
+        # LOGO KÊNH — dấu nhận biết của kênh, che là mất. Biết chắc toạ độ nên đo thẳng.
         d += 1.2 * _che_hop(_hop_logo(W_n, H_n), x, y, d_o)
         if d < diem_tot:
             tot, diem_tot, ten_tot = (x, y), d, ten
@@ -388,13 +410,17 @@ def _o_tron(nen, anh_ct, w, h):
     if _d > NG_THU_NHO:
         d_o = int(d_o * 0.74)
         (x, y), _d, _ten = _cho_dat_o_tron(nen, d_o)
-    global _VUONG_LOP_PHU
+    global _LOP_PHU
     if _d > NG_BO_HAN:
-        print(f"  ⚠ ảnh nền kín người ở cả bốn góc — BỎ ô tròn, để bìa thoáng")
-        _VUONG_LOP_PHU = _d
+        print(f"  ⚠ ảnh nền kín người ở mọi chỗ được phép — BỎ ô tròn, để bìa thoáng")
+        _LOP_PHU = {"vuong": _d, "bo": True}
         return nen
-    print(f"  ○ ô tròn đặt {_ten} (điểm vướng {_d:.2f})")
-    _VUONG_LOP_PHU = _d
+    y_dai = int(H * float(L.get("hoa_den_ty_le", 0.70))) + 26
+    _LOP_PHU = {"vuong": _d, "bo": False,
+                "cao_tu_day": (H - (y + d_o / 2)) / H,
+                "cach_dai": (y_dai - (y + d_o)) / H}
+    print(f"  ○ ô tròn đặt {_ten} · cách dải chữ {_LOP_PHU['cach_dai']*100:.0f}% "
+          f"(điểm vướng {_d:.2f})")
     # bóng đen mờ quanh viền (não mục C) — ô tròn nổi hẳn khỏi ảnh nền
     bg = Image.new("RGBA", nen.size, (0, 0, 0, 0))
     ImageDraw.Draw(bg).ellipse([x - 16, y - 8, x + d_o + 16, y + d_o + 22],
@@ -839,15 +865,15 @@ def _dung_mot(viec, kieu, anh, tit, kb, phe):
     bản rồi ghi đè, không có gì để so.
     """
     cao_anh = int(H * TY_ANH)
-    global _VUONG_LOP_PHU
-    _VUONG_LOP_PHU = None
+    global _LOP_PHU
+    _LOP_PHU = None
     nen = BO_CUC[kieu](anh, W, cao_anh, phe)
     bia = Image.new("RGB", (W, H), (18, 14, 12))
     bia.paste(nen, (0, 0))
     bia.paste(_nen_mo(_mo(anh[0]), W, H - cao_anh), (0, cao_anh))
     bia = _ve_dai_chu(bia, tit, _loc_cum_vang(tit, kb.get("cum_to_vang") or []))
     return bia, {"y_dai": int(H * float(L.get("hoa_den_ty_le", 0.70))) + 26,
-                 "vuong_lop_phu": _VUONG_LOP_PHU}
+                 "lop_phu": _LOP_PHU}
 
 
 def _cac_phuong_an(viec, so_anh, kb):

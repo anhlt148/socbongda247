@@ -1083,3 +1083,25 @@ qua** — cổng mất tác dụng mà không ai hay.
 **Đã làm:** thêm `_than_ham(nguon, ten)` dùng `ast.get_source_segment`, và chuyển cổng ô
 tròn sang dùng nó. Còn năm chỗ khác trong `kiem_tram.py` vẫn cắt bằng đếm ký tự
 (dòng ~284, 328, 747, 750, 780) — chuyển dần khi đụng tới.
+
+## Tránh lỗi ≠ đặt đẹp — bộ chấm chỉ biết vế đầu thì vô dụng (18/08, anh bắt lần hai)
+
+Làm xong bộ chấm bìa, tôi báo "đã chấm được thẩm mỹ". Anh nhìn bìa rồi hỏi lại: *"em đang
+để sát mép với nền mờ của chữ. vậy QC kinh nghiệm cũng chấp nhận sao? QC phải có thẩm mỹ
+cao chứ"*. Anh đúng.
+
+**Bệnh:** bảy thước của tôi có sáu thước đo **lỗi** (mặt bị che, chữ chìm, bìa bệt, lệch
+cân) và một thước đo lớp phủ — cũng chỉ hỏi *"có đè lên thứ quan trọng không"*. Ô tròn nép
+sát dải chữ **không đè lên gì cả** nên được 10/10, trong khi nhìn vào thì rõ là xấu.
+
+**Gốc:** tôi lấy "không phạm lỗi" làm định nghĩa của "đẹp". Hai thứ đó khác nhau: né hết
+mọi thứ quan trọng rồi tấp vào chỗ thừa còn lại thì đúng luật, nhưng chẳng ai bố cục kiểu
+ấy. Người có thẩm mỹ **chọn chỗ đẹp trước**, rồi mới tránh; máy của tôi làm ngược lại.
+
+**Phòng — dùng cho mọi bộ chấm về sau:** với mỗi thứ máy đặt lên hình, hỏi đủ hai câu.
+① *Có phạm lỗi không?* → đo bằng vùng cấm. ② *Chỗ ấy có phải chỗ ĐẸP không?* → phải có
+**dải chuẩn** viết ra thành số (ở đây: tâm ô tròn 60–70% chiều cao tính từ đáy, cách dải
+chữ ≥8%). Thiếu câu ② thì bộ chấm chỉ là bộ dò lỗi, đừng gọi nó là chấm thẩm mỹ.
+
+**Và:** dải chuẩn nên làm **RÀNG BUỘC** (ngoài dải thì không được đặt), đừng làm tiêu chí
+cộng trừ — để điểm cao ở mục khác không mua chuộc được một chỗ đặt xấu.
