@@ -112,7 +112,65 @@ def bo_cuc_D(anh, w, h):
     return ra
 
 
-BO_CUC = {"A": bo_cuc_A, "B": bo_cuc_B, "C": bo_cuc_C, "D": bo_cuc_D}
+def _o_tron(nen, anh_ct, w, h):
+    """Ô TRÒN góc trên phải chứa vật chứng (thẻ đỏ, bảng VAR, vật lạ).
+
+    Kiểu ③ trong não: ô tròn tạo câu hỏi "cái gì trong đó?" — tò mò mạnh hơn cả tiêu đề.
+    """
+    d_o = int(w * 0.36)
+    ct = _phu_khung(_mo(anh_ct), d_o, d_o)
+    mn = Image.new("L", (d_o, d_o), 0)
+    ImageDraw.Draw(mn).ellipse([0, 0, d_o - 1, d_o - 1], fill=255)
+    x, y = w - d_o - int(w * 0.05), int(h * 0.05)
+    vien = Image.new("RGBA", (d_o + 14, d_o + 14), (0, 0, 0, 0))
+    ImageDraw.Draw(vien).ellipse([0, 0, d_o + 13, d_o + 13], fill=(255, 255, 255, 235))
+    nen.paste(vien.convert("RGB"), (x - 7, y - 7), vien)
+    nen.paste(ct, (x, y), mn)
+    return nen
+
+
+def bo_cuc_E(anh, w, h):
+    """③ NGƯỜI + BẰNG CHỨNG TRÒN."""
+    nen = _phu_khung(_mo(anh[0]), w, h)
+    return _o_tron(nen, anh[1] if len(anh) > 1 else anh[0], w, h)
+
+
+def bo_cuc_F(anh, w, h, ten=None, co=None):
+    """⑤ DANH SÁCH NHÂN VẬT — 2–4 người kề nhau, nhãn tên dưới chân."""
+    n = min(max(2, len(anh)), 4)
+    ra = Image.new("RGB", (w, h), (12, 10, 10))
+    cw = (w - (n - 1) * 4) // n
+    for i in range(n):
+        ra.paste(_phu_khung(_mo(anh[i]), cw, h), (i * (cw + 4), 0))
+    if ten:
+        d = ImageDraw.Draw(ra)
+        try:
+            fo = TPL._font(int(h * 0.030)) if hasattr(TPL, "_font") else None
+        except Exception:
+            fo = None
+        for i, t in enumerate(ten[:n]):
+            if not t:
+                continue
+            x0 = i * (cw + 4) + 10
+            y0 = int(h * 0.86)
+            tw = d.textlength(t.upper(), font=fo) if fo else len(t) * 14
+            d.rounded_rectangle([x0, y0, x0 + tw + 26, y0 + int(h * 0.052)],
+                                radius=8, fill=(250, 205, 40))
+            d.text((x0 + 13, y0 + int(h * 0.010)), t.upper(), font=fo, fill=(24, 18, 12))
+    return ra
+
+
+def bo_cuc_G(anh, w, h):
+    """⑧ SO SÁNH ĐỘI HÌNH — hai đội, hai khung ngang (khác ④ ở chỗ ảnh là tập thể)."""
+    return bo_cuc_C(anh, w, h)
+
+
+BO_CUC = {"A": bo_cuc_A, "B": bo_cuc_B, "C": bo_cuc_C, "D": bo_cuc_D,
+          "E": bo_cuc_E, "F": bo_cuc_F, "G": bo_cuc_G}
+# mã kiểu trong NÃO ↔ hàm dựng ở đây
+NAO_MA = {"mot-nguoi": "A", "doi-dau": "B", "hai-khung": "C", "danh-sach": "F",
+          "nguoi-inset": "E", "hai-doi-hinh": "G", "bang-chung": "C",
+          "poster-tran": "B"}
 
 
 # Từ khoá cho biết trong ảnh CÓ NGƯỜI — đọc từ mô tả mắt máy đã chấm sẵn lúc nhập kho.
@@ -190,11 +248,28 @@ def _chon_anh(viec, can):
     return ra
 
 
-def _kieu_bo_cuc(viec, so_anh):
-    """Chọn kiểu bố cục bằng LUẬT, không gọi model.
+def duong_nao():
+    """Bộ não ảnh bìa nằm trong KHO TÀI NGUYÊN — dùng chung cả nhà, anh sửa thẳng vào
+    đó không cần đụng mã (cùng lối với `luat-ghep-anh.md`)."""
+    return os.path.join(DD.KHO_TAI_NGUYEN, "nao-thumbnail.md")
 
-    Hai phe (bài có hai đội) → ĐỐI ĐẦU, kiểu ăn khách nhất của họ.
-    Nhiều nhân vật → lưới bốn ô. Còn lại: một người cận cảnh nếu chỉ có một ảnh đẹp.
+
+def _doc_nao():
+    try:
+        return open(duong_nao(), encoding="utf-8").read()
+    except Exception:
+        return ""
+
+
+def _kieu_bo_cuc(viec, so_anh, kb=None):
+    """Chọn kiểu bìa theo NÃO (`nao-thumbnail.md`) — thứ tự ưu tiên trong mục "CÁCH CHỌN".
+
+    Rẻ trước: tám điều kiện của não đều đọc được bằng luật (bài có ngày giờ trận không,
+    có dẫn lời báo ngoài không, mấy nhân vật, mấy đội). Không câu nào cần model đoán —
+    nên không gọi model.
+
+    Não là file văn bản anh sửa được; mã chỉ giữ phần THI HÀNH. Sửa điều kiện trong não
+    mà mã không biết thì vô ích, nên mọi mã kiểu ở đây phải khớp bảng NAO_MA.
     """
     hs = {}
     try:
@@ -202,15 +277,73 @@ def _kieu_bo_cuc(viec, so_anh):
                             encoding="utf-8"))
     except Exception:
         pass
+    if kb is None:
+        try:
+            kb = json.load(open(os.path.join(viec, "kich-ban.json"), encoding="utf-8"))
+        except Exception:
+            kb = {}
     doi = [x for x in (hs.get("doi") or []) if x]
     nv = [x for x in (hs.get("nhan_vat") or []) if x]
-    if len(doi) >= 2 and so_anh >= 2:
-        return "B"
-    if len(nv) >= 4 and so_anh >= 4:
-        return "D"
-    if so_anh >= 2 and len(nv) >= 2:
-        return "C"
-    return "A"
+    # TIÊU ĐỀ là nơi cô đọng nhất — quét cả lời bình (dài 60–80 chữ) thì từ khoá nào
+    # cũng có thể lọt vào, và bài về MỘT người bị đẩy sang kiểu "danh sách" chỉ vì
+    # trong lời bình có chữ "bổ sung" (QC 18/08 bắt được trên 3/8 bài).
+    # Lời bình chỉ dùng cho hai luật cần bằng chứng ngoài tiêu đề: lịch trận và dẫn lời.
+    tit_l = str(kb.get("tieu_de") or "").lower()
+    loi_l = str(kb.get("loi_binh") or "").lower()
+    chu = tit_l                                  # mặc định: chỉ tiêu đề
+    chu_rong = tit_l + " " + loi_l               # cho luật cần soi rộng
+
+    # ① trận SẮP đá — có ngày giờ/sân trong bài
+    import re as _re
+    co_lich = bool(_re.search(r"\b\d{1,2}[h:]\d{2}\b", chu_rong)) or \
+        bool(_re.search(r"\bngày\s+\d{1,2}[/-]\d{1,2}", chu_rong))
+    # Poster chỉ dùng khi bài THẬT SỰ về một trận CHƯA ĐÁ: phải có LỊCH CỤ THỂ (giờ
+    # hoặc ngày) VÀ không được nhắc diễn biến đã xảy ra. Bản đầu bắt cả "sắp · đêm nay ·
+    # sẽ gặp" nên bài tường thuật VAR cũng rơi vào poster — sai hẳn kiểu.
+    da_dien_ra = any(t in chu_rong for t in ("đã ", "vừa ", "phút ", "ghi bàn", "thắng ",
+                                        "thua ", "hoà ", "hòa ", "var", "thẻ đỏ",
+                                        "kết thúc", "chung cuộc"))
+    if co_lich and not da_dien_ra and len(doi) >= 2 and so_anh >= 2:
+        return "B", "poster-tran"
+    # ② dẫn lời / số liệu bên ngoài
+    if any(t in chu for t in ("truyền thông", "báo ", "tờ ", "chuyên trang", "mạng xã hội",
+                              "fan page", "bình luận", "viết rằng", "đưa tin")) \
+            and so_anh >= 2:
+        return "C", "bang-chung"
+    # ③ giới thiệu nhiều người mới
+    if any(t in chu for t in ("nhập tịch", "tân binh", "triệu tập", "danh sách",
+                              "bổ sung", "ra mắt")) and len(nv) >= 2 and so_anh >= 2:
+        return "F", "danh-sach"
+    # ④ so hai tập thể
+    if any(t in chu for t in ("đội hình", "lực lượng", "so sánh", "chất lượng đội")) \
+            and len(doi) >= 2 and so_anh >= 2:
+        return "G", "hai-doi-hinh"
+    # ⑤ MỘT CHI TIẾT PHẢI CHO THẤY — đứng TRƯỚC đối đầu.
+    # Bài nào của kênh cũng có hai đội trong hồ sơ (vì bài nào cũng nhắc trận), nên
+    # "có hai đội" KHÔNG phân biệt được gì: để nó lên trước là mọi bài đều thành
+    # đối đầu (QC 18/08: 8/8 bài cùng ra một kiểu — vô dụng).
+    if any(t in chu for t in ("thẻ đỏ", "thẻ vàng", "var", "việt vị", "phạt đền",
+                              "trọng tài", "tranh chấp", "chấn thương", "án phạt",
+                              "công nghệ", "bảng điện")) and so_anh >= 2:
+        return "E", "nguoi-inset"
+
+    # ⑥ TIÊU ĐỀ XOAY QUANH MỘT TÊN NGƯỜI → chân dung. Nhận biết: tên người trong hồ
+    # sơ bài có mặt trong tiêu đề, mà tên ĐỘI thì không (hoặc chỉ một đội).
+    ten_trong_tit = [x for x in nv if x and x.lower() in tit_l]
+    doi_trong_tit = [x for x in doi if x and x.lower() in tit_l]
+    if len(ten_trong_tit) == 1 and len(doi_trong_tit) <= 1:
+        return "A", "mot-nguoi"
+
+    # ⑦ ĐỐI ĐẦU — chỉ khi tiêu đề nhắc CẢ HAI bên
+    if len(doi_trong_tit) >= 2 and so_anh >= 2:
+        return "B", "doi-dau"
+    if len(ten_trong_tit) >= 2 and so_anh >= 2:
+        return "B", "doi-dau"
+
+    # ⑧ hai chuyện nối nhau
+    if so_anh >= 2:
+        return "C", "hai-khung"
+    return "A", "mot-nguoi"
 
 
 def lam(viec, ra=None, kieu=None):
@@ -223,7 +356,12 @@ def lam(viec, ra=None, kieu=None):
     anh = _chon_anh(viec, max(can, 4))
     if not anh:
         raise RuntimeError("bài không có ảnh nào đủ đẹp để lên bìa")
-    kieu = kieu or _kieu_bo_cuc(viec, len(anh))
+    ten_kieu = ""
+    if kieu:
+        kieu = kieu.upper()
+        ten_kieu = next((k for k, v in NAO_MA.items() if v == kieu), kieu)
+    else:
+        kieu, ten_kieu = _kieu_bo_cuc(viec, len(anh), kb)
     if kieu in ("B", "C") and len(anh) < 2:
         kieu = "A"
     if kieu == "D" and len(anh) < 4:
@@ -288,7 +426,7 @@ def lam(viec, ra=None, kieu=None):
 
     ra = ra or os.path.join(viec, "thumbnail.jpg")
     bia.save(ra, quality=93, subsampling=0)
-    return ra, kieu, len(anh)
+    return ra, ten_kieu or kieu, len(anh)
 
 
 if __name__ == "__main__":

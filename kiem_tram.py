@@ -480,6 +480,31 @@ def tang_anh_bia():
          "đủ bốn bố cục: một người · đối đầu · hai khung ngang · lưới bốn ô")
     _bao("def _kieu_bo_cuc(" in tn and "claude" not in tn.lower(),
          "chọn bố cục bằng LUẬT (đọc hồ sơ bài), không gọi model")
+    # BỘ NÃO ẢNH BÌA — anh sửa được mà không cần đụng mã
+    _bao("def duong_nao(" in tn and "nao-thumbnail.md" in tn,
+         "có bộ NÃO ảnh bìa trong kho tài nguyên (anh sửa thẳng, không đụng mã)")
+    try:
+        import duong_dan as _DD2
+        _nao = open(os.path.join(_DD2.KHO_TAI_NGUYEN, "nao-thumbnail.md"),
+                    encoding="utf-8").read()
+        _bao(_nao.count("`") >= 16, "não mô tả đủ tám kiểu kèm mã")
+        _bao("CÁCH CHỌN KIỂU" in _nao, "não có thứ tự ưu tiên để chọn")
+        _bao("KHÔNG phải điều kiện đối đầu" in _nao,
+             "não ghi bài học: có hai đội KHÔNG đủ để gọi là đối đầu")
+        _bao("GHI CHÚ CỦA ANH" in _nao, "não chừa chỗ cho anh ghi kinh nghiệm")
+        # mã kiểu trong não phải khớp bảng ánh xạ, không thì sửa não mà mã không hiểu
+        import lam_thumbnail as _TN2
+        thieu = [k for k in _TN2.NAO_MA if f"`{k}`" not in _nao]
+        _bao(not thieu, "mọi mã kiểu trong bảng ánh xạ đều có mặt trong não",
+             " · ".join(thieu))
+        _bao(all(v in _TN2.BO_CUC for v in _TN2.NAO_MA.values()),
+             "mọi kiểu trong não đều có hàm dựng thật")
+    except Exception as e:
+        _bao(False, "đọc được bộ não ảnh bìa", str(e)[:70])
+    _bao("chu_rong" in tn and "tit_l" in tn,
+         "chỉ quét TIÊU ĐỀ (lời bình dài quét cả vào là kiểu nào cũng trúng)")
+    _bao("KHÔNG phân biệt được gì" in tn,
+         "không lấy 'có hai đội' làm điều kiện đối đầu")
     _bao("CO_NGUOI" in tn and "KHONG_NGUOI" in tn,
          "ưu tiên ảnh CÓ NGƯỜI, hạ điểm ảnh bảng điện/đồ hoạ")
     _bao('L.get("hoa_den_ty_le"' in tn,

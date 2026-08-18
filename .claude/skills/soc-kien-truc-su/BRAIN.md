@@ -947,3 +947,25 @@ và kết quả là bìa lấy phải **ảnh chụp màn hình LED sân vận �
 **Tiêu chí đo được dễ (pixel, tỷ lệ) hay lấn át tiêu chí quyết định (có mặt người không).**
 Khi chấm điểm để CHỌN, phải hỏi: thứ nghề này thật sự sống bằng gì? Rồi cho tiêu chí ấy
 trọng số áp đảo — ở đây là +45 cho ảnh có người, −40 cho đồ hoạ, đủ để lật ngược thứ hạng.
+
+## Điều kiện phân loại phải PHÂN BIỆT ĐƯỢC, không chỉ đúng (18/08/2026)
+
+Bộ chọn kiểu ảnh bìa có luật *"bài có hai đội → kiểu đối đầu"*. Luật ấy **đúng** — bài
+đối đầu thì đúng là có hai đội. Nhưng chạy thật thì **8/8 bài cùng ra một kiểu**, vì bài
+nào của kênh bóng đá cũng nhắc hai đội (bài nào cũng về một trận).
+
+Một điều kiện đúng mà **mọi mẫu đều thoả** thì không phân loại được gì — nó chỉ làm ra
+vẻ có phân loại. Trước khi tin một luật phân loại, phải chạy nó trên chục mẫu thật rồi
+**đếm phân bố**: dồn hết vào một nhóm là luật vô dụng, dù logic nghe rất hợp lý.
+
+Ở đây sửa bằng cách siết vào chỗ THẬT SỰ khác nhau: tiêu đề có gọi tên **cả hai bên** không.
+
+## Quét văn bản dài để phân loại là mời từ khoá trúng bừa (18/08/2026)
+
+Bộ chọn quét cả tiêu đề lẫn lời bình. Lời bình dài 60–80 chữ nên hầu như từ khoá nào
+cũng xuất hiện đâu đó: 3/8 bài về MỘT nhân vật bị xếp vào kiểu "danh sách nhiều người"
+chỉ vì trong lời bình có chữ "bổ sung".
+
+**Phân loại thì đọc chỗ CÔ ĐỌNG NHẤT** — ở đây là tiêu đề. Văn bản dài chỉ dùng cho luật
+cần bằng chứng cụ thể (tìm giờ, tìm ngày). Càng nhiều chữ đưa vào bộ khớp từ khoá, tỷ lệ
+trúng nhầm càng cao — không phải càng nhiều dữ liệu càng chính xác.

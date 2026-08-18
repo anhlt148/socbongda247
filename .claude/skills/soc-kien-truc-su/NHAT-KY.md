@@ -1017,3 +1017,38 @@ thứ đã chốt (tiêu đề cuối, cụm tô vàng cuối, ảnh đã duyệ
 cả hộp** — chỉ cảnh báo. KHÔNG thêm vào `TEP_CHUAN` để hộp cũ không bị báo thiếu.
 
 Cổng ⑳ 9 mục (có dựng thử thật ra bìa 1080×1920). `kiem_tram.py --sau` ĐẠT HẾT hai lần.
+
+## 18/08/2026 — BỘ NÃO ẢNH BÌA: tám kiểu + điều kiện áp dụng
+
+**Anh giao:** "phân tích từng thumbnail rồi học từng phong cách, lưu thành thư viện (bộ
+não) có hoàn cảnh/điều kiện áp dụng. Sau có nội dung thì tự phân tích chọn kiểu phù hợp."
+
+**`kho-tai-nguyen/nao-thumbnail.md` (mới, 7 KB)** — rút từ 20 mẫu anh gửi:
+- **Phần khung**: bảy yếu tố có ở 20/20 mẫu, kèm lý do từng cái. Luật vàng của cụm tô
+  vàng: *tô cái bất thường, đừng tô cái hiển nhiên*.
+- **Tám kiểu**: mot-nguoi · doi-dau (chia CHÉO) · nguoi-inset (ô tròn vật chứng) ·
+  hai-khung · danh-sach (nhãn tên + cờ) · poster-tran · bang-chung · hai-doi-hinh.
+  Mỗi kiểu ghi **khi nào dùng · vì sao hút · cần ảnh gì · mẫu nào**.
+- **Thứ tự chọn** tám bước + chỗ trống "GHI CHÚ CỦA ANH".
+
+Não nằm trong KHO TÀI NGUYÊN nên dùng chung cả nhà và **anh sửa thẳng, không cần đụng
+mã** — cùng lối với `luat-ghep-anh.md`.
+
+**Mã bổ sung ba bố cục còn thiếu**: E (ô tròn vật chứng) · F (danh sách có nhãn tên) ·
+G (hai đội hình). Bảng `NAO_MA` nối mã kiểu trong não ↔ hàm dựng; cổng kiểm canh hai
+chiều để sửa não mà mã không hiểu thì bộ kiểm báo ngay.
+
+**Ba vòng QC mới ra được bộ chọn dùng được:**
+1. Quét cả lời bình (60–80 chữ) → từ khoá trúng bừa, 3/8 bài về MỘT người bị đẩy sang
+   kiểu "danh sách" chỉ vì lời bình có chữ "bổ sung". → chỉ quét TIÊU ĐỀ.
+2. Lấy "có hai đội" làm điều kiện đối đầu → **8/8 bài cùng ra một kiểu**, vô dụng: bài
+   nào của kênh cũng nhắc hai đội vì bài nào cũng về một trận. → đối đầu phải là tiêu đề
+   gọi tên CẢ HAI bên.
+3. Luật poster bắt cả "sắp · đêm nay · sẽ gặp" → bài tường thuật VAR cũng thành poster.
+   → cần LỊCH CỤ THỂ và không nhắc diễn biến đã xảy ra.
+
+**Phân bố cuối trên 12 bài thật:** nguoi-inset 2 · hai-khung 6 · doi-dau 3 · mot-nguoi 1.
+Chọn đúng ý ở các ca kiểm được: "VAR cho quê ngang" → ô tròn vật chứng · "Thái Lan gọi,
+Việt Nam trả lời" → đối đầu · "Lê Giang thủ môn số 1" → chân dung.
+
+Cổng ⑳ nay 18 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp.
