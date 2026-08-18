@@ -1005,3 +1005,24 @@ thiếu bằng biến ngoài. Ở đây `moSoi(k, lat)` cần biết ba thứ nh
 **Kèm theo — nhãn nút phải nói đúng việc nó sắp làm.** Nút ghi "Gán cho câu 10" nhưng
 thật ra gán vào 10b thì người dùng không có cơ hội phát hiện trước khi bấm. Nhãn sai là
 lớp phòng vệ cuối cùng bị gỡ mất.
+
+## Thứ đặt lên ảnh phải HỎI ẢNH, đừng đặt theo toạ độ cố định (18/08/2026)
+
+Ô tròn trên ảnh bìa đặt cứng ở góc trên phải — đúng như 20 mẫu tham khảo. Chạy vài bài
+thì đè trúng mặt cầu thủ, phá chính cái luật "bìa sống bằng khuôn mặt" mà mình vừa viết.
+
+Mẫu tham khảo đặt được ở góc ấy vì **người ta chọn ảnh trước rồi mới đặt**. Máy thì đặt
+trước, không nhìn.
+
+**Luật:** mọi vật thể chồng lên ảnh (ô tròn, nhãn, cờ, huy hiệu, thẻ số liệu) phải chọn
+chỗ bằng cách CHẤM ĐIỂM VÙNG rồi né chỗ quan trọng — không dùng toạ độ cố định. Và phải
+có **đường lùi cuối**: vướng ở mọi chỗ thì bỏ hẳn vật thể ấy, đừng cố nhét.
+
+**Nhận ra "chỗ quan trọng" không cần AI.** Bài này chỉ dùng hai phép numpy: lọc màu da
+(đỏ > lục > lam, chênh vừa phải) và đếm cạnh. Đủ để tách mặt–tay người khỏi cỏ, khán đài,
+trời. Trước khi nghĩ tới cài mô hình nhận diện, hãy hỏi: mình cần nhận ra ĐỐI TƯỢNG, hay
+chỉ cần biết CHỖ NÀO ĐÔNG THÔNG TIN?
+
+**Vùng do hệ tự vẽ cũng phải khai là vùng cấm.** Logo kênh nằm góc trên trái — ảnh không
+"biết" chuyện đó, nên phải cộng điểm cấm bằng tay. Quên bước này thì máy tránh được mặt
+người nhưng lại đè lên logo của chính mình.

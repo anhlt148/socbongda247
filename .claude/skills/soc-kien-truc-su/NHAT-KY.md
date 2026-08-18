@@ -1107,3 +1107,36 @@ cảnh 10b"*.
 **Đã kiểm bằng trình duyệt, tái hiện đúng kịch bản:** đụng ô phụ 1b → `dangPhu = "0:0"` →
 mở soi từ ô CHÍNH → `dangPhu` về **null** → bấm Gán → ảnh ô phụ **vẫn nguyên n01.jpg**.
 Cổng ㉑ 7 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp.
+
+## 18/08/2026 — ô tròn đè trúng mặt cầu thủ → LUẬT VÙNG CẤM
+
+**Anh bắt:** ô tròn che đúng mặt cầu thủ Thái Lan. Và hỏi thẳng câu đúng chỗ: *"làm thế
+nào để không bị đặt ảnh lố như thế này về sau trong TẤT CẢ trường hợp thumbnail"* — tức
+không muốn vá một ca, muốn luật.
+
+**Gốc:** ô tròn đặt CỐ ĐỊNH góc trên phải, chẳng nhìn dưới đó có gì. Mà mặt người thì hay
+nằm đúng nửa trên khung. Đây không phải lỗi riêng ô tròn — là lỗi của lối nghĩ "đặt cố
+định một chỗ", sẽ tái diễn với nhãn tên, cờ, huy hiệu.
+
+**Nâng thành LUẬT CHUNG, ghi vào não mục B-bis:**
+> Không lớp nào được đặt vào chỗ cố định. Phải hỏi ảnh trước.
+
+Ba vùng cấm: **mặt và tay người** · **chỗ nhiều chi tiết** (số áo, chữ) · **góc trên trái**
+(logo kênh — khai cứng vì ảnh không tự biết).
+
+**Nhận biết mặt người mà KHÔNG cần bộ nhận diện khuôn mặt** (OpenCV 5 đã bỏ
+CascadeClassifier, cài thêm thì nặng): không cần biết "đây là mặt", chỉ cần biết "chỗ này
+quan trọng". Hai dấu hiệu đo bằng numpy thuần:
+- **màu da** — đỏ trội hơn lục, lục trội hơn lam, không quá tối/nhạt. Tín hiệu mạnh nhất,
+  tính **nặng gấp đôi**.
+- **độ chi tiết** — mặt, số áo, chữ đều nhiều cạnh; cỏ và khán đài mờ thì phẳng.
+
+**Năm bước chọn chỗ:** chấm lưới → thử cả bốn góc → giữ thứ tự quen mắt khi ngang điểm →
+vướng thì THU NHỎ còn ¾ → vẫn vướng thì **BỎ HẲN**.
+
+Bước cuối là bước quan trọng nhất: ảnh nào cũng nhét cho đủ hiệu ứng thì sẽ có ngày nhét
+lên mặt người.
+
+**Đã kiểm trên đúng bài anh gửi ảnh:** ô tròn tự dời từ trên-phải (đè mặt) xuống dưới-trái
+(vùng áo), mặt cầu thủ hiện trọn, logo nguyên vẹn. Bài khác thì nó chọn trên-phải như
+thường. Cổng ⑳ thêm 7 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần.

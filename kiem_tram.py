@@ -548,6 +548,27 @@ def tang_anh_bia():
          "bảng màu theo phe (đỏ VN · vàng Malaysia · xanh Thái)")
     _bao("0.57" in tn and "chia CHÉO" in tn,
          "đối đầu chia CHÉO, không chia thẳng đứng")
+    # LUẬT VÙNG CẤM (anh bắt 18/08: ô tròn đè trúng mặt cầu thủ)
+    _bao("def _ban_do_quan_trong(" in tn,
+         "có bản đồ 'chỗ nào KHÔNG được che' cho từng ảnh")
+    _bao("da * 2.2" in tn or "da *" in tn,
+         "màu da tính NẶNG hơn độ chi tiết — mặt người là thứ giữ chân người xem")
+    _bao("def _cho_dat_o_tron(" in tn and "trên phải" in tn and "dưới trái" in tn,
+         "thử CẢ BỐN GÓC, không dí cứng một chỗ")
+    _bao("q[:max(1, o_doc // 7)" in tn,
+         "góc trên trái là vùng cấm — chỗ của logo kênh")
+    _bao("d_o = int(d_o * 0.74)" in tn,
+         "vướng thì THU NHỎ vật thể rồi thử lại")
+    _bao("BỎ ô tròn" in tn,
+         "vướng ở mọi góc thì BỎ HẲN — thà thoáng còn hơn che mặt")
+    try:
+        _nao3 = open(os.path.join(_DD2.KHO_TAI_NGUYEN, "nao-thumbnail.md"),
+                     encoding="utf-8").read()
+        _bao("LUẬT VÙNG CẤM" in _nao3 and "MỌI thứ đè lên ảnh" in _nao3,
+             "não ghi luật vùng cấm áp cho MỌI lớp đè, không riêng ô tròn")
+    except Exception:
+        pass
+
     i_o = tn.find("def _o_tron(")
     than_o = tn[i_o:i_o + 1500]
     _bao("0.355" in than_o and "GaussianBlur" in than_o,

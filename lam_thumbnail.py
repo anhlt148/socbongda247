@@ -201,6 +201,67 @@ def _do_bong(nen, o, xy, lech=16, mo=60):
     return Image.alpha_composite(nen.convert("RGBA"), b).convert("RGB")
 
 
+def _ban_do_quan_trong(im, o_ngang=8, o_doc=12):
+    """Bản đồ "chỗ nào KHÔNG được che" của một ảnh — trả lưới điểm, cao = quan trọng.
+
+    Anh bắt 18/08: ô tròn đè trúng mặt cầu thủ. Gốc là ô tròn đặt CỐ ĐỊNH góc trên phải,
+    chẳng nhìn xem dưới đó có gì. Mà mặt người thì hay nằm đúng nửa trên khung.
+
+    Máy không có bộ nhận diện khuôn mặt (OpenCV 5 đã bỏ CascadeClassifier, cài thêm thì
+    nặng). Nhưng không cần nhận ra "đây là mặt" — chỉ cần biết "chỗ này quan trọng", và
+    hai dấu hiệu sau đủ để đo bằng numpy thuần:
+
+      · MÀU DA — mặt và tay người có dải màu rất riêng (đỏ > lục > lam, chênh vừa phải).
+        Đây là tín hiệu mạnh nhất và rẻ nhất.
+      · ĐỘ CHI TIẾT — mặt, số áo, chữ đều nhiều cạnh; cỏ, khán đài mờ, trời thì phẳng.
+
+    Cộng hai lớp lại, chỗ điểm cao là chỗ tuyệt đối không được đặt gì lên.
+    """
+    import numpy as _np
+    g = im.convert("RGB").resize((o_ngang * 12, o_doc * 12))
+    a = _np.asarray(g).astype(_np.float32)
+    R, G, B = a[..., 0], a[..., 1], a[..., 2]
+    # màu da: đỏ trội hơn lục, lục trội hơn lam, và không quá tối/quá nhạt
+    da = ((R > 90) & (G > 40) & (B > 20) & (R > G + 12) & (G > B - 8)
+          & (R - _np.minimum(G, B) > 14) & (R < 250)).astype(_np.float32)
+    x = _np.asarray(g.convert("L")).astype(_np.float32)
+    ct = _np.abs(_np.diff(x, axis=0, prepend=x[:1])) + \
+        _np.abs(_np.diff(x, axis=1, prepend=x[:, :1]))
+    ct = _np.clip(ct / 42.0, 0, 1)
+    q = da * 2.2 + ct                        # màu da nặng gấp đôi độ chi tiết
+    # gộp về lưới ô_doc × o_ngang
+    q = q.reshape(o_doc, 12, o_ngang, 12).mean(axis=(1, 3))
+    # GÓC TRÊN TRÁI là chỗ LOGO KÊNH — đặt ô tròn lên đó là đè logo, mất dấu nhận biết.
+    # Ảnh không "biết" chuyện này nên phải khai bằng tay: coi như vùng quan trọng sẵn.
+    q[:max(1, o_doc // 7), :max(1, o_ngang // 4)] += 1.4
+    return q
+
+
+def _cho_dat_o_tron(nen, d_o, le=0.05):
+    """Chọn GÓC ít quan trọng nhất để đặt ô tròn — thay vì luôn dí vào góc trên phải.
+
+    Thứ tự ưu tiên khi điểm ngang nhau: trên-phải (đúng thói quen đọc của 20 mẫu) →
+    trên-trái → dưới-phải → dưới-trái. Ô tròn nằm dưới thì gần dải chữ, nên chỉ chọn
+    khi hai góc trên đều vướng mặt người.
+    """
+    import numpy as _np
+    W_n, H_n = nen.size
+    q = _ban_do_quan_trong(nen)
+    oh, ow = q.shape
+    m = int(le * W_n)
+    goc = [("trên phải", W_n - d_o - m, m), ("trên trái", m, m),
+           ("dưới phải", W_n - d_o - m, H_n - d_o - m),
+           ("dưới trái", m, H_n - d_o - m)]
+    tot, diem_tot, ten_tot = None, 1e9, ""
+    for i, (ten, x, y) in enumerate(goc):
+        c0, c1 = int(x / W_n * ow), max(1, int((x + d_o) / W_n * ow))
+        r0, r1 = int(y / H_n * oh), max(1, int((y + d_o) / H_n * oh))
+        d = float(q[r0:r1, c0:c1].mean()) + i * 0.02   # phạt nhẹ để giữ thứ tự ưu tiên
+        if d < diem_tot:
+            tot, diem_tot, ten_tot = (x, y), d, ten
+    return tot, diem_tot, ten_tot
+
+
 def _o_tron(nen, anh_ct, w, h):
     """Ô TRÒN góc trên phải chứa vật chứng (thẻ đỏ, bảng VAR, vật lạ).
 
@@ -210,7 +271,19 @@ def _o_tron(nen, anh_ct, w, h):
     ct = _phu_khung(_mo(anh_ct), d_o, d_o)
     mn = Image.new("L", (d_o, d_o), 0)
     ImageDraw.Draw(mn).ellipse([0, 0, d_o - 1, d_o - 1], fill=255)
-    x, y = w - d_o - int(w * 0.05), int(h * 0.05)
+    # CHỖ ĐẶT do bản đồ quyết, không dí cứng vào góc trên phải nữa (anh bắt 18/08:
+    # ô tròn đè trúng mặt cầu thủ Thái Lan). Thử cả bốn góc, chọn góc ÍT quan trọng nhất.
+    (x, y), _d, _ten = _cho_dat_o_tron(nen, d_o)
+    # Vẫn vướng nặng ở MỌI góc → THU NHỎ ô tròn rồi thử lại. Thà ô nhỏ hơn mẫu một
+    # chút còn hơn che mất khuôn mặt — mặt người là thứ giữ chân người xem, ô tròn chỉ
+    # là gia vị.
+    if _d > 0.62:
+        d_o = int(d_o * 0.74)
+        (x, y), _d, _ten = _cho_dat_o_tron(nen, d_o)
+    if _d > 0.78:
+        print(f"  ⚠ ảnh nền kín người ở cả bốn góc — BỎ ô tròn, để bìa thoáng")
+        return nen
+    print(f"  ○ ô tròn đặt {_ten} (điểm vướng {_d:.2f})")
     # bóng đen mờ quanh viền (não mục C) — ô tròn nổi hẳn khỏi ảnh nền
     bg = Image.new("RGBA", nen.size, (0, 0, 0, 0))
     ImageDraw.Draw(bg).ellipse([x - 16, y - 8, x + d_o + 16, y + d_o + 22],
