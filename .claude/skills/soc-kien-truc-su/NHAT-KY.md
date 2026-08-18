@@ -951,3 +951,36 @@ mấy dòng chú thích là `tu_khoa_phu` bị đẩy ra ngoài cửa sổ → b
 chưa trả hai trường mới cho trang.
 
 Cổng ⑱ 9 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp. Đã dọn bài test.
+
+## 18/08/2026 — cổng soát cảnh bị nuốt + ưu tiên cảnh video
+
+**Anh hỏi trước:** "cảnh video/ảnh có nguyên tắc gì mà thi thoảng hay nuốt cảnh bên
+cạnh?" Rà ra BỐN nguyên tắc: ① mượn giây hàng xóm (câu <2,5s) · ② gộp cảnh vụn (XOÁ hẳn
+một cảnh) · ③ nhịp bớt khung · ④ trần ô. Ba cái đầu có báo, ④ thì im lặng.
+
+**Anh chốt:** "ưu tiên cảnh là video", "khi dựng tự kiểm có cảnh bị nuốt không, tự tìm
+nguyên nhân và khắc phục, theo dõi 6 lần dựng THẬT, sạch cả 6 thì tự kết thúc".
+
+**Đã làm:**
+- **Cổng ③d soát cảnh bị nuốt**: đối chiếu ô anh gán ↔ cảnh thật lên video, in tên từng
+  hình bị nuốt kèm nguyên nhân và cách chữa. Sổ `~/.config/socbongda247/soat-nuot-canh.json`
+  đếm **6 lần dựng liên tiếp sạch** thì tự đóng; có lần nào nuốt là mở lại, đếm từ đầu.
+- **Không gộp cảnh có HÌNH RIÊNG**: gộp là xoá hẳn một cảnh. Nay chỉ gộp khi hai cảnh
+  dùng chung một hình, hoặc cảnh ngắn dưới `SAN_CANH = 1.6s` (dưới mức ấy mắt chưa kịp
+  nhận ra hình gì, gộp mới đúng).
+- **Ô chính trống → dời ô phụ lên**: câu anh chỉ gán hình vào ô phụ, ô chính bỏ trống thì
+  CẢ HAI cùng mất — câu ấy không vào bản đồ cảnh nên ô phụ chẳng còn chỗ.
+- **Clip ở ô phụ được ưu tiên**: câu chỉ đủ MỘT khung mà ô chính là ảnh, ô phụ là clip →
+  đổi chỗ. Không đổi thì clip anh đã bỏ công tìm–cắt–khoanh khung bị nuốt, còn ảnh tĩnh
+  lên hình. Đổi chỗ chứ không bỏ ảnh.
+
+**Đo trên bài thật (video-2 ngày 17/08):** cổng bắt **3 hình không lên video** ngay lượt
+đầu — trong đó có **một CLIP**. Sau ba vòng khắc phục: còn 2 (đều là ảnh anh gán dư ở câu
+quá ngắn, có báo rõ để anh bớt hoặc viết lời dài thêm). Clip đã lên hình.
+
+**Ba lỗi tự bắt trong lúc làm:** dùng sai tên biến (`ma` thay vì `viec`) — cổng báo lỗi rõ
+chứ không làm hỏng dựng · sau khi dời ô phụ lên, cổng BÁO OAN vì tấm vẫn còn tên ở ô phụ ·
+phép đổi chỗ không ăn vì `anh_phu` đọc lại bản gốc trên đĩa thay vì bản đã chỉnh.
+
+Cổng ⑲ 11 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần. Đã xoá sổ thử để bắt đầu đếm từ
+lần dựng THẬT đầu tiên của anh.

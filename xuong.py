@@ -19,6 +19,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import duong_dan as DD
 import chuyen_dong
 import nhip_canh as NC
+
+# SÀN TUYỆT ĐỐI CỦA MỘT CẢNH (anh chốt 18/08: "ưu tiên không nuốt cảnh").
+# Chuẩn đẹp là 2,5s; nhưng cảnh ngắn hơn chuẩn VẪN GIỮ ĐƯỢC, miễn không tụt dưới mức
+# này. Dưới 1,6 giây mắt chưa kịp nhận ra hình gì — lúc ấy gộp mới thật sự đúng.
+SAN_CANH = 1.6
 import cum_vang as CV                 # cụm tô vàng của tít — một bản, trạm + xưởng chung
 import chon_nhac as CN                # chọn nhạc theo cảm xúc — một bản dùng chung (12/08)
 import phong_cach as PC              # núm vặn chống dập khuôn — anh cấu hình trên trạm
@@ -441,7 +446,35 @@ def dung(viec):
             clip_canh = {int(k): v for k, v in json.load(open(p_cc)).items()}
         except Exception:
             clip_canh = {}
+    _da_doi_len = set()          # câu nào đã dời ô phụ b lên làm ô chính
+    _ap_som = {}                 # ô phụ anh gán, bản dùng chung cho cả dựng lẫn soát
     if ban_do:
+        # Ô CHÍNH TRỐNG MÀ CÓ Ô PHỤ → DỜI Ô PHỤ LÊN LÀM Ô CHÍNH (anh chốt 18/08).
+        # Cổng soát bắt được 18/08 trên bài thật: câu 4 anh chỉ gán hình vào ô phụ 4b,
+        # ô chính bỏ trống — thế là CẢ HAI cùng mất. Ô chính trống nên câu ấy không vào
+        # bản đồ cảnh, kéo theo ô phụ chẳng còn chỗ mà lên hình.
+        # Nuốt trọn công anh chọn hình, mà chẳng ai báo. Nay dời lên, hình vẫn lên đúng
+        # câu ấy — chỉ đổi ô, không đổi nội dung.
+        _ap_som.update({int(k): [x for x in (v or []) if x] for k, v in
+                        (_nhap_tram(viec).get("anh_phu") or {}).items() if v})
+        # ƯU TIÊN CẢNH VIDEO (anh chốt 18/08: "em phải luôn ưu tiên cảnh là video").
+        # Câu ngắn chỉ mở nổi MỘT khung mà ô chính là ẢNH còn ô phụ là CLIP → đổi chỗ:
+        # clip lên ô chính, ảnh xuống ô phụ. Không đổi thì clip anh đã bỏ công tìm, cắt,
+        # khoanh khung né logo bị nuốt trọn — còn tấm ảnh tĩnh thì lên hình.
+        # Đổi chỗ chứ KHÔNG bỏ ảnh: ảnh xuống ô phụ, câu nào đủ dài vẫn dùng tới.
+        for _i, _ds in list(_ap_som.items()):
+            if _i in ban_do and _ds and "::" in str(_ds[0]) \
+                    and "::" not in str(ban_do[_i]):
+                if NC.so_o_toi_da(cau_moc[_i] - (cau_moc[_i - 1] if _i else 0.0)) <= 1:
+                    ban_do[_i], _ds[0] = _ds[0], ban_do[_i]
+                    print(f"  ⇄ câu {_i + 1}: chỉ đủ MỘT khung → đưa CLIP lên ô chính "
+                          f"(ưu tiên cảnh video), ảnh lui về ô phụ")
+        for _i, _ds in _ap_som.items():
+            if _i not in ban_do and _ds:
+                ban_do[_i] = _ds[0]
+                _da_doi_len.add(_i)      # ô phụ b của câu này ĐÃ thành ô chính
+                print(f"  ↑ câu {_i + 1}: ô chính trống → dời hình ở ô phụ b lên "
+                      f"({os.path.basename(str(_ds[0]))[:40]})")
         for i in sorted(clip_canh):
             if i not in ban_do:
                 for j in range(i - 1, -1, -1):
@@ -589,8 +622,12 @@ def dung(viec):
     #   ② cảnh < 2,5s MƯỢN giây của hàng xóm còn dư (hàng xóm không được tụt dưới 2,5s).
     #   ③ cảnh CLIP anh tự cắt đoạn thì giữ nguyên — anh đã quyết độ dài, máy không đụng.
     CANH_MAX, CANH_MIN = 5.0, 2.5
-    anh_phu = {int(k): v for k, v in
-               (_nhap_tram(viec).get("anh_phu") or {}).items() if v} if ban_do else {}
+    # DÙNG LẠI `_ap_som` — bản đã qua hai phép chỉnh ở trên (dời ô phụ lên khi ô chính
+    # trống · đổi chỗ để clip lên ô chính). Đọc lại từ đĩa là quay về bản CHƯA chỉnh,
+    # nên phép đổi chỗ coi như chưa từng xảy ra và cổng soát báo oan.
+    # Tấm đã dời lên ô chính thì cắt khỏi ô phụ — khỏi lên hình HAI LẦN.
+    anh_phu = {i: (v[1:] if i in _da_doi_len else v)
+               for i, v in _ap_som.items() if v} if ban_do else {}
     cap_cung_anh = set()                           # các cặp cảnh con dùng CHUNG một ảnh
     o_cua = ["c"] * len(canh)                      # video không qua trạm: mọi cảnh coi là ô chính
     cau_goc = None                                 # sẽ xây trong ③đ khi có ban_do
@@ -704,6 +741,19 @@ def dung(viec):
                 print(f"  ⚠ cảnh {i2 + 1} vụn {d_i:.1f}s kẹt giữa các cảnh clip — giữ nguyên")
                 i2 += 1
                 continue
+            # ĐỪNG NUỐT CẢNH CÓ HÌNH RIÊNG (anh chốt 18/08: "kiểm xem có cảnh bị nuốt
+            # không, có thì tự khắc phục"). Gộp là XOÁ HẲN một cảnh — ảnh anh chọn cho
+            # nó không bao giờ lên hình, mà chẳng ai báo.
+            # Chỉ đáng gộp khi cảnh vụn và cảnh kề DÙNG CHUNG một hình (gộp lại thì
+            # người xem không mất gì). Hai hình khác nhau thì thà để cảnh ngắn hơn
+            # chuẩn 2,5s — miễn còn trên SÀN TUYỆT ĐỐI, dưới sàn mới thật sự giật.
+            h_i2 = str(xep[i2] or "")
+            h_ung = str(xep[ung] or "")
+            if h_i2 and h_ung and h_i2 != h_ung and d_i >= SAN_CANH:
+                print(f"  cảnh {i2 + 1} vụn {d_i:.1f}s nhưng có HÌNH RIÊNG "
+                      f"→ giữ lại, không gộp (ưu tiên không nuốt cảnh)")
+                i2 += 1
+                continue
             giu = ung if (canh[ung][1] - canh[ung][0]) >= d_i else i2
             lo, hi = min(i2, ung), max(i2, ung)
             print(f"  cảnh {i2 + 1} vụn {d_i:.1f}s → GỘP với cảnh kề "
@@ -718,6 +768,71 @@ def dung(viec):
             vi_tri_clip = [(k - 1 if k > hi else k) for k in vi_tri_clip]
             cap_cung_anh = {(k - 1 if k > hi else k) for k in cap_cung_anh if k != hi}
             i2 = lo + 1
+
+    # ══ ③d CỔNG SOÁT CẢNH BỊ NUỐT (anh chốt 18/08) ═══════════════════════════
+    # "Khi dựng video thì tự kiểm xem có cảnh bị nuốt không, nếu có thì tự tìm nguyên
+    # nhân và khắc phục. Chạy thử khoảng 6 lần sản xuất video, nếu không có cảnh nào
+    # bị nuốt thì tự kết thúc việc kiểm tra."
+    #
+    # Nuốt cảnh = hình anh đã gán cho một ô mà KHÔNG lên video. Ba đường dẫn tới:
+    #   ① gộp cảnh vụn — xoá hẳn một cảnh. ĐÃ CHẶN ở trên: chỉ gộp khi hai cảnh dùng
+    #      chung một hình, hoặc khi cảnh ngắn dưới sàn 1,6s (lúc ấy gộp mới đúng).
+    #   ② nhịp bớt khung — ô phụ bị cắt vì mỗi khung sẽ ngắn dưới 2,5s
+    #   ③ trần ô — câu 6s chỉ chứa 2 ô, gán 3 hình thì tấm thứ ba rơi
+    #
+    # Cổng ĐẾM LIÊN TIẾP: sáu lần dựng thật liên tiếp không nuốt cảnh nào thì tự đóng
+    # sổ, từ đó chỉ in một dòng gọn. Có lần nào nuốt là đếm lại từ đầu.
+    try:
+        _so_o_len = 0
+        _da_len = set()
+        for _i_c, _o in enumerate(o_cua):
+            _cau_c = cau_goc[_i_c] if _i_c < len(cau_goc) else None
+            if _cau_c is None:
+                continue
+            _so_o_len += 1
+            if _o is not None:
+                _da_len.add((_cau_c, str(_o)))
+        _nuot = []
+        for _c_s, _ds in (anh_phu or {}).items():
+            for _j, _a in enumerate([x for x in (_ds or [])]):
+                if _a and (_c_s, str(_j)) not in _da_len:
+                    _nuot.append((_c_s, _j, os.path.basename(str(_a))))
+
+        _p_so = os.path.expanduser("~/.config/socbongda247/soat-nuot-canh.json")
+        os.makedirs(os.path.dirname(_p_so), exist_ok=True)
+        try:
+            _so = json.load(open(_p_so, encoding="utf-8"))
+        except Exception:
+            _so = {"sach_lien_tiep": 0, "tong_lan": 0, "da_dong": False, "lich_su": []}
+        _so["tong_lan"] = _so.get("tong_lan", 0) + 1
+        _so["sach_lien_tiep"] = 0 if _nuot else _so.get("sach_lien_tiep", 0) + 1
+        _so["lich_su"] = (_so.get("lich_su") or [])[-19:] + [
+            {"ma": os.path.basename(viec), "luc": time.strftime("%Y-%m-%d %H:%M"),
+             "nuot": len(_nuot), "o_len_hinh": _so_o_len}]
+        _da_dong_truoc = _so.get("da_dong")
+        if _so["sach_lien_tiep"] >= 6:
+            _so["da_dong"] = True
+
+        if _nuot:
+            _so["da_dong"] = False               # có nuốt là mở sổ lại, theo dõi tiếp
+            print(f"  ⚠️  {len(_nuot)} HÌNH ANH GÁN KHÔNG LÊN VIDEO:")
+            for _c_s, _j, _ten in _nuot[:8]:
+                print(f"       cảnh {_c_s + 1}{chr(98 + _j)} · {_ten}")
+            print("       NGUYÊN NHÂN: câu quá ngắn nên nhịp không mở đủ ô "
+                  "(mỗi ô cần ≥ 2,5 giây).")
+            print("       CÁCH CHỮA: bớt hình phụ ở câu đó, hoặc viết lời dài thêm "
+                  "cho câu ấy rồi đọc lại giọng.")
+            print(f"       (đếm lại từ đầu — cần 6 lần dựng liên tiếp sạch mới đóng sổ)")
+        elif not _da_dong_truoc:
+            _con = max(0, 6 - _so["sach_lien_tiep"])
+            print(f"  ✅ soát cảnh: {_so_o_len} ô lên hình đủ, không cảnh nào bị nuốt"
+                  + (f"  ({_so['sach_lien_tiep']}/6 lần sạch"
+                     + (f", còn {_con} lần)" if _con else ") — ĐÓNG SỔ THEO DÕI ✔")))
+        else:
+            print(f"  ✅ soát cảnh: đủ {_so_o_len} ô (sổ đã đóng sau 6 lần sạch)")
+        json.dump(_so, open(_p_so, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    except Exception as _e:
+        print(f"  ⚠ không soát được cảnh bị nuốt: {_e}")
 
     # ③e vùng watermark cần né (anh chốt 07/08): tấm anh xác nhận "vẫn dùng" ở cổng
     # DUYỆT thì lúc dựng khung cắt phải TỰ né vùng logo — vị trí đọc từ sổ nguồn

@@ -464,6 +464,45 @@ def _get(d):
         return r.status, json.loads(r.read().decode())
 
 
+def tang_soat_nuot_canh():
+    """CẢNH BỊ NUỐT (anh chốt 18/08: "ưu tiên cảnh là video", "khi dựng tự kiểm xem có
+    cảnh bị nuốt không, tự tìm nguyên nhân và khắc phục, theo dõi 6 lần dựng").
+
+    Nuốt cảnh = hình anh gán cho một ô mà không lên video. Trước 18/08 chuyện này xảy
+    ra ÂM THẦM: phép gộp cảnh vụn xoá hẳn một cảnh, chẳng ai báo.
+    """
+    print("⑲ SOÁT CẢNH BỊ NUỐT KHI DỰNG")
+    xg = open(os.path.join(os.path.dirname(TRAM), "xuong.py"), encoding="utf-8").read()
+    nc = open(os.path.join(os.path.dirname(TRAM), "nhip_canh.py"), encoding="utf-8").read()
+
+    _bao("SAN_CANH" in xg, "có SÀN tuyệt đối cho độ dài cảnh")
+    _bao("có HÌNH RIÊNG" in xg,
+         "cảnh vụn CÓ HÌNH RIÊNG thì giữ lại, không gộp (ưu tiên không nuốt)")
+    _bao("KHÔNG LÊN VIDEO" in xg, "cổng soát in ra hình nào không lên video")
+    _bao("NGUYÊN NHÂN" in xg and "CÁCH CHỮA" in xg,
+         "báo kèm nguyên nhân và cách chữa, không chỉ kêu suông")
+    _bao("soat-nuot-canh.json" in xg, "có sổ theo dõi qua nhiều lần dựng")
+    _bao("sach_lien_tiep" in xg and ">= 6" in xg,
+         "đếm 6 lần dựng LIÊN TIẾP sạch thì tự đóng sổ")
+    _bao('_so["da_dong"] = False' in xg,
+         "có lần nào nuốt thì mở sổ lại, đếm từ đầu")
+
+    # ưu tiên cảnh VIDEO: nhịp không được rút giây của clip, không gộp cảnh clip
+    _bao("not la_clip[hx]" in nc, "nhịp KHÔNG mượn giây của cảnh clip")
+    _bao("la_clip[i] or d[i] >=" in nc, "cảnh clip không bị coi là cảnh hụt để đi mượn")
+    _bao("hx not in la_clip" in xg, "phép gộp không đụng vào cảnh clip")
+
+    # chạy thử thật: câu ngắn kề clip thì clip phải NGUYÊN VẸN
+    try:
+        sys.path.insert(0, os.path.dirname(TRAM))
+        import nhip_canh as _NC
+        r = _NC.chia_nhip([1.8, 3.0, 4.0], [False, True, False], [0, 0, 0])
+        _bao(abs(r[1]["muon"]) < 0.05,
+             "chạy thử: câu ngắn kề clip → clip giữ nguyên độ dài")
+    except Exception as e:
+        _bao(False, "chạy thử nhịp bảo vệ clip", str(e)[:60])
+
+
 def tang_query_thong_minh():
     """QUERY THÔNG MINH (anh duyệt 18/08 sau khi em đối chiếu tài liệu nâng cấp).
 
@@ -1386,6 +1425,7 @@ if __name__ == "__main__":
     tang_dich_luu()         # chọn được nơi lưu thứ gắp về (17/08)
     tang_tu_khoa_anh()      # từ khoá tìm ảnh bằng tiếng Anh (17/08)
     tang_query_thong_minh() # mốc hình · câu video · tiếng bản địa (18/08)
+    tang_soat_nuot_canh()   # cảnh bị nuốt khi dựng + ưu tiên clip (18/08)
     if sau:
         tang4_luong(ma)
     else:

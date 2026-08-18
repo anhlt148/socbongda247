@@ -900,3 +900,27 @@ hàm ấy là trường cuối bị đẩy ra ngoài cửa sổ → cổng báo 
 **Cổng báo oan nguy hơn cổng không có**: nó dạy người ta bỏ qua lời cảnh báo, rồi lần sau
 cảnh báo thật cũng bị bỏ qua. Cắt theo **ranh giới cú pháp thật** (`ast.get_source_segment`),
 đừng đếm ký tự. Sửa xong cổng ấy bắt được ngay một lỗi thật đang nằm im.
+
+## Phép "dọn dẹp" nào xoá dữ liệu người dùng cũng phải NÓI TO (18/08/2026)
+
+Xưởng có ba phép làm đẹp nhịp: mượn giây hàng xóm, gộp cảnh vụn, bớt khung. Cả ba đều
+hợp lý — cảnh dưới 2,5 giây nhìn giật cục thật. Nhưng **gộp cảnh vụn XOÁ HẲN một cảnh**,
+và ảnh anh chọn cho cảnh ấy biến mất không một dòng báo.
+
+Anh mô tả bằng cảm giác: *"thi thoảng hay nuốt cảnh bên cạnh"* — cảm giác đúng, mà không
+ai chỉ ra được vì log không hề nhắc tới.
+
+**Luật:** thuật toán tối ưu nào ĐỘNG VÀO LỰA CHỌN CỦA NGƯỜI DÙNG (xoá cảnh, bỏ ảnh, đổi
+thứ tự) thì phải:
+- **đối chiếu vào–ra** rồi in ra chênh lệch, đừng tin là mình làm đúng
+- **nói nguyên nhân + cách chữa**, không chỉ kêu "có gì đó bị bỏ"
+- **có ngưỡng để KHÔNG tối ưu**: thà cảnh hơi ngắn hơn chuẩn còn hơn mất hẳn một cảnh
+
+## Ưu tiên loại tài nguyên phải áp ở chỗ CHỌN, không chỉ chỗ bảo vệ (18/08/2026)
+
+Nhịp cảnh vốn đã bảo vệ clip rất tốt: không rút giây của clip, không gộp cảnh clip. Nhưng
+đo thật thì vẫn có clip bị nuốt — ở chỗ khác hẳn: **clip nằm tại ô PHỤ của một câu ngắn**.
+Câu chỉ đủ một khung, khung ấy thuộc ô chính (là ảnh), clip ở ô phụ không có chỗ.
+
+Bảo vệ ở tầng nhịp không cứu được thứ bị loại từ tầng CHỌN Ô. Khi ra luật ưu tiên một
+loại tài nguyên, phải rà đủ mọi chỗ tài nguyên ấy có thể bị gạt — không chỉ chỗ dễ thấy.
