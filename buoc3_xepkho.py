@@ -228,6 +228,19 @@ def xep(viec):
                          "Bấm Kho lại lần nữa.")
     shutil.copy2(os.path.join(viec, "giong.mp3"), os.path.join(hop, "giong.mp3"))
 
+    # ẢNH BÌA (anh đặt 18/08: "trong thư mục đóng gói chưa có thumbnail"). Dựng ngay
+    # lúc đóng gói vì đây là chỗ mọi thứ đã chốt: tiêu đề cuối, cụm tô vàng cuối, ảnh
+    # đã duyệt. Dựng sớm hơn thì tiêu đề còn đổi, bìa lệch với video.
+    # Bìa hỏng KHÔNG được làm hỏng cả hộp — thiếu bìa thì anh tự làm được, còn hộp
+    # thiếu video thì mất cả buổi.
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import lam_thumbnail as TN
+        p_bia, kieu_bia, _n = TN.lam(viec, os.path.join(hop, "thumbnail.jpg"))
+        print(f"  🖼  ảnh bìa: bố cục {kieu_bia} → {os.path.basename(p_bia)}")
+    except Exception as e:
+        print(f"  ⚠ chưa dựng được ảnh bìa: {e}")
+
     open(os.path.join(hop, "loi-binh.txt"), "w", encoding="utf-8").write(
         kb["tieu_de"] + "\n\n" + kb["loi_binh"] + "\n")
     # TÊN FILE mang theo tên video (anh đặt 14/08): hộp nào cũng một file "goi-dang.txt"

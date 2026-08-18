@@ -924,3 +924,26 @@ Câu chỉ đủ một khung, khung ấy thuộc ô chính (là ảnh), clip ở
 
 Bảo vệ ở tầng nhịp không cứu được thứ bị loại từ tầng CHỌN Ô. Khi ra luật ưu tiên một
 loại tài nguyên, phải rà đủ mọi chỗ tài nguyên ấy có thể bị gạt — không chỉ chỗ dễ thấy.
+
+## Học phong cách của người khác thì mổ ra thành PHẦN, rồi đếm phần mình đã có (18/08/2026)
+
+Anh đưa 20 ảnh bìa của kênh dẫn đầu và bảo "học cách làm". Phản xạ đầu là dựng bộ vẽ mới
+từ đầu. Mổ kỹ mới thấy công thức của họ gồm sáu phần, và **năm phần hệ mình đã có sẵn** —
+nằm trong khuôn vẽ tiêu đề mà xưởng vẫn dùng cho video. Chỉ thiếu đúng phần bố cục ảnh.
+
+Làm lại cả sáu phần thì vừa tốn, vừa đẻ ra bản thứ hai của thứ đã có (rồi hai bản lệch
+nhau). Dùng lại năm phần còn có cái lợi to hơn: **bìa và video cùng một khuôn mặt**, người
+xem nhận ra kênh ngay từ ảnh bìa.
+
+**Cách mổ:** liệt kê từng yếu tố nhìn thấy được (màu, vị trí, cỡ chữ, thứ được nhấn), rồi
+đối chiếu với mã hiện có — không mô tả cảm tính "trông chuyên nghiệp".
+
+## Điểm cao không có nghĩa là ĐÁNG DÙNG — phải chấm đúng thứ nghề cần (18/08/2026)
+
+Bộ chọn ảnh cho bìa chấm theo kích thước · độ nét · tỷ lệ khung. Ba tiêu chí ấy đều đúng,
+và kết quả là bìa lấy phải **ảnh chụp màn hình LED sân vận động** — to, nét, tỷ lệ đẹp,
+điểm cao nhất. Nhưng bìa mà không có gương mặt thì không ai bấm vào.
+
+**Tiêu chí đo được dễ (pixel, tỷ lệ) hay lấn át tiêu chí quyết định (có mặt người không).**
+Khi chấm điểm để CHỌN, phải hỏi: thứ nghề này thật sự sống bằng gì? Rồi cho tiêu chí ấy
+trọng số áp đảo — ở đây là +45 cho ảnh có người, −40 cho đồ hoạ, đủ để lật ngược thứ hạng.

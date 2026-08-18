@@ -464,6 +464,62 @@ def _get(d):
         return r.status, json.loads(r.read().decode())
 
 
+def tang_anh_bia():
+    """ẢNH BÌA (anh đặt 18/08 sau khi gửi 20 mẫu của kênh dẫn đầu ngách).
+
+    Công thức mổ được từ mẫu gồm sáu phần; năm phần đầu hệ đã có sẵn trong khuôn vẽ
+    tiêu đề của xưởng (dải đỏ–cam · chữ hoa · tô vàng · thanh dọc · watermark), phần
+    thứ sáu — BỐ CỤC ẢNH — là thứ file `lam_thumbnail.py` lo.
+    """
+    print("⑳ ẢNH BÌA CHO VIDEO")
+    goc = os.path.dirname(TRAM)
+    tn = open(os.path.join(goc, "lam_thumbnail.py"), encoding="utf-8").read()
+    b3 = open(os.path.join(goc, "buoc3_xepkho.py"), encoding="utf-8").read()
+
+    _bao(all(f"def bo_cuc_{k}(" in tn for k in "ABCD"),
+         "đủ bốn bố cục: một người · đối đầu · hai khung ngang · lưới bốn ô")
+    _bao("def _kieu_bo_cuc(" in tn and "claude" not in tn.lower(),
+         "chọn bố cục bằng LUẬT (đọc hồ sơ bài), không gọi model")
+    _bao("CO_NGUOI" in tn and "KHONG_NGUOI" in tn,
+         "ưu tiên ảnh CÓ NGƯỜI, hạ điểm ảnh bảng điện/đồ hoạ")
+    _bao('L.get("hoa_den_ty_le"' in tn,
+         "ảnh phủ tới đúng mép dải chữ mà template quy định (đọc, không đoán)")
+    _bao("TPL._lop_gradient" in tn and "TPL._fit_tieu_de" in tn,
+         "dùng lại các LỚP của template — bìa và video cùng một khuôn mặt")
+    _bao("DD.LOGO" in tn and "TPL._ve_watermark" in tn,
+         "có logo kênh + watermark, hai dấu nhận biết")
+    _bao("import lam_thumbnail" in b3 and "thumbnail.jpg" in b3,
+         "bước đóng gói tự dựng bìa vào hộp")
+    _bao("chưa dựng được ảnh bìa" in b3,
+         "bìa hỏng KHÔNG làm hỏng cả hộp (chỉ cảnh báo)")
+
+    # chạy thử thật trên một bài có ảnh
+    try:
+        import glob as _g
+        import duong_dan as _DD
+        bai = None
+        for d in sorted(_g.glob(os.path.join(_DD.VIEC, "2026-*", "*")),
+                        key=os.path.getmtime, reverse=True)[:12]:
+            if os.path.exists(os.path.join(d, "kich-ban.json")) and \
+                    _g.glob(os.path.join(d, "anh", "[nt]*.jpg")):
+                bai = d
+                break
+        if bai:
+            sys.path.insert(0, goc)
+            import lam_thumbnail as _TN
+            import tempfile as _tf
+            with _tf.TemporaryDirectory() as _t:
+                _p, _k, _n = _TN.lam(bai, os.path.join(_t, "b.jpg"))
+                from PIL import Image as _I
+                with _I.open(_p) as _im:
+                    _bao(_im.size == (1080, 1920),
+                         f"dựng thử ra bìa 1080×1920 (bố cục {_k}, {_n} ảnh)")
+        else:
+            print("   ·  (không có bài nào để dựng thử bìa)")
+    except Exception as e:
+        _bao(False, "dựng thử ảnh bìa", str(e)[:70])
+
+
 def tang_soat_nuot_canh():
     """CẢNH BỊ NUỐT (anh chốt 18/08: "ưu tiên cảnh là video", "khi dựng tự kiểm xem có
     cảnh bị nuốt không, tự tìm nguyên nhân và khắc phục, theo dõi 6 lần dựng").
@@ -1426,6 +1482,7 @@ if __name__ == "__main__":
     tang_tu_khoa_anh()      # từ khoá tìm ảnh bằng tiếng Anh (17/08)
     tang_query_thong_minh() # mốc hình · câu video · tiếng bản địa (18/08)
     tang_soat_nuot_canh()   # cảnh bị nuốt khi dựng + ưu tiên clip (18/08)
+    tang_anh_bia()          # ảnh bìa cho video (18/08)
     if sau:
         tang4_luong(ma)
     else:

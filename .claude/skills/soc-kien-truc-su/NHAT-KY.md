@@ -984,3 +984,36 @@ phép đổi chỗ không ăn vì `anh_phu` đọc lại bản gốc trên đĩa
 
 Cổng ⑲ 11 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần. Đã xoá sổ thử để bắt đầu đếm từ
 lần dựng THẬT đầu tiên của anh.
+
+## 18/08/2026 — ảnh bìa (thumbnail) cho video
+
+**Anh đặt:** "thư mục đóng gói chưa có thumbnail, tạo ảnh bìa thật thu hút. Phân tích
+học cách tạo thum như kiểu ở trên" — kèm **20 mẫu** của kênh dẫn đầu ngách.
+
+**Mổ 20 mẫu ra SÁU phần, thì NĂM phần hệ đã có sẵn:**
+① dải chữ đỏ–cam ~30% đáy · ② chữ IN HOA đậm 2–3 dòng · ③ **cụm tô vàng** · ④ thanh dọc
+trắng · ⑤ watermark — cả năm chính là khuôn `lam_overlay` xưởng vẫn vẽ lên video.
+Phần thứ sáu — **bố cục ảnh** — là thứ duy nhất thiếu.
+
+**`lam_thumbnail.py` (mới)** lo phần sáu, bốn bố cục đọc được từ mẫu:
+A một người cận cảnh · **B đối đầu chia CHÉO + vạch sáng** (kiểu ăn khách nhất của họ) ·
+C hai khung ngang · D lưới bốn ô. Chọn kiểu bằng **luật** (đọc hồ sơ bài: mấy đội, mấy
+nhân vật), không gọi model — bố cục là luật chứ không phải phán đoán.
+
+**Ba điều QC bắt được và đã sửa:**
+1. **Bìa lấy phải ảnh MÀN HÌNH LED** ("VAR CHECKING") làm nửa bên phải — to, nét, đúng
+   tỷ lệ nên điểm cao mà chẳng có mặt người. Bìa sống bằng KHUÔN MẶT: 20/20 mẫu đều có
+   ít nhất một gương mặt rõ. Nay chấm điểm đọc mô tả mắt máy: có người **+45**, bảng
+   điện/đồ hoạ **−40**.
+2. **Hở một vệt mờ** giữa ảnh và dải chữ — vì em đoán tỷ lệ 0,62 trong khi template quy
+   định 0,70. Nay đọc `hoa_den_ty_le` từ template.
+3. **Chữ thừa khoảng trống**: gọi thẳng `lam_overlay` thì chữ nằm sát mép trên dải, vì
+   khuôn ấy vẽ cho VIDEO (chừa chỗ cho nội dung chạy). Bìa phải LẤP ĐẦY. Tách đường
+   riêng — dùng lại các LỚP của template nhưng canh chữ riêng, **không sửa `lam_overlay`**
+   để khỏi đụng video đang chạy tốt.
+
+**Nối vào bước đóng gói**: mỗi hộp tự có `thumbnail.jpg`. Dựng ở đó vì đấy là chỗ mọi
+thứ đã chốt (tiêu đề cuối, cụm tô vàng cuối, ảnh đã duyệt). **Bìa hỏng KHÔNG làm hỏng
+cả hộp** — chỉ cảnh báo. KHÔNG thêm vào `TEP_CHUAN` để hộp cũ không bị báo thiếu.
+
+Cổng ⑳ 9 mục (có dựng thử thật ra bìa 1080×1920). `kiem_tram.py --sau` ĐẠT HẾT hai lần.
