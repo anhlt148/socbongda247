@@ -1140,3 +1140,30 @@ lên mặt người.
 **Đã kiểm trên đúng bài anh gửi ảnh:** ô tròn tự dời từ trên-phải (đè mặt) xuống dưới-trái
 (vùng áo), mặt cầu thủ hiện trọn, logo nguyên vẹn. Bài khác thì nó chọn trên-phải như
 thường. Cổng ⑳ thêm 7 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần.
+
+## 18/08/2026 (chiều) — MẮT MÁY + BỘ CHẤM BÌA
+
+**Anh hỏi:** công cụ có tự nhận diện mọi thứ trên bìa, đánh giá chủ thể và vị trí, chọn
+chỗ tốt nhất cho lớp phủ — vượt được QC YouTube nhiều kinh nghiệm không? Rồi chốt:
+*"làm 1, rồi làm 2 — phải tự chấm được, đề cho anh bản tốt nhất"*.
+
+**Sửa gì**
+- **Mới `mat_may.py`** — YuNet (227 KB, tải mới) nhận khuôn mặt + 5 điểm mốc; U²-Net
+  (168 MB, đã có từ 10/07) tách chủ thể từng pixel. Chạy onnxruntime thẳng, KHÔNG qua
+  thư viện rembg (chỉ cần một phép chạy model, không cần cả chục gói).
+- **Mới `cham_bia.py`** — bảy thước, tổng 100 điểm, mỗi thước kèm câu nhận xét tiếng Việt.
+- **`lam_thumbnail.py`** — `lam()` dựng tới 5 phương án → chấm → chọn bản cao nhất; bản
+  còn lại vào `thumbnail-du-bi/` (điểm đứng đầu tên tệp) + `thumbnail-cham.json`.
+  Thêm `_hop_logo` làm MỘT NGUỒN toạ độ logo cho cả chỗ vẽ lẫn chỗ tránh.
+- **`kiem_tram.py`** — tầng ㉒ (15 mục) + sửa 2 cổng cũ; thêm `_than_ham()` cắt theo `ast`.
+
+**Đụng những đâu**
+- `buoc3_xepkho.py` gọi `TN.lam(...)` → sửa sang `*_ =` (trả thêm giá trị không gãy).
+- `kiem_tram.py` dựng thử bìa → thêm `so_pa=1`, cổng chỉ cần một bản.
+- Venv riêng `~/.cache/socbongda247-mat` (265 MB, python3.12) — KHÔNG đụng lama-venv
+  (LaMa xoá watermark) hay claude-earth-venv (Google Earth), hai venv đang chạy tốt.
+
+**Đã kiểm**
+- `kiem_tram.py --sau` ✅ ĐẠT HẾT (hai lần liên tiếp)
+- Dựng bìa thật 3 bài, nhìn bằng mắt: mặt hiện trọn, logo nguyên, ô tròn xuống vùng trống
+- Bảng điểm từng góc khớp với đánh giá bằng mắt trên cả ba bài

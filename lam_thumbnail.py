@@ -201,40 +201,134 @@ def _do_bong(nen, o, xy, lech=16, mo=60):
     return Image.alpha_composite(nen.convert("RGBA"), b).convert("RGB")
 
 
+# Hai đường đo vùng cấm cho ra hai thang điểm khác nhau — mắt máy cộng 10,0 cho một
+# khuôn mặt, đường đoán cũ chỉ tối đa 3,2. Nếu để nguyên thì ngưỡng "vướng quá thì bỏ ô
+# tròn" bên dưới sẽ đúng với đường này và CHẾT CÂM với đường kia. Nên cả hai cùng chia
+# về MỘT thước: 1,0 = chỗ cấm đè tuyệt đối.
+_VUONG_LOP_PHU = None    # điểm vướng của lớp phủ vừa đặt — bộ chấm đọc để cho điểm
+
+LOGO_TY = 0.115          # bề ngang logo kênh, theo tỷ lệ bề ngang bìa
+
+
+def _hop_logo(W_n, H_n):
+    """Chỗ LOGO KÊNH ngồi, trả (x0, y0, x1, y1).
+
+    MỘT NGUỒN cho hai việc vốn hay lệch nhau: chỗ vẽ logo, và chỗ cấm lớp phủ đè lên.
+    Trước đây chỗ vẽ ghi toạ độ cứng trong hàm vẽ, còn chỗ cấm thì đoán mò bằng cách
+    cộng điểm cho "góc trên trái" — hai nơi, đổi một nơi là lệch.
+    """
+    d = int(W_n * LOGO_TY)
+    x0 = int(L.get("le_trai", 96) * W_n / W) - 28
+    return x0, 54, x0 + d, 54 + d
+
+
+def _che_hop(hop, x, y, d):
+    """Ô vuông (x,y,d,d) che mất bao nhiêu phần của một hộp? 0..1."""
+    x0, y0, x1, y1 = hop
+    gw = max(0.0, min(x + d, x1) - max(x, x0))
+    gh = max(0.0, min(y + d, y1) - max(y, y0))
+    dt = (x1 - x0) * (y1 - y0)
+    return gw * gh * 0.79 / dt if dt > 0 else 0.0
+
+
+THANG_MAT, THANG_DOAN = 10.0, 3.2
+# Vướng tới đâu thì nhường: thu nhỏ còn ¾ → vẫn vướng thì bỏ hẳn vật thể đó.
+NG_THU_NHO, NG_BO_HAN = 0.45, 0.62
+
 def _ban_do_quan_trong(im, o_ngang=8, o_doc=12):
-    """Bản đồ "chỗ nào KHÔNG được che" của một ảnh — trả lưới điểm, cao = quan trọng.
+    """Bản đồ "chỗ nào KHÔNG được che" của một ảnh — lưới điểm, cao = cấm đè.
 
-    Anh bắt 18/08: ô tròn đè trúng mặt cầu thủ. Gốc là ô tròn đặt CỐ ĐỊNH góc trên phải,
-    chẳng nhìn xem dưới đó có gì. Mà mặt người thì hay nằm đúng nửa trên khung.
+    Anh bắt 18/08: ô tròn đè trúng mặt cầu thủ. Gốc bệnh là đặt CỐ ĐỊNH góc trên phải,
+    chẳng nhìn dưới đó có gì. Bản vá sáng 18/08 đoán bằng MÀU DA + đếm cạnh — đoán
+    được, nhưng là đoán: áo hồng, tường gạch, sân đất đều lọt lưới màu da; mặt nhỏ
+    trong đám đông thì trượt.
 
-    Máy không có bộ nhận diện khuôn mặt (OpenCV 5 đã bỏ CascadeClassifier, cài thêm thì
-    nặng). Nhưng không cần nhận ra "đây là mặt" — chỉ cần biết "chỗ này quan trọng", và
-    hai dấu hiệu sau đủ để đo bằng numpy thuần:
+    Nay NHÌN THẬT qua mat_may.py (YuNet nhận mặt + U²-Net tách chủ thể). Ba lớp cộng
+    lại: khuôn mặt (nặng áp đảo) · thân người (nặng vừa) · độ chi tiết (nền).
 
-      · MÀU DA — mặt và tay người có dải màu rất riêng (đỏ > lục > lam, chênh vừa phải).
-        Đây là tín hiệu mạnh nhất và rẻ nhất.
-      · ĐỘ CHI TIẾT — mặt, số áo, chữ đều nhiều cạnh; cỏ, khán đài mờ, trời thì phẳng.
+    Mắt máy hỏng hay thiếu venv thì TỰ LÙI về cách đoán cũ — bìa vẫn ra, chỉ kém tinh.
+    Đây là chỗ không được phép chết: bìa là khâu cuối trước khi đăng.
+    """
+    import numpy as _np
+    try:
+        import mat_may
+        d = mat_may.nhin_pil(im)
+    except Exception:
+        d = None
+    if d and d.get("luoi"):
+        q = _np.asarray(d["luoi"], _np.float32)
+        if q.shape == (o_doc, o_ngang):
+            return q / THANG_MAT        # về thang chung: 1.0 = cấm đè tuyệt đối
+    return _ban_do_quan_trong_doan(im, o_ngang, o_doc) / THANG_DOAN
 
-    Cộng hai lớp lại, chỗ điểm cao là chỗ tuyệt đối không được đặt gì lên.
+
+def _ban_do_quan_trong_doan(im, o_ngang=8, o_doc=12):
+    """ĐƯỜNG LÙI — đoán bằng màu da + đếm cạnh, không cần thư viện ngoài.
+
+    Giữ lại nguyên vẹn để bìa không bao giờ chết vì thiếu venv hay model.
     """
     import numpy as _np
     g = im.convert("RGB").resize((o_ngang * 12, o_doc * 12))
     a = _np.asarray(g).astype(_np.float32)
     R, G, B = a[..., 0], a[..., 1], a[..., 2]
-    # màu da: đỏ trội hơn lục, lục trội hơn lam, và không quá tối/quá nhạt
     da = ((R > 90) & (G > 40) & (B > 20) & (R > G + 12) & (G > B - 8)
           & (R - _np.minimum(G, B) > 14) & (R < 250)).astype(_np.float32)
     x = _np.asarray(g.convert("L")).astype(_np.float32)
     ct = _np.abs(_np.diff(x, axis=0, prepend=x[:1])) + \
         _np.abs(_np.diff(x, axis=1, prepend=x[:, :1]))
     ct = _np.clip(ct / 42.0, 0, 1)
-    q = da * 2.2 + ct                        # màu da nặng gấp đôi độ chi tiết
-    # gộp về lưới ô_doc × o_ngang
+    q = da * 2.2 + ct
     q = q.reshape(o_doc, 12, o_ngang, 12).mean(axis=(1, 3))
-    # GÓC TRÊN TRÁI là chỗ LOGO KÊNH — đặt ô tròn lên đó là đè logo, mất dấu nhận biết.
-    # Ảnh không "biết" chuyện này nên phải khai bằng tay: coi như vùng quan trọng sẵn.
-    q[:max(1, o_doc // 7), :max(1, o_ngang // 4)] += 1.4
-    return q
+    return q          # logo do _hop_logo lo, không cộng vào lưới nữa (kẻo đếm hai lần)
+
+
+def _hop_mat(im):
+    """Danh sách hộp khuôn mặt trên ảnh — rỗng nếu mắt máy chưa sẵn sàng.
+
+    Lưới 8×12 chỉ đủ để nói "vùng này đông thông tin"; mỗi ô rộng 135 px nên một
+    khuôn mặt chạm mép ô là cả ô bị coi như cấm, và ô tròn bị đuổi đi oan. Muốn quyết
+    đúng thì phải đo GIAO THẬT giữa vật định đặt và khuôn mặt — việc đó cần toạ độ
+    hộp, không phải điểm lưới.
+    Trả (danh sách hộp mặt, lưới NỀN). Lưới nền đã bỏ phần khuôn mặt ra — mặt được đo
+    riêng bằng hộp, cộng cả hai vào một lưới là đếm nó hai lần và chỗ nào có mặt cũng
+    thành cấm tuyệt đối, kể cả khi ô tròn chỉ chạm mép.
+    """
+    try:
+        import mat_may
+        d = mat_may.nhin_pil(im)
+    except Exception:
+        return [], None
+    if not d:
+        return [], None
+    import numpy as _np
+    nen = d.get("luoi_nen")
+    return (d.get("mat") or []), (_np.asarray(nen, _np.float32) / THANG_MAT
+                                  if nen else None)
+
+
+def _che_mat(hop_ds, x, y, d, W, H):
+    """Ô vuông (x,y,d,d) che mất bao nhiêu phần khuôn mặt? Trả 0..1, cao = che nhiều.
+
+    Tính theo phần trăm CỦA KHUÔN MẶT chứ không phải của tấm ảnh: che 30% một khuôn
+    mặt là hỏng, dù khuôn mặt ấy chỉ chiếm 3% tấm bìa.
+    """
+    te = 0.0
+    for m in hop_ds:
+        # nới 15% để chừa tóc, cằm, tai — YuNet chỉ khoanh phần lõi
+        nx, ny = m["w"] * 0.15, m["h"] * 0.15
+        mx0, my0 = m["x"] - nx, m["y"] - ny
+        mx1, my1 = m["x"] + m["w"] + nx, m["y"] + m["h"] + ny
+        gw = max(0.0, min(x + d, mx1) - max(x, mx0))
+        gh = max(0.0, min(y + d, my1) - max(y, my0))
+        dt = (mx1 - mx0) * (my1 - my0)
+        if dt <= 0:
+            continue
+        # 0,79 = diện tích hình tròn nội tiếp / hình vuông — vật đặt là ô TRÒN
+        che = gw * gh * 0.79 / dt
+        # mặt to là chủ thể chính, mặt nhỏ thường là khán giả phía sau
+        nang = 1.0 if m["w"] * m["h"] / (W * H) > 0.008 else 0.45
+        te = max(te, che * nang)
+    return te
 
 
 def _cho_dat_o_tron(nen, d_o, le=0.05):
@@ -246,7 +340,8 @@ def _cho_dat_o_tron(nen, d_o, le=0.05):
     """
     import numpy as _np
     W_n, H_n = nen.size
-    q = _ban_do_quan_trong(nen)
+    hop_ds, luoi_nen = _hop_mat(nen)
+    q = luoi_nen if luoi_nen is not None else _ban_do_quan_trong(nen)
     oh, ow = q.shape
     m = int(le * W_n)
     goc = [("trên phải", W_n - d_o - m, m), ("trên trái", m, m),
@@ -256,7 +351,20 @@ def _cho_dat_o_tron(nen, d_o, le=0.05):
     for i, (ten, x, y) in enumerate(goc):
         c0, c1 = int(x / W_n * ow), max(1, int((x + d_o) / W_n * ow))
         r0, r1 = int(y / H_n * oh), max(1, int((y + d_o) / H_n * oh))
-        d = float(q[r0:r1, c0:c1].mean()) + i * 0.02   # phạt nhẹ để giữ thứ tự ưu tiên
+        o = q[r0:r1, c0:c1]
+        # CHỖ TỆ NHẤT quyết định, không phải điểm trung bình. Che một góc khuôn mặt
+        # cũng là hỏng cả tấm bìa — mà lấy trung bình thì một khuôn mặt lọt giữa vùng
+        # nền rộng sẽ bị pha loãng tới mức không ai thấy.
+        # NỀN — thân người, chi tiết, logo. Chỗ tệ nhất nặng hơn điểm trung bình:
+        # đè lên một góc số áo cũng là đè, dù phần còn lại toàn cỏ.
+        d = 0.35 * float(o.mean()) + 0.65 * float(o.max()) + i * 0.02
+        # MẶT — đo bằng giao hộp, chính xác tới pixel. Nhân 1,6 để một khuôn mặt bị
+        # che nửa (0,5) đủ vượt ngưỡng bỏ hẳn, còn chạm mép vài chục pixel (0,01) thì
+        # gần như không tính — đúng như mắt người nhìn.
+        d += 1.6 * _che_mat(hop_ds, x, y, d_o, W_n, H_n)
+        # LOGO KÊNH — dấu nhận biết của kênh, che là mất. Biết chắc toạ độ nên đo
+        # thẳng, không đoán: che trọn logo thì góc này thua mọi góc còn lại.
+        d += 1.2 * _che_hop(_hop_logo(W_n, H_n), x, y, d_o)
         if d < diem_tot:
             tot, diem_tot, ten_tot = (x, y), d, ten
     return tot, diem_tot, ten_tot
@@ -277,13 +385,16 @@ def _o_tron(nen, anh_ct, w, h):
     # Vẫn vướng nặng ở MỌI góc → THU NHỎ ô tròn rồi thử lại. Thà ô nhỏ hơn mẫu một
     # chút còn hơn che mất khuôn mặt — mặt người là thứ giữ chân người xem, ô tròn chỉ
     # là gia vị.
-    if _d > 0.62:
+    if _d > NG_THU_NHO:
         d_o = int(d_o * 0.74)
         (x, y), _d, _ten = _cho_dat_o_tron(nen, d_o)
-    if _d > 0.78:
+    global _VUONG_LOP_PHU
+    if _d > NG_BO_HAN:
         print(f"  ⚠ ảnh nền kín người ở cả bốn góc — BỎ ô tròn, để bìa thoáng")
+        _VUONG_LOP_PHU = _d
         return nen
     print(f"  ○ ô tròn đặt {_ten} (điểm vướng {_d:.2f})")
+    _VUONG_LOP_PHU = _d
     # bóng đen mờ quanh viền (não mục C) — ô tròn nổi hẳn khỏi ảnh nền
     bg = Image.new("RGBA", nen.size, (0, 0, 0, 0))
     ImageDraw.Draw(bg).ellipse([x - 16, y - 8, x + d_o + 16, y + d_o + 22],
@@ -570,9 +681,10 @@ def _ve_dai_chu(bia, tit, cum):
     # LOGO KÊNH góc trái trên + WATERMARK đáy phải — hai dấu nhận biết kênh, mẫu nào
     # của họ cũng có. Gọi đúng chữ ký hàm của template (đã đọc, không đoán).
     try:
+        _lx, _ly, _lx1, _ly1 = _hop_logo(W, H)
         _lg = Image.open(DD.LOGO).convert("RGBA").resize(
-            (int(W * 0.115),) * 2, Image.LANCZOS)
-        lop.alpha_composite(_lg, (L["le_trai"] - 28, 54))
+            (_lx1 - _lx,) * 2, Image.LANCZOS)
+        lop.alpha_composite(_lg, (_lx, _ly))
     except Exception as _e:
         print(f"  ⚠ không gắn được logo: {_e}")
     try:
@@ -720,31 +832,63 @@ def _loc_cum_vang(tit, cum):
     return ra
 
 
-def lam(viec, ra=None, kieu=None):
-    """Dựng ảnh bìa cho một bài. Trả đường dẫn tệp đã ghi."""
+def _dung_mot(viec, kieu, anh, tit, kb, phe):
+    """Dựng MỘT phương án bìa. Trả (ảnh, ngữ cảnh để chấm).
+
+    Tách khỏi `lam` để dựng được nhiều phương án rồi so — trước đây dựng thẳng một
+    bản rồi ghi đè, không có gì để so.
+    """
+    cao_anh = int(H * TY_ANH)
+    global _VUONG_LOP_PHU
+    _VUONG_LOP_PHU = None
+    nen = BO_CUC[kieu](anh, W, cao_anh, phe)
+    bia = Image.new("RGB", (W, H), (18, 14, 12))
+    bia.paste(nen, (0, 0))
+    bia.paste(_nen_mo(_mo(anh[0]), W, H - cao_anh), (0, cao_anh))
+    bia = _ve_dai_chu(bia, tit, _loc_cum_vang(tit, kb.get("cum_to_vang") or []))
+    return bia, {"y_dai": int(H * float(L.get("hoa_den_ty_le", 0.70))) + 26,
+                 "vuong_lop_phu": _VUONG_LOP_PHU}
+
+
+def _cac_phuong_an(viec, so_anh, kb):
+    """Những kiểu bố cục ĐÁNG THỬ cho bài này — kiểu não chọn đứng đầu, rồi tới các
+    kiểu hợp lệ khác.
+
+    Không thử hết bảy kiểu: kiểu không đủ ảnh thì dựng ra bìa lặp ảnh, chấm cao cũng
+    vô nghĩa. Thà ba phương án thật còn hơn bảy phương án có bốn cái giả.
+    """
+    dau, ten = _kieu_bo_cuc(viec, so_anh, kb)
+    ds = [dau]
+    hop = ["A", "E"]                       # một người: luôn dựng được
+    if so_anh >= 2:
+        hop += ["B", "C", "G"]
+    if so_anh >= 4:
+        hop += ["D"]
+    for k in hop:
+        if k not in ds:
+            ds.append(k)
+    return ds[:5], ten                     # trần 5 phương án ~9 giây, đủ để chọn
+
+
+def lam(viec, ra=None, kieu=None, so_pa=None):
+    """Dựng ảnh bìa cho một bài, TỰ CHẤM nhiều phương án rồi đề bản tốt nhất.
+
+    Anh chốt 18/08: "phải tự chấm được, đề cho anh bản tốt nhất". Máy dựng tới năm
+    phương án khác bố cục, soi từng bản qua bảy thước của `cham_bia`, lấy bản điểm
+    cao nhất làm `thumbnail.jpg`; các bản còn lại để trong `thumbnail-du-bi/` để anh
+    đổi nếu không ưng, kèm `thumbnail-cham.json` ghi rõ vì sao bản kia thua.
+
+    Anh chỉ định kiểu (tham số `kieu`) thì tôn trọng, chỉ dựng đúng kiểu ấy — quyền
+    quyết cuối vẫn là của anh, máy chỉ đề xuất.
+    """
     kb = json.load(open(os.path.join(viec, "kich-ban.json"), encoding="utf-8"))
     tit = (kb.get("tieu_de") or "").strip()
     if not tit:
         raise RuntimeError("bài chưa có tiêu đề — chưa làm bìa được")
-    can = 4 if (kieu or "") == "D" else 2
-    anh = _chon_anh(viec, max(can, 4))
+    anh = _chon_anh(viec, 4)
     if not anh:
         raise RuntimeError("bài không có ảnh nào đủ đẹp để lên bìa")
-    ten_kieu = ""
-    if kieu:
-        kieu = kieu.upper()
-        ten_kieu = next((k for k, v in NAO_MA.items() if v == kieu), kieu)
-    else:
-        kieu, ten_kieu = _kieu_bo_cuc(viec, len(anh), kb)
-    if kieu in ("B", "C") and len(anh) < 2:
-        kieu = "A"
-    if kieu == "D" and len(anh) < 4:
-        kieu = "C" if len(anh) >= 2 else "A"
 
-    # ① phần ảnh
-    cao_anh = int(H * TY_ANH)
-    # PHE = hai đội trong hồ sơ bài → bố cục ám màu theo phe (não mục B③): người xem
-    # nhận ra bài nói về ai trước cả khi đọc chữ.
     phe = []
     try:
         _hs = json.load(open(os.path.join(viec, "anh", "ho-so-bai.json"),
@@ -752,26 +896,89 @@ def lam(viec, ra=None, kieu=None):
         phe = [x for x in (_hs.get("doi") or []) if x][:2]
     except Exception:
         pass
-    nen = BO_CUC[kieu](anh, W, cao_anh, phe)
-    bia = Image.new("RGB", (W, H), (18, 14, 12))
-    bia.paste(nen, (0, 0))
-    # nền dưới lấy màu ảnh cho liền mạch, dải chữ sẽ phủ lên
-    bia.paste(_nen_mo(_mo(anh[0]), W, H - cao_anh), (0, cao_anh))
 
-    # ② dải chữ + tô vàng + watermark: DÙNG LẠI đúng bộ vẽ của xưởng, để bìa và
-    #    video cùng một khuôn mặt (xem chú thích đầu file)
-    bia = _ve_dai_chu(bia, tit, _loc_cum_vang(tit, kb.get("cum_to_vang") or []))
+    if kieu:
+        ds, ten_kieu = [kieu.upper()], next(
+            (k for k, v in NAO_MA.items() if v == kieu.upper()), kieu)
+    else:
+        ds, ten_kieu = _cac_phuong_an(viec, len(anh), kb)
+    if so_pa:
+        ds = ds[:max(1, int(so_pa))]
+
+    try:
+        import cham_bia
+    except Exception:
+        cham_bia = None
+
+    ket = []
+    for k in ds:
+        if k in ("B", "C", "G") and len(anh) < 2:
+            continue
+        if k == "D" and len(anh) < 4:
+            continue
+        try:
+            bia, ctx = _dung_mot(viec, k, anh, tit, kb, phe)
+        except Exception as e:
+            print(f"  ⚠ phương án {k} dựng hỏng: {type(e).__name__}: {e}")
+            continue
+        kq = cham_bia.cham(bia, ctx) if cham_bia else {"diem": 0, "muc": []}
+        ket.append({"kieu": k, "ten": next((n for n, v in NAO_MA.items() if v == k), k),
+                    "diem": kq["diem"], "muc": kq["muc"], "bia": bia})
+        print(f"  · phương án {k} ({ket[-1]['ten']}) — {kq['diem']:.1f}/100")
+    if not ket:
+        raise RuntimeError("không dựng được phương án bìa nào")
+
+    ket.sort(key=lambda x: -x["diem"])
+    nhat = ket[0]
     ra = ra or os.path.join(viec, "thumbnail.jpg")
-    bia.save(ra, quality=93, subsampling=0)
-    return ra, ten_kieu or kieu, len(anh)
+    nhat["bia"].save(ra, quality=93, subsampling=0)
+
+    # bản dự bị + báo cáo chấm: anh không ưng bản máy chọn thì đổi ngay, khỏi dựng lại
+    thu = os.path.join(os.path.dirname(ra), "thumbnail-du-bi")
+    # DỌN TRƯỚC KHI GHI. Lần dựng trước để lại bản của nó ở đây; không dọn thì anh mở
+    # thư mục ra thấy lẫn bản cũ với bản mới, và bản cũ có khi lại chính là kiểu vừa
+    # được chọn — nhìn tưởng máy dựng trùng.
+    if os.path.isdir(thu):
+        for _f in os.listdir(thu):
+            if _f.endswith(".jpg"):
+                try:
+                    os.unlink(os.path.join(thu, _f))
+                except OSError:
+                    pass
+    if len(ket) > 1:
+        os.makedirs(thu, exist_ok=True)
+        for x in ket[1:]:
+            # ĐIỂM ĐỨNG ĐẦU TÊN: thư mục tự xếp theo thứ hạng, anh liếc là biết bản nào
+            # gần nhất với bản máy chọn
+            x["bia"].save(os.path.join(thu, f"{x['diem']:.0f}-{x['kieu']}-{x['ten']}.jpg"),
+                          quality=90, subsampling=0)
+    try:
+        with open(os.path.join(os.path.dirname(ra), "thumbnail-cham.json"),
+                  "w", encoding="utf-8") as f:
+            json.dump([{kk: vv for kk, vv in x.items() if kk != "bia"} for x in ket],
+                      f, ensure_ascii=False, indent=1)
+    except OSError:
+        pass
+    return ra, nhat["ten"], len(anh), nhat["diem"], ket
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         sys.exit("Dùng: python3 lam_thumbnail.py <mã việc> [kiểu A|B|C|D]")
     v = DD.tim_viec(sys.argv[1])
-    p, k, n = lam(v, kieu=(sys.argv[2].upper() if len(sys.argv) > 2 else None))
-    print(f"✅ {p}\n   bố cục {k} · dùng {n} ảnh ứng viên")
+    p, k, n, d, ket = lam(v, kieu=(sys.argv[2].upper() if len(sys.argv) > 2 else None))
+    print(f"\n✅ {p}\n   bố cục {k} · dùng {n} ảnh ứng viên · ĐIỂM {d:.1f}/100")
+    try:
+        import cham_bia
+        cham_bia.in_bang({"diem": d, "muc": ket[0]["muc"]}, f"bản được chọn ({k})")
+        if len(ket) > 1:
+            print("\n   bản dự bị (trong thumbnail-du-bi/):")
+            for x in ket[1:]:
+                thua = min(x["muc"], key=lambda m: m["duoc"] / max(1, m["trong"]))
+                print(f"      {x['kieu']} {x['ten']:14s} {x['diem']:5.1f}  "
+                      f"thua ở: {cham_bia.TEN_VIET[thua['ten']]} — {thua['noi']}")
+    except Exception:
+        pass
 
 
 # ══ DỰNG BÌA TỪ VIDEO ĐÃ ĐẨY LÊN ═══════════════════════════════════════════

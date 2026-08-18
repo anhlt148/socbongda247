@@ -1026,3 +1026,60 @@ chỉ cần biết CHỖ NÀO ĐÔNG THÔNG TIN?
 **Vùng do hệ tự vẽ cũng phải khai là vùng cấm.** Logo kênh nằm góc trên trái — ảnh không
 "biết" chuyện đó, nên phải cộng điểm cấm bằng tay. Quên bước này thì máy tránh được mặt
 người nhưng lại đè lên logo của chính mình.
+
+## Trước khi cài mô hình, hỏi lại mình cần NHẬN RA hay chỉ cần BIẾT CHỖ (18/08)
+
+Sáng 18/08 tôi kết luận "máy không có bộ nhận diện khuôn mặt, cài thêm thì nặng ~200 MB"
+rồi viết heuristic đoán bằng màu da. Chiều đi tìm lại thì máy **đã có sẵn cả hai**:
+`lama-venv` có OpenCV 4.11 kèm `FaceDetectorYN`, `claude-earth-venv` có rembg và
+`~/.u2net/u2net.onnx` (168 MB, tải từ 10/07). Model nhận mặt YuNet chỉ **227 KB**.
+
+**Gốc:** kết luận "không có / quá nặng" rút ra từ trí nhớ, không từ việc đi soi máy.
+Trên máy này có mười một venv, mỗi cái dựng cho một skill khác nhau — thứ mình cần
+thường đã nằm sẵn trong một cái nào đó.
+
+**Phòng:** trước khi nói "cần cài thêm", chạy đúng một vòng:
+`find ~ /Volumes/DATA -maxdepth 4 -name pyvenv.cfg` rồi hỏi từng venv có gói gì. Mất
+mười giây, đổi được cả một kết luận.
+
+**Kèm theo:** cần model thì đừng mặc định kéo cả thư viện bọc nó. rembg kéo hàng chục
+gói; chạy thẳng `u2net.onnx` bằng onnxruntime chỉ tốn ~30 dòng và dùng lại đúng model
+đã tải.
+
+## Đổi THANG ĐO thì phải đổi NGƯỠNG theo — không thì luật chết câm (18/08)
+
+Thay ruột `_ban_do_quan_trong` bằng mắt máy: thang cũ tối đa 3,2 (màu da ×2,2 + cạnh),
+thang mới cộng **10,0** cho một khuôn mặt. Hai ngưỡng `0,62` và `0,78` bên dưới vẫn nằm
+nguyên — tức là **mọi chỗ đều vượt ngưỡng**, luật "vướng thì bỏ ô tròn" thành luôn đúng.
+Không có lỗi nào nổ ra; bìa vẫn ra bình thường, chỉ là sai âm thầm.
+
+**Phòng:** khi hai đường tính cùng nuôi một ngưỡng, bắt cả hai **chia về một thang quy
+ước** (ở đây: `1,0 = cấm đè tuyệt đối`), khai hằng số ngay cạnh nhau, và cổng canh sự có
+mặt của phép chia. Đã thêm vào `kiem_tram.py` tầng ㉒.
+
+## Cùng một thứ đừng đếm ở hai nơi (18/08)
+
+Khuôn mặt vừa cộng vào lưới, vừa đo bằng giao hộp → góc nào có mặt cũng thành cấm tuyệt
+đối, kể cả khi lớp phủ chỉ chạm mép vài chục pixel. Logo cũng vậy: vừa "cộng điểm cho góc
+trên trái", vừa đo giao hộp.
+
+**Cách sửa đúng:** thứ nào **biết chắc toạ độ** thì đo bằng hộp (chính xác tới pixel), và
+**gỡ hẳn** nó khỏi lưới ước lượng. Lưới chỉ còn lo phần không biết trước.
+
+## write TRƯỚC parse là tự tay ghi ra tệp hỏng (18/08)
+
+Trong một script vá tệp tôi viết `open(p,"w").write(s); ast.parse(s)`. Lần chạy ấy `s`
+hỏng cú pháp — parse ném lỗi, nhưng **tệp đã bị ghi đè rồi**. Lần vá sau tưởng đang sửa
+bản lành, hoá ra sửa trên bản hỏng, mất thêm ba lượt.
+
+**Luật:** mọi script vá tệp phải `ast.parse(s)` **trước**, `write` **sau**. Không có ngoại lệ.
+
+## Cắt thân hàm bằng đếm ký tự — bệnh này tái phát lần hai (18/08)
+
+`than_o = tn[i_o:i_o + 1500]` báo oan ngay khi tôi thêm bốn dòng chú thích vào `_o_tron`.
+Cùng loại với vụ `src[i:i+3000]` sáng cùng ngày. Người sửa sẽ có xu hướng **nới N ra cho
+qua** — cổng mất tác dụng mà không ai hay.
+
+**Đã làm:** thêm `_than_ham(nguon, ten)` dùng `ast.get_source_segment`, và chuyển cổng ô
+tròn sang dùng nó. Còn năm chỗ khác trong `kiem_tram.py` vẫn cắt bằng đếm ký tự
+(dòng ~284, 328, 747, 750, 780) — chuyển dần khi đụng tới.

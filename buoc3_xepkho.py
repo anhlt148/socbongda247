@@ -236,8 +236,11 @@ def xep(viec):
     try:
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import lam_thumbnail as TN
-        p_bia, kieu_bia, _n = TN.lam(viec, os.path.join(hop, "thumbnail.jpg"))
-        print(f"  🖼  ảnh bìa: bố cục {kieu_bia} → {os.path.basename(p_bia)}")
+        # `lam` trả thêm ĐIỂM CHẤM và danh sách phương án (18/08) — nhận bằng *_ để
+        # lần sau nó trả thêm gì nữa thì chỗ này cũng không gãy.
+        p_bia, kieu_bia, _n, _diem, *_ = TN.lam(viec, os.path.join(hop, "thumbnail.jpg"))
+        print(f"  🖼  ảnh bìa: bố cục {kieu_bia} · {_diem:.0f}/100 điểm "
+              f"→ {os.path.basename(p_bia)}")
     except Exception as e:
         print(f"  ⚠ chưa dựng được ảnh bìa: {e}")
 

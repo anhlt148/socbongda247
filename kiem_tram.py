@@ -54,6 +54,22 @@ TRUONG_SO = ["ban_do", "ghi_chu", "tu_khoa", "the_so", "anh_phu", "lat_anh",
 loi, canh = [], []
 
 
+def _than_ham(nguon, ten):
+    """Thân một hàm, cắt theo cây cú pháp — chuẩn xác dù hàm dài ngắn thế nào.
+
+    Cắt bằng `nguon[i:i+N]` thì mỗi lần thêm chú thích là cổng lại báo oan, và người
+    sửa sẽ nới N ra cho qua — cổng mất tác dụng mà không ai hay.
+    """
+    try:
+        c = ast.parse(nguon)
+    except SyntaxError:
+        return ""
+    for n in ast.walk(c):
+        if isinstance(n, ast.FunctionDef) and n.name == ten:
+            return ast.get_source_segment(nguon, n) or ""
+    return ""
+
+
 def _bao(ok, ten, them=""):
     print(("  ✅ " if ok else "  ❌ ") + ten + (f" — {them}" if them else ""))
     if not ok:
@@ -495,6 +511,76 @@ def tang_cua_soi_dung_o():
     _bao("Gán cho <span id=\"soiCau\">" in ui and "cảnh ${dangPhu.cau + 1}" in ui,
          "nút Gán hiện ĐÚNG TÊN Ô (trước đây luôn ghi 'câu N' kể cả khi gán vào ô phụ)")
 
+def tang_mat_may_cham_bia():
+    """MẮT MÁY NHÌN ẢNH + BỘ CHẤM BÌA (anh chốt 18/08).
+
+    Anh hỏi máy có tự nhận diện được mọi thứ trên bìa rồi chọn chỗ tốt nhất cho lớp
+    phủ không. Có: YuNet nhận khuôn mặt, U²-Net tách chủ thể, rồi bộ chấm bảy thước
+    soi từng phương án bìa và đề bản tốt nhất.
+
+    Cổng này canh ba thứ dễ hỏng nhất: ĐƯỜNG LÙI (mắt máy chết thì bìa vẫn phải ra),
+    THANG ĐIỂM (hai đường đo hai thang, quên chia là ngưỡng chết câm), và CHỖ GỌI
+    (`lam` trả thêm giá trị, chỗ gọi cũ phải chịu được).
+    """
+    print("\n㉒ MẮT MÁY NHÌN ẢNH + BỘ CHẤM BÌA")
+    try:
+        _mm = open(os.path.join(MAY, "mat_may.py"), encoding="utf-8").read()
+        _cb = open(os.path.join(MAY, "cham_bia.py"), encoding="utf-8").read()
+        _tn3 = open(os.path.join(MAY, "lam_thumbnail.py"), encoding="utf-8").read()
+
+        # ĐƯỜNG LÙI là thứ quan trọng nhất: bìa là khâu cuối trước khi đăng, thiếu venv
+        # hay hỏng model thì vẫn phải ra bìa, chỉ kém tinh hơn.
+        _bao("def _ban_do_quan_trong_doan(" in _tn3 and
+             "_ban_do_quan_trong_doan(im, o_ngang, o_doc)" in _tn3,
+             "mắt máy hỏng thì TỰ LÙI về cách đoán cũ, bìa không chết")
+        _bao("def san_sang(" in _mm and "if not san_sang()" in _mm,
+             "mắt máy tự khai chưa sẵn sàng thay vì lăn ra lỗi")
+
+        # Hai đường đo cho hai thang điểm — quên chia là ngưỡng chết câm
+        _bao("THANG_MAT, THANG_DOAN" in _tn3 and "/ THANG_MAT" in _tn3
+             and "/ THANG_DOAN" in _tn3,
+             "hai đường đo cùng chia về MỘT thang, ngưỡng không chết câm")
+        _bao("NG_THU_NHO, NG_BO_HAN" in _tn3,
+             "ngưỡng nhường chỗ khai một nơi, không rải số trong mã")
+
+        # Mặt đo bằng hộp, nền đo bằng lưới — không đếm hai lần
+        _bao("luoi_nen" in _mm and "luoi_nen" in _tn3,
+             "lưới NỀN tách khỏi khuôn mặt — không đếm khuôn mặt hai lần")
+        _bao("def _che_mat(" in _tn3 and "_che_mat(hop_ds" in _tn3,
+             "che khuôn mặt đo bằng GIAO HỘP, chính xác tới pixel")
+
+        # Bộ chấm — ĐỌC MÃ, không import: cổng phải nói được đúng/sai kể cả khi máy
+        # thiếu thư viện ảnh, và import trong thân try làm rối cấu trúc.
+        _t = re.search(r"TRONG = \{(.+?)\}", _cb, re.S)
+        _sotr = dict(re.findall(r'"(\w+)": (\d+)', _t.group(1) if _t else ""))
+        _bao(len(_sotr) == 7, "bộ chấm đủ bảy thước",
+             "" if len(_sotr) == 7 else f"— đang có {len(_sotr)}")
+        _tong_tr = sum(int(v) for v in _sotr.values())
+        _bao(_tong_tr == 100, "bảy thước cộng lại tròn 100 điểm",
+             "" if _tong_tr == 100 else f"— đang là {_tong_tr}")
+        _bao("168" in _cb and "cỡ ngón tay" in _cb,
+             "có thước RÕ Ở CỠ NGÓN TAY — thu về cỡ thật trên điện thoại rồi đo")
+        _bao("float(v)" in _cb or "float(sum(" in _cb,
+             "điểm ép về float thường, ghi được ra sổ json")
+
+        # Nhiều phương án + chọn + dự bị
+        _bao("def _cac_phuong_an(" in _tn3 and "ket.sort(key=lambda x: -x[\"diem\"])" in _tn3,
+             "dựng NHIỀU phương án rồi chọn bản điểm cao nhất")
+        _bao("thumbnail-du-bi" in _tn3 and "os.unlink(os.path.join(thu, _f))" in _tn3,
+             "bản dự bị được DỌN trước khi ghi, không lẫn bản của lần trước")
+        _bao("thumbnail-cham.json" in _tn3,
+             "ghi báo cáo chấm để anh biết vì sao bản kia thua")
+        _bao("if kieu:" in _tn3 and "ds, ten_kieu = [kieu.upper()]" in _tn3,
+             "anh chỉ định kiểu thì máy tôn trọng, không tự chọn đè")
+
+        # Chỗ gọi phải chịu được việc `lam` trả thêm giá trị
+        _b3 = open(os.path.join(MAY, "buoc3_xepkho.py"), encoding="utf-8").read()
+        _bao("*_ = TN.lam(" in _b3,
+             "bước đóng gói nhận giá trị trả về kiểu mở, thêm trường không gãy")
+    except Exception as e:
+        _bao(False, "đọc được mắt máy + bộ chấm", str(e)[:80])
+
+
 
 def tang_anh_bia():
     """ẢNH BÌA (anh đặt 18/08 sau khi gửi 20 mẫu của kênh dẫn đầu ngách).
@@ -555,8 +641,13 @@ def tang_anh_bia():
          "màu da tính NẶNG hơn độ chi tiết — mặt người là thứ giữ chân người xem")
     _bao("def _cho_dat_o_tron(" in tn and "trên phải" in tn and "dưới trái" in tn,
          "thử CẢ BỐN GÓC, không dí cứng một chỗ")
-    _bao("q[:max(1, o_doc // 7)" in tn,
-         "góc trên trái là vùng cấm — chỗ của logo kênh")
+    # Logo chuyển từ "cộng điểm cho góc trên trái" sang ĐO GIAO với hộp logo thật
+    # (18/08). Cổng canh theo cách mới, và canh chặt hơn: phải MỘT NGUỒN toạ độ, dùng
+    # ở cả chỗ vẽ logo lẫn chỗ tránh logo — hai nơi ghi riêng là ngày nào đó lệch nhau.
+    _bao("def _hop_logo(" in tn and "_che_hop(_hop_logo(" in tn,
+         "góc logo là vùng cấm — đo bằng giao hộp, không đoán theo góc")
+    _bao(tn.count("_hop_logo(") >= 3,
+         "toạ độ logo MỘT NGUỒN: chỗ vẽ và chỗ tránh cùng đọc một hàm")
     _bao("d_o = int(d_o * 0.74)" in tn,
          "vướng thì THU NHỎ vật thể rồi thử lại")
     _bao("BỎ ô tròn" in tn,
@@ -569,8 +660,9 @@ def tang_anh_bia():
     except Exception:
         pass
 
-    i_o = tn.find("def _o_tron(")
-    than_o = tn[i_o:i_o + 1500]
+    # CẮT THEO ast, KHÔNG đếm ký tự. Cắt 1500 ký tự thì thêm vài dòng chú thích là
+    # cổng báo oan — đúng bệnh đã trả giá ngày 18/08 với cổng whitelist.
+    than_o = _than_ham(tn, "_o_tron")
     _bao("0.355" in than_o and "GaussianBlur" in than_o,
          "ô tròn đúng thông số não: 32–38% bề ngang, có bóng quanh viền")
     try:
@@ -614,7 +706,8 @@ def tang_anh_bia():
             import lam_thumbnail as _TN
             import tempfile as _tf
             with _tf.TemporaryDirectory() as _t:
-                _p, _k, _n = _TN.lam(bai, os.path.join(_t, "b.jpg"))
+                _p, _k, _n, *_ = _TN.lam(bai, os.path.join(_t, "b.jpg"),
+                                          so_pa=1)   # cổng chỉ cần MỘT bản, khỏi tốn
                 from PIL import Image as _I
                 with _I.open(_p) as _im:
                     _bao(_im.size == (1080, 1920),
@@ -1589,6 +1682,7 @@ if __name__ == "__main__":
     tang_soat_nuot_canh()   # cảnh bị nuốt khi dựng + ưu tiên clip (18/08)
     tang_anh_bia()          # ảnh bìa cho video (18/08)
     tang_cua_soi_dung_o()   # cửa soi gán đúng ô, không đè ô phụ (18/08)
+    tang_mat_may_cham_bia()  # mắt máy nhìn ảnh + bộ chấm bìa (18/08)
     if sau:
         tang4_luong(ma)
     else:
