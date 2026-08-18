@@ -1082,3 +1082,28 @@ tốt rồi."
 nhờ cổng "đối đầu chia CHÉO". Đã viết lại bằng cách cắt theo ranh giới hàm.
 
 Cổng ⑳ nay 29 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp.
+
+## 18/08/2026 — cửa soi ghi đè ảnh ô PHỤ
+
+**Anh báo:** "cảnh chính và cảnh phụ đã chọn ảnh rồi, bấm zoom ảnh ở cảnh chính để cắt
+và Enter áp dụng thì cảnh phụ cũng bị đổi ảnh theo cảnh chính. Phải bấm undo mới được.
+Nếu không phát hiện ra là nhầm ngay."
+
+**Gốc:** `ganAnh()` có luật *"nếu `dangPhu` khác null thì ảnh vào ô phụ"*. Mà `moSoi()` —
+mở cửa soi — **không hề xoá `dangPhu`**. Anh vừa đụng ô phụ 10b xong (biến ấy trỏ 10b),
+bấm 🔍 ở ô CHÍNH, rồi bấm Gán → ảnh ô chính ghi đè lên ô phụ.
+
+Cửa soi dựa vào TRẠNG THÁI CŨ bên ngoài để biết gán đi đâu, thay vì tự mang theo ô nguồn.
+
+**Sửa:** `moSoi(k, lat, oNguon)` — mở từ ô chính thì `dangPhu = null`, mở từ ô phụ thì trỏ
+đúng ô ấy. Ba nơi mở soi từ một ô (ô chính · ô phụ · ảnh thứ hai khung đôi) đều truyền ô
+nguồn. Hai nơi mở soi từ DẢI KHO giữ nguyên — ảnh chưa thuộc cảnh nào, giữ ô đang chọn
+mới đúng.
+
+**Kèm theo:** nút Gán trong cửa soi trước nay luôn ghi *"Gán cho câu N"* kể cả khi thật ra
+nó gán vào ô phụ — nhìn nút không biết mình sắp ghi đè cái gì. Nay hiện đúng: *"Gán cho
+cảnh 10b"*.
+
+**Đã kiểm bằng trình duyệt, tái hiện đúng kịch bản:** đụng ô phụ 1b → `dangPhu = "0:0"` →
+mở soi từ ô CHÍNH → `dangPhu` về **null** → bấm Gán → ảnh ô phụ **vẫn nguyên n01.jpg**.
+Cổng ㉑ 7 mục. `kiem_tram.py --sau` ĐẠT HẾT hai lần liên tiếp.

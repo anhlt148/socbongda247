@@ -985,3 +985,23 @@ kế tiếp) rồi thay cả khối, chắc hơn hẳn.
 
 Cùng họ với bài học "cổng cắt thân hàm bằng số ký tự" hôm nay — đều là chuyện **khớp
 chuỗi trên mã đang thay đổi thì không đáng tin**.
+
+## Cửa sổ mở ra phải MANG THEO ngữ cảnh, đừng đọc biến toàn cục (18/08/2026)
+
+Cửa soi ảnh quyết định "gán vào đâu" bằng cách đọc biến `dangPhu` — thứ do thao tác
+TRƯỚC ĐÓ đặt. Anh vừa đụng ô phụ rồi mở soi ở ô chính là nó gán nhầm, ghi đè mất ảnh đã
+chọn. Không báo gì, phải ⌘Z mới cứu được.
+
+**Gốc:** hai việc khác nhau (đang trỏ ô nào · cửa soi mở từ ô nào) dùng chung một biến.
+Chúng chỉ tình cờ trùng nhau trong luồng thông thường.
+
+**Cách phòng:** cửa sổ / hộp thoại / chế độ nào mở ra để thao tác lên MỘT đối tượng thì
+phải nhận đối tượng ấy làm THAM SỐ, không đọc lại từ biến toàn cục. Biến toàn cục ghi
+"đang ở đâu"; tham số ghi "làm cho cái nào" — trộn hai thứ là gán nhầm.
+
+**Dấu hiệu nhận ra:** hàm mở giao diện có ít tham số hơn số thứ nó cần biết, và bù phần
+thiếu bằng biến ngoài. Ở đây `moSoi(k, lat)` cần biết ba thứ nhưng chỉ nhận hai.
+
+**Kèm theo — nhãn nút phải nói đúng việc nó sắp làm.** Nút ghi "Gán cho câu 10" nhưng
+thật ra gán vào 10b thì người dùng không có cơ hội phát hiện trước khi bấm. Nhãn sai là
+lớp phòng vệ cuối cùng bị gỡ mất.

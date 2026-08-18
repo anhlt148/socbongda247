@@ -454,6 +454,199 @@ def _kieu_bo_cuc(viec, so_anh, kb=None):
     return "A", "mot-nguoi"
 
 
+def _ve_dai_chu(bia, tit, cum):
+    """Vẽ dải chữ + tô vàng + logo + watermark lên ảnh nền đã dựng.
+
+    Tách riêng để CẢ HAI đường dùng chung: bìa từ thư mục việc, và bìa dựng từ
+    video đã đẩy lên. Hai bản vẽ khác nhau là hai kiểu bìa khác nhau — đúng bệnh
+    "một logic hai bản" đã trả giá nhiều lần.
+    """
+    # ② DẢI CHỮ — dùng lại các LỚP của template (gradient · hoa văn sân · fit chữ ·
+    #    watermark) nhưng CANH RIÊNG cho bìa.
+    #    Vì sao không gọi thẳng `xuong.lam_overlay`: khuôn ấy vẽ cho VIDEO, chữ nằm sát
+    #    mép trên dải và chừa khoảng trống bên dưới cho nội dung chạy. Bìa thì phải LẤP
+    #    ĐẦY — 20/20 mẫu của kênh dẫn đầu đều vậy, chữ càng to càng bắt mắt trên lưới
+    #    Shorts. Sửa `lam_overlay` là đụng vào video đang chạy tốt, nên tách đường.
+
+    y_dai = int(H * float(L.get("hoa_den_ty_le", 0.70))) + 26
+    lop = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    lop.alpha_composite(TPL._lop_gradient(W, H, y_dai))
+    lop.alpha_composite(TPL._lop_hoa_van_san(W, H))
+    d = ImageDraw.Draw(lop)
+    x_chu = L["le_trai"] + L["thanh_doc_rong"] + L["thanh_doc_cach_chu"]
+    rong = W - x_chu - L["le_phai"]
+    # bìa được dùng CẢ chiều cao dải (video phải chừa `le_duoi` cho nội dung)
+    cao_dung = H - y_dai - 96
+    font, dong, cx = TPL._fit_tieu_de(d, tit.upper(), rong, cao_dung)
+    cao_dong = int(cx * 1.24)
+    y = y_dai + max(28, (cao_dung - cao_dong * len(dong)) // 2)
+    # thanh dọc trắng chạy đúng chiều cao khối chữ
+    d.rectangle([L["le_trai"], y - 6, L["le_trai"] + L["thanh_doc_rong"],
+                 y + cao_dong * len(dong) + 2], fill=MAU["thanh_doc"])
+    kho_vang = [c.upper() for c in cum if c]
+    for l_i, dg in enumerate(dong):
+        x = x_chu
+        for tu in dg.split(" "):
+            mau = MAU["chu"]
+            for cv in kho_vang:
+                if tu.strip(".,:;!?\"'“”") and tu.strip(".,:;!?\"'“”") in cv:
+                    mau = MAU["chu_nhan"]
+                    break
+            d.text((x, y + l_i * cao_dong), tu + " ", font=font, fill=mau)
+            x += d.textlength(tu + " ", font=font)
+    # LOGO KÊNH góc trái trên + WATERMARK đáy phải — hai dấu nhận biết kênh, mẫu nào
+    # của họ cũng có. Gọi đúng chữ ký hàm của template (đã đọc, không đoán).
+    try:
+        _lg = Image.open(DD.LOGO).convert("RGBA").resize(
+            (int(W * 0.115),) * 2, Image.LANCZOS)
+        lop.alpha_composite(_lg, (L["le_trai"] - 28, 54))
+    except Exception as _e:
+        print(f"  ⚠ không gắn được logo: {_e}")
+    try:
+        TPL._ve_watermark(lop, DD.KENH)     # đúng chữ ký xưởng dùng
+    except Exception as _e:
+        print(f"  ⚠ không vẽ được watermark: {_e}")
+    return Image.alpha_composite(bia.convert("RGBA"), lop).convert("RGB")
+
+
+
+def _cum_vang_tu_tit(tit):
+    """Chọn cụm tô vàng khi không có kịch bản (bìa dựng từ video đã đẩy).
+
+    Dùng lại module `cum_vang` của xưởng — MỘT nguồn chọn cụm, không viết bản thứ hai.
+    """
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import cum_vang as _CV
+        for ten in ("chon", "chon_cum", "tu_tieu_de", "bao_dam"):
+            f = getattr(_CV, ten, None)
+            if callable(f):
+                try:
+                    r = f(tit)
+                    if isinstance(r, (list, tuple)) and r:
+                        return list(r)
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    # Module cụm vàng của xưởng cần đường dẫn kịch bản, bìa dựng từ video thì không có
+    # → tự chọn theo LUẬT VÀNG của não: tô cái BẤT THƯỜNG, đừng tô cái hiển nhiên.
+    return _cum_vang_theo_luat(tit)
+
+
+# Từ mang cảm xúc/bất ngờ — thứ đáng tô. Rút từ tít của 20 mẫu: chúng luôn tô chỗ gây
+# tò mò, không bao giờ tô tên đội hay từ nghề nghiệp.
+TU_MANH = ("dớp", "hụt", "sốc", "quê", "cay", "tự hủy", "cà khịa", "chê", "mỉa",
+           "bẽ", "ê chề", "vỡ mộng", "trắng tay", "lật kèo", "quay xe", "bất ngờ",
+           "chưa từng", "lần đầu", "kỷ lục", "lịch sử", "duy nhất", "đầu tiên",
+           "cuối cùng", "bí mật", "sự thật", "hé lộ", "tiết lộ", "thừa nhận")
+TU_NHAT = ("việt nam", "bóng đá", "đội tuyển", "trận đấu", "cầu thủ", "asean",
+           "aff", "cup", "giải", "vòng", "bảng")
+
+
+def _cum_vang_theo_luat(tit):
+    """Chọn 1–2 cụm đáng tô, thuần code."""
+    import re as _re
+    t = tit.strip()
+    ra = []
+    # ① cụm trong ngoặc kép — thứ người viết đã tự đánh dấu là đắt
+    for m in _re.finditer(r"[“\"']([^”\"']{2,28})[”\"']", t):
+        ra.append(m.group(1).strip())
+    # ② tỷ số / con số có sức nặng
+    for m in _re.finditer(r"\b\d+\s*[-–]\s*\d+\b|\b\d+\s+(?:lần|bàn|năm|tuổi)\b", t, _re.I):
+        ra.append(m.group(0).strip())
+    # ③ cụm chứa từ mạnh — lấy trọn cụm 2–4 từ quanh nó
+    tu = t.split()
+    tl = [x.lower().strip(",.:;!?“”\"'") for x in tu]
+    for i, x in enumerate(tl):
+        if any(x.startswith(k.split()[0]) and k.split()[0] == x for k in TU_MANH) or \
+                any(k in " ".join(tl[i:i + 2]) for k in TU_MANH):
+            ra.append(" ".join(tu[i:i + min(3, len(tu) - i)]).strip(",.:;!?"))
+            break
+    # bỏ cụm chỉ toàn từ nhạt
+    ra = [c for c in ra if c and not all(w.lower() in TU_NHAT for w in c.split())]
+    kq = []
+    for c in ra:
+        if c not in kq:
+            kq.append(c)
+    return kq[:2]
+
+
+# Từ MẠNH — thứ khiến người ta dừng lại. Não mục "luật vàng": tô cái BẤT THƯỜNG, đừng
+# tô cái hiển nhiên. "VIỆT NAM" ai cũng biết, tô cũng vô ích; "CÁI DỚP" mới là chỗ gợi
+# tò mò. Bảng này rút từ tiêu đề 20 mẫu — toàn từ chỉ điều BẤT NGỜ hoặc TRÁI CHIỀU.
+TU_MANH = (
+    "dớp", "hụt", "mừng hụt", "quê", "cay", "sốc", "chê", "cà khịa", "khiêu khích",
+    "tự hủy", "tự huỷ", "ế", "bán ế", "thất bại", "gục", "khóc", "bật khóc",
+    "chưa từng", "lần đầu", "cuối cùng", "bất ngờ", "ngỡ ngàng", "quay xe",
+    "lộ", "vạch trần", "thừa nhận", "tố", "đòi", "dọa", "doạ", "cấm",
+    "tẩy trắng", "trắng trợn", "nói thẳng", "đùa", "gọi tên", "phá được",
+    "vô địch", "chung kết", "thẻ đỏ", "var", "phạt đền", "nhập tịch",
+)
+
+
+def _tu_chon_cum_vang(tit):
+    """Tự chọn cụm tô vàng từ tiêu đề khi không có kịch bản (bìa dựng từ video cũ).
+
+    Ba lớp, ưu tiên giảm dần:
+      ① cụm trong NGOẶC KÉP — người viết đã tự đánh dấu chỗ đắt
+      ② con số / tỷ số — "3-1", "2 LẦN", "0-3": mắt bắt số nhanh hơn chữ
+      ③ cụm chứa TỪ MẠNH — lấy từ ấy cùng một từ kề để thành cụm đọc được
+    """
+    import re as _r
+    ra = []
+    for m in _r.finditer(r"[\"“”']([^\"“”']{3,28})[\"“”']", tit):
+        ra.append(m.group(1).strip())
+    for m in _r.finditer(r"\b\d+\s*[-–]\s*\d+\b|\b\d+\s+(?:lần|bàn|năm|tuổi)\b",
+                         tit, _r.I):
+        ra.append(m.group(0).strip())
+    tu = tit.split()
+    thap = [t.lower().strip(",.:;!?\"“”'") for t in tu]
+    for i, t in enumerate(thap):
+        if any(t == k or (len(k.split()) == 1 and k in t) for k in TU_MANH):
+            # Ghép về phía nào? Tiếng Việt hay có TỪ CHỈ ĐỊNH đứng trước danh từ mạnh
+            # ("cái dớp", "cú sốc", "pha bẻ lái"). Ghép xuôi sang phải thì ra "DỚP VIỆT"
+            # — cắt ngang cụm, đọc trẹo. Nên ngó sang trái trước.
+            PHU = ("cái", "một", "những", "các", "cú", "pha", "vụ", "màn", "cơn",
+                   "nỗi", "chuyện", "điều", "trận", "bàn")
+            if i > 0 and thap[i - 1] in PHU:
+                cum = " ".join(tu[i - 1:i + 1])
+            elif i + 1 < len(tu):
+                cum = " ".join(tu[i:i + 2])
+            else:
+                cum = tu[i]
+            ra.append(cum.strip(",.:;!?"))
+            break
+    # bỏ trùng, giữ thứ tự
+    xong = []
+    for c in ra:
+        if c and c not in xong:
+            xong.append(c)
+    return xong[:2]
+
+
+def _loc_cum_vang(tit, cum):
+    """Giữ cụm tô vàng ở mức ĐIỂM NHẤN, không để nó nuốt cả câu.
+
+    Não mục "luật vàng": tô cái BẤT THƯỜNG, đừng tô cái hiển nhiên. Bìa dựng từ video
+    không có kịch bản nên phải tự chọn cụm — và lượt đầu nó tô mất 3/4 tiêu đề, thành
+    ra chẳng còn gì nổi bật (tô hết = không tô gì).
+    Trần: tổng chữ tô vàng không quá 45% số từ của tiêu đề.
+    """
+    tu_tit = [t for t in tit.split() if t.strip()]
+    if not tu_tit or not cum:
+        return []
+    tran = max(1, int(len(tu_tit) * 0.45))
+    ra, dem = [], 0
+    for c in sorted([str(x).strip() for x in cum if str(x).strip()], key=len):
+        n = len([t for t in c.split() if t.strip()])
+        if dem + n > tran:
+            continue
+        ra.append(c)
+        dem += n
+    return ra
+
+
 def lam(viec, ra=None, kieu=None):
     """Dựng ảnh bìa cho một bài. Trả đường dẫn tệp đã ghi."""
     kb = json.load(open(os.path.join(viec, "kich-ban.json"), encoding="utf-8"))
@@ -494,53 +687,7 @@ def lam(viec, ra=None, kieu=None):
 
     # ② dải chữ + tô vàng + watermark: DÙNG LẠI đúng bộ vẽ của xưởng, để bìa và
     #    video cùng một khuôn mặt (xem chú thích đầu file)
-    # ② DẢI CHỮ — dùng lại các LỚP của template (gradient · hoa văn sân · fit chữ ·
-    #    watermark) nhưng CANH RIÊNG cho bìa.
-    #    Vì sao không gọi thẳng `xuong.lam_overlay`: khuôn ấy vẽ cho VIDEO, chữ nằm sát
-    #    mép trên dải và chừa khoảng trống bên dưới cho nội dung chạy. Bìa thì phải LẤP
-    #    ĐẦY — 20/20 mẫu của kênh dẫn đầu đều vậy, chữ càng to càng bắt mắt trên lưới
-    #    Shorts. Sửa `lam_overlay` là đụng vào video đang chạy tốt, nên tách đường.
-    cum = kb.get("cum_to_vang") or []
-    y_dai = int(H * float(L.get("hoa_den_ty_le", 0.70))) + 26
-    lop = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    lop.alpha_composite(TPL._lop_gradient(W, H, y_dai))
-    lop.alpha_composite(TPL._lop_hoa_van_san(W, H))
-    d = ImageDraw.Draw(lop)
-    x_chu = L["le_trai"] + L["thanh_doc_rong"] + L["thanh_doc_cach_chu"]
-    rong = W - x_chu - L["le_phai"]
-    # bìa được dùng CẢ chiều cao dải (video phải chừa `le_duoi` cho nội dung)
-    cao_dung = H - y_dai - 96
-    font, dong, cx = TPL._fit_tieu_de(d, tit.upper(), rong, cao_dung)
-    cao_dong = int(cx * 1.24)
-    y = y_dai + max(28, (cao_dung - cao_dong * len(dong)) // 2)
-    # thanh dọc trắng chạy đúng chiều cao khối chữ
-    d.rectangle([L["le_trai"], y - 6, L["le_trai"] + L["thanh_doc_rong"],
-                 y + cao_dong * len(dong) + 2], fill=MAU["thanh_doc"])
-    kho_vang = [c.upper() for c in cum if c]
-    for l_i, dg in enumerate(dong):
-        x = x_chu
-        for tu in dg.split(" "):
-            mau = MAU["chu"]
-            for cv in kho_vang:
-                if tu.strip(".,:;!?\"'“”") and tu.strip(".,:;!?\"'“”") in cv:
-                    mau = MAU["chu_nhan"]
-                    break
-            d.text((x, y + l_i * cao_dong), tu + " ", font=font, fill=mau)
-            x += d.textlength(tu + " ", font=font)
-    # LOGO KÊNH góc trái trên + WATERMARK đáy phải — hai dấu nhận biết kênh, mẫu nào
-    # của họ cũng có. Gọi đúng chữ ký hàm của template (đã đọc, không đoán).
-    try:
-        _lg = Image.open(DD.LOGO).convert("RGBA").resize(
-            (int(W * 0.115),) * 2, Image.LANCZOS)
-        lop.alpha_composite(_lg, (L["le_trai"] - 28, 54))
-    except Exception as _e:
-        print(f"  ⚠ không gắn được logo: {_e}")
-    try:
-        TPL._ve_watermark(lop, DD.KENH)     # đúng chữ ký xưởng dùng
-    except Exception as _e:
-        print(f"  ⚠ không vẽ được watermark: {_e}")
-    bia = Image.alpha_composite(bia.convert("RGBA"), lop).convert("RGB")
-
+    bia = _ve_dai_chu(bia, tit, _loc_cum_vang(tit, kb.get("cum_to_vang") or []))
     ra = ra or os.path.join(viec, "thumbnail.jpg")
     bia.save(ra, quality=93, subsampling=0)
     return ra, ten_kieu or kieu, len(anh)
@@ -552,3 +699,111 @@ if __name__ == "__main__":
     v = DD.tim_viec(sys.argv[1])
     p, k, n = lam(v, kieu=(sys.argv[2].upper() if len(sys.argv) > 2 else None))
     print(f"✅ {p}\n   bố cục {k} · dùng {n} ảnh ứng viên")
+
+
+# ══ DỰNG BÌA TỪ VIDEO ĐÃ ĐẨY LÊN ═══════════════════════════════════════════
+# Hộp thành phẩm chỉ có `video.mp4` + `loi-binh.txt` — không còn thư mục ảnh. Muốn làm
+# bìa cho video cũ thì phải lấy hình từ chính video.
+#
+# BẪY: video ĐÃ CÓ dải chữ đỏ + tiêu đề ở đáy. Trích nguyên khung rồi dán vào bìa là
+# CHỒNG HAI LỚP CHỮ. Nên chỉ lấy phần ảnh phía trên dải, cắt theo đúng tỷ lệ template.
+
+def _trich_khung(p_video, thu_ra, so=14):
+    """Trích `so` khung rải đều, CẮT BỎ phần dải chữ ở đáy."""
+    import subprocess
+    dai = 0.0
+    try:
+        r = subprocess.run(["ffprobe", "-v", "quiet", "-show_entries",
+                            "format=duration", "-of", "csv=p=0", p_video],
+                           capture_output=True, text=True, timeout=60)
+        dai = float((r.stdout or "0").strip() or 0)
+    except Exception:
+        pass
+    if dai <= 1:
+        return []
+    ty_giu = float(L.get("hoa_den_ty_le", 0.70))     # phần ảnh, chưa có chữ
+    os.makedirs(thu_ra, exist_ok=True)
+    ra = []
+    for i in range(so):
+        t = dai * (i + 0.6) / (so + 0.2)
+        p = os.path.join(thu_ra, f"k{i:02d}.jpg")
+        try:
+            subprocess.run(["ffmpeg", "-y", "-v", "quiet", "-ss", f"{t:.2f}",
+                            "-i", p_video, "-frames:v", "1",
+                            "-vf", f"crop=iw:trunc(ih*{ty_giu:.4f}/2)*2:0:0",
+                            "-q:v", "2", p], timeout=90)
+            if os.path.exists(p) and os.path.getsize(p) > 20000:
+                ra.append(p)
+        except Exception:
+            pass
+    return ra
+
+
+def _diem_khung(p):
+    """Chấm khung hình: NÉT · SÁNG VỪA · NHIỀU CHI TIẾT. Thuần code, 0 token.
+
+    Không có mô tả mắt máy như ảnh trong bài, nên chấm bằng thứ đo được: khung mờ (lúc
+    chuyển cảnh), khung tối, khung phẳng (một mảng màu) đều bị loại.
+    """
+    import numpy as _np
+    try:
+        with Image.open(p) as im:
+            g = _np.asarray(im.convert("L").resize((320, 180))).astype(_np.float32)
+    except Exception:
+        return -1
+    # độ nét: sai phân bậc hai (xấp xỉ Laplacian, không cần scipy)
+    lap = (g[1:-1, 2:] + g[1:-1, :-2] + g[2:, 1:-1] + g[:-2, 1:-1] - 4 * g[1:-1, 1:-1])
+    net = float(lap.var())
+    sang = float(g.mean())
+    tuong_phan = float(g.std())
+    d = min(net / 900.0, 1.0) * 55                       # nét là chính
+    d += 25 if 55 <= sang <= 195 else (8 if 35 <= sang <= 215 else 0)
+    d += min(tuong_phan / 62.0, 1.0) * 20
+    return round(d, 1)
+
+
+def lam_tu_video(hop, ra=None, kieu=None, tit=None):
+    """Dựng bìa cho một VIDEO ĐÃ ĐẨY LÊN — lấy hình từ chính video ấy."""
+    import shutil
+    import tempfile
+    p_video = os.path.join(hop, "video.mp4")
+    if not os.path.exists(p_video):
+        raise RuntimeError(f"không thấy video.mp4 trong {hop}")
+    if tit is None:
+        p_lb = os.path.join(hop, "loi-binh.txt")
+        tit = open(p_lb, encoding="utf-8").readline().strip() if os.path.exists(p_lb) else ""
+    if not tit:
+        raise RuntimeError("không đọc được tiêu đề")
+
+    tam = tempfile.mkdtemp(prefix="bia-")
+    try:
+        khung = _trich_khung(p_video, tam)
+        if not khung:
+            raise RuntimeError("không trích được khung hình nào từ video")
+        khung.sort(key=_diem_khung, reverse=True)
+        # bỏ khung sát nhau (thường cùng một cảnh) — lấy đa dạng hơn
+        chon, da = [], set()
+        for k in khung:
+            i = int(os.path.basename(k)[1:3])
+            if any(abs(i - j) <= 1 for j in da):
+                continue
+            chon.append(k)
+            da.add(i)
+            if len(chon) >= 4:
+                break
+        chon = chon or khung[:4]
+
+        cao_anh = int(H * TY_ANH)
+        kieu = (kieu or "C").upper()
+        ten_kieu = next((k for k, v in NAO_MA.items() if v == kieu), kieu)
+        nen = BO_CUC[kieu](chon, W, cao_anh, None)
+        bia = Image.new("RGB", (W, H), (18, 14, 12))
+        bia.paste(nen, (0, 0))
+        bia.paste(_nen_mo(_mo(chon[0]), W, H - cao_anh), (0, cao_anh))
+        cum = _loc_cum_vang(tit, _cum_vang_tu_tit(tit) or _tu_chon_cum_vang(tit))
+        bia = _ve_dai_chu(bia, tit, cum)
+        ra = ra or os.path.join(hop, "thumbnail.jpg")
+        bia.save(ra, quality=93, subsampling=0)
+        return ra, ten_kieu, len(chon)
+    finally:
+        shutil.rmtree(tam, ignore_errors=True)

@@ -464,6 +464,38 @@ def _get(d):
         return r.status, json.loads(r.read().decode())
 
 
+def tang_cua_soi_dung_o():
+    """CỬA SOI GÁN ĐÚNG Ô (anh bắt 18/08).
+
+    Bệnh: anh gán ảnh cho ô PHỤ 10b (biến `dangPhu` trỏ 10b), rồi bấm 🔍 ở ô CHÍNH để
+    cắt. Cửa soi mở mà không ai xoá `dangPhu`, nên `ganAnh()` vẫn nghĩ "đang chọn ô phụ"
+    → ảnh của ô chính GHI ĐÈ lên ô phụ. Ảnh anh chọn cho 10b mất trắng; phải ⌘Z mới cứu,
+    mà không để ý thì lên hình sai luôn.
+
+    Gốc: cửa soi dựa vào TRẠNG THÁI CŨ bên ngoài để biết gán đi đâu, thay vì tự mang
+    theo ô nguồn.
+    """
+    print("㉑ CỬA SOI GÁN ĐÚNG Ô (chính ≠ phụ)")
+    ui = open(os.path.join(TRAM, "tram-tai-nguyen.html"), encoding="utf-8").read()
+
+    _bao("function moSoi(k, lat, oNguon)" in ui,
+         "cửa soi nhận Ô NGUỒN, không đoán từ trạng thái cũ")
+    i = ui.find("function moSoi(k, lat, oNguon)")
+    than = ui[i:i + 1800]
+    _bao("dangPhu = null;" in than,
+         "mở soi từ ô CHÍNH thì xoá dấu ô phụ còn sót")
+    _bao("dangPhu = {cau: oNguon.cau, phan: +oNguon.o}" in than,
+         "mở soi từ ô PHỤ thì trỏ đúng ô ấy")
+
+    # ba nơi mở soi TỪ MỘT Ô đều phải truyền ô nguồn
+    _bao("{cau, o: String(phan)}" in ui, "ô phụ → truyền ô nguồn")
+    _bao("{cau: i, o: 'c'}" in ui, "ô chính → truyền ô nguồn")
+    _bao("latBat(cau, o), {cau, o}" in ui, "ảnh thứ hai khung đôi → truyền ô nguồn")
+
+    _bao("Gán cho <span id=\"soiCau\">" in ui and "cảnh ${dangPhu.cau + 1}" in ui,
+         "nút Gán hiện ĐÚNG TÊN Ô (trước đây luôn ghi 'câu N' kể cả khi gán vào ô phụ)")
+
+
 def tang_anh_bia():
     """ẢNH BÌA (anh đặt 18/08 sau khi gửi 20 mẫu của kênh dẫn đầu ngách).
 
@@ -1535,6 +1567,7 @@ if __name__ == "__main__":
     tang_query_thong_minh() # mốc hình · câu video · tiếng bản địa (18/08)
     tang_soat_nuot_canh()   # cảnh bị nuốt khi dựng + ưu tiên clip (18/08)
     tang_anh_bia()          # ảnh bìa cho video (18/08)
+    tang_cua_soi_dung_o()   # cửa soi gán đúng ô, không đè ô phụ (18/08)
     if sau:
         tang4_luong(ma)
     else:

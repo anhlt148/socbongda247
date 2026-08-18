@@ -1627,7 +1627,8 @@ function veCau(){
         moXem({tep: ph[1], tu: +ph[2], den: +ph[3], khung: khP}, cau, phan);
       } else {
         const soi = dl.anh.findIndex(a => a.duong === v); // ảnh → cửa soi to của kho
-        if (soi >= 0) moSoi(soi, latBat(cau, String(phan)));
+        if (soi >= 0) moSoi(soi, latBat(cau, String(phan)),
+                            {cau, o: String(phan)});
       }
       return;
     }
@@ -1667,7 +1668,7 @@ function veCau(){
       veCau(); veKho();
       if (kt) {
         const soi = dl.anh.findIndex(a => a.duong === kt.duong);
-        if (soi >= 0) moSoi(soi, latBat(i, 'c'));
+        if (soi >= 0) moSoi(soi, latBat(i, 'c'), {cau: i, o: 'c'});
       }
       return;
     }
@@ -1741,7 +1742,7 @@ function veCau(){
     }
     if (ev.target.closest('[data-a2-to]')){
       const soi = dl.anh.findIndex(a => a.duong === gh.anh2);
-      if (soi >= 0) moSoi(soi, latBat(cau, o));
+      if (soi >= 0) moSoi(soi, latBat(cau, o), {cau, o});
       return;
     }
     dangGhep = {cau, o};
@@ -3004,8 +3005,24 @@ function ganAnh(duong){
 // Xem to thì dùng ảnh GỐC (/anh/) chứ không dùng bản thu nhỏ.
 const KIEU_TEN = {zoom: 'cắt·zoom', ngang: 'cắt·ngang', vua: 'vừa khung', doc: 'trượt đọc'};
 let soiK = null, reO = null;
-function moSoi(k, lat){
+function moSoi(k, lat, oNguon){
   if (k == null || !dl.anh[k]) return;
+  // ── CỬA SOI PHẢI NHỚ NÓ MỞ TỪ Ô NÀO (anh bắt 18/08) ──────────────────────
+  // Bệnh: anh gán ảnh cho ô PHỤ 10b (lúc ấy `dangPhu` trỏ 10b), rồi bấm 🔍 ở ô CHÍNH
+  // để cắt. Cửa soi mở mà KHÔNG ai xoá `dangPhu`, nên `ganAnh()` vẫn thấy "đang chọn ô
+  // phụ" → ảnh của ô chính ghi đè lên ô phụ. Ảnh anh chọn cho 10b mất, phải ⌘Z mới cứu
+  // được — mà không để ý thì lên hình sai luôn.
+  // Gốc: cửa soi dựa vào TRẠNG THÁI CŨ bên ngoài để biết gán đi đâu. Nay nó tự mang
+  // theo ô nguồn: mở từ ô chính thì `dangPhu` phải về null, mở từ ô phụ thì trỏ đúng ô.
+  //   oNguon = {cau, o}  ·  o = 'c' (ô chính) | '0','1'… (ô phụ)  ·  bỏ trống = từ kho
+  if (oNguon && oNguon.o !== undefined){
+    if (oNguon.o === 'c'){
+      dangChon = oNguon.cau;
+      dangPhu = null;                       // ô CHÍNH: xoá dấu ô phụ còn sót
+    } else {
+      dangPhu = {cau: oNguon.cau, phan: +oNguon.o};
+    }
+  }
   soiK = k; const a = dl.anh[k];
   $('#soiAnh').src = `/anh/${ma}/${a.duong}`;
   // xem to phải hiện ĐÚNG chiều sẽ lên hình (anh bắt 09/08): mở từ một Ô đã bật lật
@@ -3016,7 +3033,12 @@ function moSoi(k, lat){
   $('#soiHoan').style.display = a.crop_goc ? '' : 'none';
   // DỰNG LẠI cả nút Gán: phiên soi ảnh KHO (kbXemTo) đã ghi textContent đè lên nút,
   // span #soiCau bên trong bị nuốt mất — không dựng lại là dòng dưới nổ null (bắt 11/08)
-  $('#soiGan').innerHTML = `Gán cho câu <span id="soiCau">${dangChon + 1}</span>`;
+  // Nhãn nút phải nói ĐÚNG chỗ ảnh sắp vào — trước đây luôn ghi "câu N" kể cả khi
+  // thật ra nó gán vào ô phụ, nên nhìn nút không biết mình sắp ghi đè cái gì.
+  const _ten_o = dangPhu
+    ? `cảnh ${dangPhu.cau + 1}${String.fromCharCode(98 + dangPhu.phan)}`
+    : `câu ${dangChon + 1}`;
+  $('#soiGan').innerHTML = `Gán cho <span id="soiCau">${_ten_o}</span>`;
   const _v = soiVungHienTai();
   const _vt = _v ? `<b style="color:#e8c46a">ảnh ĐÃ GÁN ${_v.indexOf(k) + 1}/${_v.length}</b>`
                  : `${k + 1}/${dl.anh.length}`;
