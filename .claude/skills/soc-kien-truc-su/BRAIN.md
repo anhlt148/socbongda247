@@ -1169,3 +1169,20 @@ chắc chắn đã chạy bước X".
    thêm giọng `anh/`) chính là "cửa ghi mới", mà hôm ấy không ai rà xưởng.
 3. Tệp trong sổ mất → **kêu to + thay nền, không chết cả bài.** Một tấm ảnh hỏng
    không được giết 60 giây công dựng.
+
+## Nhập một thứ mới vào kho thì thử luôn CA XẤU NHẤT của nó (20/08/2026)
+
+Bản nhạc anh đưa dài 16 giây, kho cũ toàn bản 2–4 phút. Nếu tôi chỉ chép tệp vào kho
+rồi báo xong, video sẽ **im tiếng từ giây 16** — mà không lỗi, không cảnh báo, chỉ lộ
+khi anh ngồi xem lại.
+
+Cái mới không sai; cái mới chỉ **khác** — và chỗ nó khác là chỗ hệ chưa từng bị thử.
+Nhập ảnh khổ lạ, nhạc ngắn, clip dọc, tên có dấu: mỗi thứ đều mang một giả định ngầm
+mà hệ cũ chưa bao giờ phải kiểm.
+
+**Cách làm:** trước khi nhập, hỏi *"thứ này khác mọi thứ đang có ở điểm nào?"* rồi thử
+đúng điểm đó. Ở đây là ĐỘ DÀI → thử ngay bản 16 giây trên video 62 giây, thấy im tiếng,
+sửa gốc (xưởng tự lặp) chứ không chỉ vá bằng cách kéo dài riêng tệp ấy.
+
+**Kèm theo:** nguồn ngoài đưa vào kho phải **mang dấu trong tên** (`-TIKTOK`) và có sổ
+nguồn riêng — sau vài tháng không ai nhớ bản nào an toàn, bản nào cần kiểm trước khi đăng.

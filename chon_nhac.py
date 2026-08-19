@@ -274,6 +274,20 @@ def chon(kb, viec=""):
     Rồi bốn tầng dự phòng để xưởng không bao giờ chết vì thiếu nhạc.
     """
     kb = kb or {}
+
+    # ⓪ ANH CHỈ ĐỊNH ĐÚNG MỘT BẢN — `nhac_tep` (đường tương đối trong kho, hoặc tên tệp).
+    # Trước đây chốt tay chỉ tới mức NHÓM, rồi máy bốc ngẫu nhiên trong nhóm; anh nghe được
+    # đúng một bản ưng thì không có cách nào bắt máy dùng đúng bản ấy (anh cần 20/08).
+    tep = (kb.get("nhac_tep") or "").strip()
+    if tep:
+        cac = ([os.path.join(KHO_12, tep)] if "/" in tep else
+               [os.path.join(KHO_12, n, tep) for n in CUNG_12])
+        for c in cac:
+            if os.path.exists(c):
+                nh = os.path.basename(os.path.dirname(c))
+                return c, (nh if nh in CUNG_12 else "07_SAD_TRIBUTE"), "anh chỉ định đúng bản"
+        print(f"  ⚠ nhạc anh chỉ định '{tep}' không có trong kho — chọn như thường")
+
     nhom = (kb.get("nhom_nhac") or "").strip()
     if nhom in CUNG_12:
         vi_sao = "anh chốt tay trong blueprint"

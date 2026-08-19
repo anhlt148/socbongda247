@@ -1277,3 +1277,28 @@ lối ghép mù đã bị thay hẳn.
 **Đã kiểm:** dựng thật video-3 (bài hỏng) → XONG 61,2s, 10/10 ảnh anh chọn lên hình ·
 hồi quy video-1 (giọng cũ + clip) → XONG · `kiem_tram.py --sau` ✅ ĐẠT HẾT.
 Cổng soát nuốt cảnh cũng vừa ĐÓNG SỔ: 6/6 lần dựng thật sạch.
+
+## 20/08/2026 — nhạc từ TikTok vào kho + xưởng biết LẶP nhạc ngắn
+
+**Anh yêu cầu:** tải nhạc từ một video TikTok, đưa vào kho nhạc buồn, dùng cho
+`video-9-bai-tay-8d5ae5`. Em nêu rủi ro bản quyền (giấy phép TikTok KHÔNG áp dụng cho
+YouTube; Content ID không tra được từ ngoài, chỉ upload RIÊNG TƯ mới biết chắc) —
+**anh đã nghe và quyết dùng**, nên làm theo.
+
+**Làm gì**
+- Bản gốc 16,1 giây → dựng bản lặp **75 giây**, crossfade 1,2s mỗi mối nối (0 đoạn hở).
+- Vào `07_SAD_TRIBUTE`, tên **có đuôi `-TIKTOK`** để phân biệt với nhạc Mixkit an toàn.
+- Sổ mới `nguon-nhac.jsonl` ghi nguồn · giấy phép chưa rõ · việc phải làm trước khi đăng.
+- `chon_nhac.py` thêm ưu tiên ⓪ **`nhac_tep`** — chỉ định ĐÚNG MỘT bản (trước đây chốt
+  tay chỉ tới mức NHÓM rồi máy bốc ngẫu nhiên). Trỏ sai thì kêu rồi chọn như thường.
+
+**Bẫy lộ ra khi làm — và đã sửa gốc:** xưởng KHÔNG lặp nhạc. `atrim=0:tong` cắt đúng độ
+dài nhưng nguồn hết ở giây 16 là **im tiếng, không ai báo**. Nay xưởng đo độ dài nhạc,
+ngắn hơn video thì `aloop` cho đủ (in `♺`). Đã thử thật với chính bản 16 giây: âm đều
+-18,2…-18,7 dB suốt 62 giây.
+
+**Cổng ㉖** (4 mục): chỉ định được một bản · trỏ sai không chết · xưởng tự lặp · kho có
+bản ngắn thì nhắc (không còn là lỗi vì đã lặp bù được).
+
+**Đã kiểm:** dựng thật video-9 → XONG 62,1s · 27,5 MB · 11/11 ảnh lên hình ·
+`kiem_tram.py --sau` ✅ ĐẠT HẾT.

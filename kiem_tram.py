@@ -1682,6 +1682,47 @@ def tang_ban_do_hai_giong():
         _bao(False, f"cổng hai giọng lỗi: {type(e).__name__}: {e}")
 
 
+def tang_nhac_chi_dinh():
+    """㉖ ANH CHỈ ĐỊNH ĐÚNG MỘT BẢN NHẠC + nhạc ngắn phải LẶP ĐỦ DÀI (20/08).
+
+    Trước: chốt tay chỉ tới mức NHÓM, máy bốc ngẫu nhiên trong nhóm — anh nghe được
+    đúng một bản ưng thì không có cách nào bắt máy dùng bản ấy. Nay `nhac_tep` trong
+    kịch bản trỏ thẳng một tệp.
+
+    Và cái bẫy đi kèm: xưởng KHÔNG lặp nhạc. Bản 16 giây đưa vào kho thì video 60 giây
+    im tiếng từ giây 16 — mà không ai báo gì. Nên mọi bản nhập kho phải dài ≥ 70 giây.
+    """
+    print("㉖ CHỈ ĐỊNH NHẠC + ĐỘ DÀI TỐI THIỂU")
+    try:
+        c = open(os.path.join(MAY, "chon_nhac.py"), encoding="utf-8").read()
+        _bao('kb.get("nhac_tep")' in c, "kịch bản chỉ định được ĐÚNG MỘT bản qua `nhac_tep`")
+        _bao("không có trong kho" in c,
+             "chỉ định trỏ vào bản KHÔNG CÓ thì kêu rồi chọn như thường, không chết")
+        sys.path.insert(0, MAY)
+        import chon_nhac as _CN
+        b, nh, vs = _CN.chon({"nhac_tep": "khong-he-co-ban-nay.mp3"}, "kiem")
+        _bao(bool(b) and os.path.exists(b), "chỉ định sai vẫn trả về một bản nhạc có thật")
+        # mọi bản trong kho phải đủ dài cho một video ~60 giây
+        import glob as _g, subprocess as _sp
+        ngan = []
+        for f in _g.glob(os.path.join(_CN.KHO_12, "*", "*.mp3")):
+            r = _sp.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                         "-of", "default=nw=1:nk=1", f], capture_output=True, text=True)
+            try:
+                if float((r.stdout or "0").strip()) < 70:
+                    ngan.append(os.path.basename(f))
+            except ValueError:
+                pass
+        x = open(os.path.join(MAY, "xuong.py"), encoding="utf-8").read()
+        _bao("aloop=loop=-1" in x and "ngắn hơn video" in x,
+             "xưởng TỰ LẶP nhạc ngắn hơn video — không còn im tiếng giữa chừng")
+        if ngan:
+            canh.append(f"kho có {len(ngan)} bản ngắn <70s ({ngan[0]}) — xưởng lặp bù được, "
+                        "nhưng bản dài sẵn vẫn nghe liền mạch hơn")
+    except Exception as e:
+        _bao(False, f"cổng nhạc chỉ định lỗi: {type(e).__name__}: {e}")
+
+
 def tang_extension():
     """⑧ TIỆN ÍCH CHROME — nơi code sống NGOÀI thư mục máy, dễ lọt khỏi mọi cổng khác.
 
@@ -1796,6 +1837,7 @@ if __name__ == "__main__":
     tang_tai_video()        # yt-dlp còn mới không + luật tải chung (19/08)
     tang_clip_ban_do()      # mã clip không lọt vào bản đồ ảnh (19/08)
     tang_ban_do_hai_giong() # ban_do hai giọng: tên trần / đường anh/ (19/08)
+    tang_nhac_chi_dinh()    # chỉ định đúng bản nhạc + kho đủ dài (20/08)
     if sau:
         tang4_luong(ma)
     else:

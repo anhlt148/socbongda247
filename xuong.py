@@ -1304,11 +1304,28 @@ def dung(viec):
             z += f",afade=t=out:st={max(dai - ra, 0):.2f}:d={ra}"
         return z
 
+    # NHẠC NGẮN HƠN VIDEO → LẶP cho đủ. Trước đây `atrim=0:tong` cắt đúng độ dài, nhưng
+    # nguồn hết ở giây 16 thì phần sau IM TIẾNG mà chẳng ai báo gì — bản nhạc 16 giây anh
+    # thêm 20/08 lộ ra chuyện này. `aloop` rẻ hơn nối tệp và không đụng gì tới nhánh cũ:
+    # nhạc đã đủ dài thì vòng lặp không bao giờ chạy tới.
+    _nhac_giay = 0.0
+    try:
+        _r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                             "-of", "default=nw=1:nk=1", nhac],
+                            capture_output=True, text=True, timeout=30)
+        _nhac_giay = float((_r.stdout or "0").strip() or 0)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        pass
+    _lap = ""
+    if 0 < _nhac_giay < tong:
+        _lap = f"aloop=loop=-1:size={int(_nhac_giay * 44100)},"
+        print(f"  ♺ nhạc {_nhac_giay:.0f}s ngắn hơn video {tong:.0f}s → lặp cho đủ")
+
     f_giong = _fade(ts["giong_vao"], ts["giong_ra"], tong, 0.12)
     f_nhac = _fade(ts["nhac_vao"], ts["nhac_ra"], tong)
     fc = (f"{loc_the}{nhanh};"
           f"[2:a]adelay=120|120,volume=1.3,alimiter=limit=0.95{f_giong}[voice];"
-          f"[3:a]atrim=0:{tong},volume={ts['nhac_am_luong']}{f_nhac}[bgm];"
+          f"[3:a]{_lap}atrim=0:{tong},volume={ts['nhac_am_luong']}{f_nhac}[bgm];"
           f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=0[aout]")
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", ghep,
                     "-loop", "1", "-framerate", str(FPS), "-i", overlay,
