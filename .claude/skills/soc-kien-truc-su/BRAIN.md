@@ -1105,3 +1105,25 @@ chữ ≥8%). Thiếu câu ② thì bộ chấm chỉ là bộ dò lỗi, đừn
 
 **Và:** dải chuẩn nên làm **RÀNG BUỘC** (ngoài dải thì không được đặt), đừng làm tiêu chí
 cộng trừ — để điểm cao ở mục khác không mua chuộc được một chỗ đặt xấu.
+
+## Thông báo lỗi của công cụ ngoài có thể DẪN SAI HƯỚNG (19/08/2026)
+
+**Bệnh:** anh báo extension không tải được video, lỗi *"Requested format is not
+available. Use --list-formats"*. Câu ấy chỉ thẳng vào format selector, nên tôi đi soi
+selector, soi user-agent, soi cookie, soi PATH — **bốn giả thuyết, trượt cả bốn**.
+
+**Gốc:** yt-dlp cũ năm tháng. YouTube trả về danh sách format rỗng vì công cụ cũ không
+qua được lớp chặn; yt-dlp thấy danh sách rỗng thì than "không có format anh yêu cầu" —
+đúng về mặt kỹ thuật, sai hoàn toàn về mặt chỉ đường.
+
+**Phòng:**
+1. **Khi lỗi đến từ công cụ ngoài, hỏi TUỔI nó trước tiên.** yt-dlp, ffmpeg, trình
+   duyệt, thư viện mạng — thứ nào phải chạy đua với một bên đang chủ động chặn thì cũ
+   vài tháng là hỏng. Rẻ hơn mọi giả thuyết khác và hay đúng hơn.
+2. **Đừng tin thông báo lỗi chỉ đường.** Nó tả TRIỆU CHỨNG ở tầng nó thấy, không phải
+   nguyên nhân. Tái hiện thật rồi so hai bên khác nhau chỗ nào — đó mới là bằng chứng.
+3. **Bệnh nền phải có cổng canh riêng.** Loại lỗi này không sai dòng mã nào nên không
+   cổng nào bắt được; phải viết cổng đo TUỔI công cụ (`kiem_tram.py` tầng ㉓, hạn 60 ngày).
+4. **Lỗi hiện cho anh phải dịch sang việc anh làm được.** "Requested format is not
+   available" thì anh biết làm gì? Nay là: *"YouTube đang chặn máy tải — chờ vài phút
+   rồi thử lại, hoặc dán link khác"*, kèm nhắc nâng cấp nếu công cụ đã quá hạn.

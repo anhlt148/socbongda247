@@ -1193,3 +1193,31 @@ cao tính từ đáy**. Kèm câu hỏi đúng chỗ đau: *"QC kinh nghiệm c�
 
 **Đã kiểm:** `kiem_tram.py --sau` ✅ ĐẠT HẾT (hai lần) · dựng lại 3 bài thật, cả ba ô tròn
 đều rơi vào dải 60–70% (bài vướng mặt thì tự chọn nấc 60% thay vì 70%).
+
+## 19/08/2026 — extension không tải được video YouTube
+
+**Anh báo:** `ERROR: [youtube] X-qZn5m8isE: Requested format is not available`
+
+**Điều tra — ba giả thuyết đầu đều TRƯỢT** (ghi lại để lần sau khỏi đi lại):
+| thử | kết quả |
+|---|---|
+| Video thiếu format? | ❌ có đủ tới 1080p |
+| `--user-agent` của trạm gây lỗi? | ❌ chạy tay có UA vẫn tải được |
+| `--cookies` gây lỗi? | ❌ cookie giả vẫn tải được |
+| PATH launchd thiếu deno/node? | ❌ trạm thấy đủ |
+
+**Thủ phạm: yt-dlp CŨ NĂM THÁNG** — bản 2026.03.17 trong khi bản mới là 2026.07.04.
+YouTube đổi cách chặn liên tục nên công cụ cũ hết đường. Đã `brew upgrade yt-dlp`.
+
+**Sửa gốc — mã mới `yt_tai.py`** (một cửa, hai đường tải cùng đọc):
+- `FORMAT` — luật định dạng khai MỘT nơi (trước đó chép đôi ở trạm và `nhap_kho_video.py`)
+- `CUA` + `them_cua()` — trượt thì ĐỔI CỬA hỏi YouTube rồi thử lại, không bỏ cuộc ngay
+- `dang_thu_lai()` — video bị gỡ/riêng tư thì dừng luôn, khỏi thử vô ích bốn lượt
+- `doi_loi()` — dịch lời than của yt-dlp sang câu anh đọc là hiểu phải làm gì
+- `qua_cu()` — đo tuổi công cụ
+
+**`kiem_tram.py` tầng ㉓ mới** (7 mục): canh TUỔI yt-dlp (hạn 60 ngày) + canh cả bốn
+luật trên có mặt ở CẢ HAI đường tải.
+
+**Đã kiểm:** tải thật đúng video anh báo qua đúng route extension (`/api/nhan-video`) →
+247 giây · 20,2 MB · vào đúng thư mục clip. `kiem_tram.py --sau` ✅ ĐẠT HẾT.

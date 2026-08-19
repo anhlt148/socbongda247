@@ -12,6 +12,7 @@ Dùng:
   --bo-nhan              bổ nhãn cho các đoạn còn thô (mẻ 15 khung/lượt haiku)
 """
 import glob
+import yt_tai as YT
 import hashlib
 import json
 import os
@@ -493,16 +494,26 @@ def tai(url):
                                  capture_output=True, text=True,
                                  timeout=120).stdout.strip()[:120]
         tam = os.path.join(KHOV, "_tai.%(ext)s")
-        r = subprocess.run(["yt-dlp", "--no-update", "--no-warnings", "--no-playlist",
-                            "-N", "8", "--playlist-items", "1",
-                            "--match-filter", "duration<=?600",
-                            "-f", "bv*[height<=1080][ext=mp4]+ba[ext=m4a]"
-                                  "/bv*[height<=1080]+ba/b[height<=1080]/b",
-                            "--merge-output-format", "mp4",
-                            "-o", tam, url], capture_output=True, text=True, timeout=1800)
+        # Cùng luật với trạm (yt_tai.py) — trượt thì ĐỔI CỬA hỏi YouTube rồi thử lại.
+        # Khai luật ở MỘT chỗ để hai bên không lệch nhau: 19/08 trạm tải hỏng vì yt-dlp
+        # cũ, mà bên này cũng sẽ hỏng y hệt nếu chỉ vá một bên.
+        lenh = ["yt-dlp", "--no-update", "--no-warnings", "--no-playlist",
+                "-N", "8", "--playlist-items", "1",
+                "--match-filter", "duration<=?600",
+                "-f", YT.FORMAT, "--merge-output-format", "mp4",
+                "-o", tam, url]
         p = os.path.join(KHOV, "_tai.mp4")
+        tho = ""
+        for i_cua in range(len(YT.CUA)):
+            r = subprocess.run(YT.them_cua(lenh, i_cua),
+                               capture_output=True, text=True, timeout=1800)
+            if os.path.exists(p) and os.path.getsize(p) >= 50000:
+                break
+            tho = (r.stderr or "").strip()
+            if not YT.dang_thu_lai(tho):
+                break
         if not os.path.exists(p) or os.path.getsize(p) < 50000:
-            print("TẢI HỎNG:", (r.stderr or "")[-200:])
+            print("TẢI HỎNG:", YT.doi_loi(tho))
             return 0
         so = _nhap_tep_video(p, tieu_de, url)
         os.remove(p)

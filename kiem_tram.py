@@ -1584,6 +1584,43 @@ def tang_phong_cach():
         _bao(False, "đọc menu.js", str(e)[:70])
 
 
+def tang_tai_video():
+    """㉓ CÔNG CỤ TẢI VIDEO — bệnh NỀN, không ai thấy tới lúc anh đang làm thì hỏng.
+
+    Anh báo 19/08: extension không tải được video YouTube, báo "Requested format is not
+    available". Video ấy CÓ đủ format tới 1080p, chạy tay thì ngon. Thủ phạm: yt-dlp
+    CŨ NĂM THÁNG (bản 17/03 trong khi bản mới là 04/07) — YouTube đổi cách chặn liên
+    tục nên công cụ cũ là hết đường.
+
+    Loại bệnh này không có cổng nào bắt được, vì mã không sai dòng nào. Nên cổng đây
+    canh TUỔI công cụ, và canh cả ba bài học rút ra sau vụ ấy.
+    """
+    print("㉓ CÔNG CỤ TẢI VIDEO (yt-dlp)")
+    try:
+        sys.path.insert(0, MAY)
+        import yt_tai as _YT
+        pb = _YT.phien_ban()
+        cu, tuoi = _YT.qua_cu(pb)
+        _bao(bool(pb), f"có yt-dlp trên máy — bản {pb or 'KHÔNG THẤY'}")
+        _bao(not cu, f"yt-dlp còn dùng được ({tuoi} ngày tuổi, hạn {_YT.HAN_NGAY} ngày)"
+                     + ("" if not cu else " → chạy: brew upgrade yt-dlp"))
+        tt = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
+        nk = open(os.path.join(MAY, "nhap_kho_video.py"), encoding="utf-8").read()
+        _bao("YT.FORMAT" in tt and "YT.FORMAT" in nk,
+             "hai đường tải dùng CHUNG một luật định dạng, không lệch nhau")
+        _bao("YT.them_cua" in tt and "YT.them_cua" in nk,
+             "trượt thì ĐỔI CỬA hỏi YouTube rồi thử lại, không bỏ cuộc ngay")
+        _bao("YT.dang_thu_lai" in tt and "YT.dang_thu_lai" in nk,
+             "video bị gỡ/riêng tư thì dừng luôn, không thử vô ích bốn lượt")
+        _bao("YT.doi_loi" in tt and "YT.doi_loi" in nk,
+             "lỗi dịch sang câu anh đọc là hiểu, không phun tiếng Anh của yt-dlp")
+        _bao(_YT.dang_thu_lai("Requested format is not available")
+             and not _YT.dang_thu_lai("Private video"),
+             "phân biệt đúng lỗi đáng thử lại và lỗi vô vọng")
+    except Exception as e:
+        _bao(False, f"cổng yt-dlp lỗi: {type(e).__name__}: {e}")
+
+
 def tang_extension():
     """⑧ TIỆN ÍCH CHROME — nơi code sống NGOÀI thư mục máy, dễ lọt khỏi mọi cổng khác.
 
@@ -1695,6 +1732,7 @@ if __name__ == "__main__":
     tang_anh_bia()          # ảnh bìa cho video (18/08)
     tang_cua_soi_dung_o()   # cửa soi gán đúng ô, không đè ô phụ (18/08)
     tang_mat_may_cham_bia()  # mắt máy nhìn ảnh + bộ chấm bìa (18/08)
+    tang_tai_video()        # yt-dlp còn mới không + luật tải chung (19/08)
     if sau:
         tang4_luong(ma)
     else:

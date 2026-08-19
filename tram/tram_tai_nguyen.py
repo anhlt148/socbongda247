@@ -53,6 +53,7 @@ sys.path.insert(0, os.path.dirname(TRAM))
 sys.path.insert(0, TRAM)
 import duong_dan as DD
 import nen_tang as NT                                        # noqa: E402
+import yt_tai as YT                                          # noqa: E402
 _CLAUDE = NT.tim_claude()   # MỘT nguồn — nen_tang lo cả macOS lẫn Windows (15/08)
 import nhip_canh as NC                                        # noqa: E402 — nhịp DÙNG CHUNG với xưởng
 import gap_anh                                                # noqa: E402
@@ -3496,23 +3497,31 @@ def _nhan_video_job(ma_job, ma, trang, src, cookies):
                     # <=? — quá 15 phút thì bỏ (highlight trận hay 10-15p, tải về để cắt
                     # đoạn), video KHÔNG khai độ dài thì vẫn cho qua
                     "--match-filter", "duration<=?900",
-                    "-f", "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/bv*[height<=1080]+ba"
-                          "/b[height<=1080]/b",
+                    "-f", YT.FORMAT,
                     "--merge-output-format", "mp4", "--user-agent", UA_CLIP,
                     "-o", os.path.join(thu, f"{cuoi}.%(ext)s"), u] + them
             if p_ck:
                 lenh[1:1] = ["--cookies", p_ck]
             if u == src and url:
                 lenh[1:1] = ["--referer", url]
-            try:
-                r = subprocess.run(lenh, capture_output=True, text=True, timeout=900)
-            except subprocess.TimeoutExpired:
-                loi_cuoi = "tải quá 15 phút — mạng chậm hoặc video quá nặng"
-                continue
+            # Trượt lần đầu thì ĐỔI CỬA hỏi YouTube, đừng bỏ cuộc ngay (anh báo 19/08:
+            # "Requested format is not available" — hoá ra YouTube chặn riêng một cửa,
+            # cửa khác vẫn ăn). Chỉ thử tiếp khi lỗi thuộc loại đáng thử lại.
+            for i_cua in range(len(YT.CUA)):
+                try:
+                    r = subprocess.run(YT.them_cua(lenh, i_cua),
+                                       capture_output=True, text=True, timeout=900)
+                except subprocess.TimeoutExpired:
+                    loi_cuoi = "tải quá 15 phút — mạng chậm hoặc video quá nặng"
+                    break
+                if os.path.exists(tep) and os.path.getsize(tep) > 50000:
+                    break
+                tho = (r.stderr or r.stdout or "").strip()
+                loi_cuoi = YT.doi_loi(tho)
+                if not YT.dang_thu_lai(tho):
+                    break               # video bị gỡ/riêng tư — đổi cửa cũng vô ích
             if os.path.exists(tep) and os.path.getsize(tep) > 50000:
                 break
-            loi_cuoi = ((r.stderr or r.stdout or "").strip()[-300:]
-                        or "yt-dlp chạy xong mà không ra tệp")
         else:
             raise RuntimeError(loi_cuoi or "không có đường nào để tải")
 

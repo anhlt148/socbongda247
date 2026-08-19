@@ -98,3 +98,31 @@ săn tin / anh paste tin từ GPT
 - Trạm: `launchctl kickstart -k gui/501/com.socbongda247.tram`, log `/tmp/tram.log`.
   **Chỉ restart khi xưởng rảnh** (`pgrep -f xuong.py`).
 - Test giao diện bằng CDP: trạm chính đọc **`?viec=`**, KHÔNG phải `?ma=`.
+
+## ẢNH BÌA (thumbnail) — thêm 18/08
+
+```
+lam_thumbnail.py   dựng bìa: 7 bố cục A–G, chọn ảnh, vẽ dải chữ, đặt lớp phủ
+  ├─ mat_may.py    MẮT MÁY — nhìn ảnh, trả hộp khuôn mặt + lưới vùng cấm
+  │                 chạy trong venv riêng ~/.cache/socbongda247-mat (cv2 + onnxruntime)
+  │                 gọi qua subprocess vì python hệ thống KHÔNG có hai thư viện này;
+  │                 hỏng thì tự lùi về cách đoán màu da, bìa không bao giờ chết
+  └─ cham_bia.py   BỘ CHẤM 7 thước (100 điểm) — dựng nhiều phương án rồi chọn bản
+                    tốt nhất, bản thua để trong thumbnail-du-bi/
+```
+
+**Model dùng:** YuNet 227 KB (`~/.cache/socbongda247-models/`) · U²-Net 168 MB (`~/.u2net/`, dùng chung với skill Google Earth).
+
+**Luật cứng:** tầm cao lớp phủ 60–70% chiều cao tính từ đáy (`DAI_CAO_O_TRON`) là **ràng buộc**, không phải điểm cộng trừ. Não sửa được: `kho-tai-nguyen/nao-thumbnail.md`.
+
+## MỘT BÀI MỘT MÁY — giới hạn kiến trúc hiện thời (soi 18/08)
+
+Hệ **chưa chạy song song nhiều bài** được, vì ba chỗ:
+
+| chỗ | vấn đề |
+|---|---|
+| `tram-dang-lam.txt` + `BAI_VUA_MO[0]` | MỘT bài cho cả máy. Extension hỏi tệp này để biết gửi ảnh đi đâu → mở hai tab hai bài thì ảnh về bài mở sau, **nhầm im lặng** |
+| `xuong.py` | không có khoá nào — hai bài dựng cùng lúc = 2 ffmpeg trên máy 16 GB (đã sập nguồn một lần vì chuyện này) |
+| VBee + `claude -p` | chưa có điều tiết nhịp gọi |
+
+Đã sẵn cho song song: `ThreadingHTTPServer` · mỗi bài một thư mục + `.lock` riêng · `NT.khoa_ghi` cho sổ dùng chung · `WM_KHOA` cho LaMa.
