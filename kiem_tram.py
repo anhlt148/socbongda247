@@ -297,7 +297,7 @@ def tang_chinh_phu():
     #    số liệu · máy xếp/khung đôi): việc ảnh hưởng thành phẩm chỉ nằm ở nhánh phụ
     #    là lệch đường mất im lặng. Chuỗi sau-Duyệt-lời phải gọi đủ các máy.
     i_sd = src.find("def _sau_duyet_loi(")
-    than_sd = src[i_sd:i_sd + 12000] if i_sd > 0 else ""
+    than_sd = _than_ham(src, "_sau_duyet_loi")
     for may in ("_xep_kho_nghia", "_gan_nhap_lo", "_mat_kiem_nhap"):
         _bao(may + "(" in than_sd, f"chuỗi sau duyệt gọi {may}()")
     # ⑦  CỔNG MD5 chống nhập trùng kho video — vụ v01≡v09 11/08: một video highlight
@@ -341,7 +341,7 @@ def tang_chinh_phu():
         _bao("_diem_anh_uv" in src_t2 and "sorted(" in src_t2,
              "gán nháp xếp ứng viên theo sức khoẻ ảnh, không theo thứ tự Google")
         i_mk = src_t2.find("def _mat_kiem_nhap(")
-        than_mk = src_t2[i_mk:i_mk + 4000]
+        than_mk = _than_ham(src_t2, "_mat_kiem_nhap")
         _bao("for c in sorted(bd" in than_mk,
              "mắt duyệt soi MỌI ảnh trên cảnh (cả anh gán tay)")
         _bao("may_gan" in than_mk, "ảnh anh gán tay: máy không được gỡ, chỉ nhắc")
@@ -848,10 +848,10 @@ def tang_tu_khoa_anh():
     _bao(src.count("_tk_kho(") >= 4, "mọi chỗ tra kho đều đi qua hàm ấy")
     # anh nhắc thêm 17/08: "tìm online dùng tiếng Anh, tìm trong kho dùng tiếng Việt"
     i_x = src.find("def _xep_kho_nghia")
-    _bao("_tk_kho(nh, i)" in src[i_x:i_x + 3500],
+    _bao("_tk_kho(nh, i)" in (_than_ham(src, "_xep_kho_nghia") or src[i_x:i_x + 3500]),
          "máy xếp kho theo NGHĨA nhận câu VIỆT (nó đọc nhãn kho vốn ghi tiếng Việt)")
     i_t = src.find("def _tim_san")
-    _bao('nh.get("tu_khoa", {})' in src[i_t:i_t + 1200],
+    _bao('nh.get("tu_khoa", {})' in (_than_ham(src, "_tim_san") or src[i_t:i_t + 1200]),
          "tìm ảnh Google vẫn dùng câu ANH (đường ONLINE)")
     _bao("tu_khoa_en" not in src, "trạm không còn tên trường cũ (đổi vai thì đổi tên)")
 
@@ -1723,6 +1723,32 @@ def tang_nhac_chi_dinh():
         _bao(False, f"cổng nhạc chỉ định lỗi: {type(e).__name__}: {e}")
 
 
+def tang_cong_tu_soi():
+    """㉗ BỘ KIỂM TỰ SOI MÌNH — chặn bệnh "cắt thân hàm bằng đếm ký tự".
+
+    Bệnh này tái phát BA lần (18/08 hai lần, 20/08 một lần). Mỗi lần tôi chỉ sửa đúng
+    chỗ vừa gãy, nên nó cứ quay lại ở chỗ khác. Triệu chứng luôn giống nhau: thêm mấy
+    dòng chú thích vào một hàm là cổng báo TRƯỢT OAN một thứ vẫn đang chạy tốt.
+
+    Cổng báo oan NGUY HƠN cổng không có — nó dạy người ta bỏ qua lời cảnh báo. Nên nay
+    chính bộ kiểm tự soi mình: hễ còn dòng nào cắt mã bằng `nguon[i:i+N]` là kêu.
+    """
+    print("㉗ BỘ KIỂM TỰ SOI MÌNH")
+    import re as _re
+    try:
+        me = open(os.path.join(MAY, "kiem_tram.py"), encoding="utf-8").read()
+        xau = []
+        for i, d in enumerate(me.splitlines(), 1):
+            if _re.search(r"\w+\[\s*i_\w+\s*:\s*i_\w+\s*\+\s*\d{3,}\s*\]", d) \
+                    and "_than_ham" not in d:
+                xau.append(f"dòng {i}: {d.strip()[:60]}")
+        _bao(not xau, "không còn chỗ nào cắt thân hàm bằng ĐẾM KÝ TỰ (dùng _than_ham)",
+             " · ".join(xau[:3]))
+        _bao("def _than_ham(" in me, "có sẵn hàm cắt theo cây cú pháp để mà dùng")
+    except Exception as e:
+        _bao(False, f"cổng tự soi lỗi: {type(e).__name__}: {e}")
+
+
 def tang_extension():
     """⑧ TIỆN ÍCH CHROME — nơi code sống NGOÀI thư mục máy, dễ lọt khỏi mọi cổng khác.
 
@@ -1838,6 +1864,7 @@ if __name__ == "__main__":
     tang_clip_ban_do()      # mã clip không lọt vào bản đồ ảnh (19/08)
     tang_ban_do_hai_giong() # ban_do hai giọng: tên trần / đường anh/ (19/08)
     tang_nhac_chi_dinh()    # chỉ định đúng bản nhạc + kho đủ dài (20/08)
+    tang_cong_tu_soi()      # bộ kiểm tự soi: cấm cắt hàm bằng đếm ký tự (20/08)
     if sau:
         tang4_luong(ma)
     else:

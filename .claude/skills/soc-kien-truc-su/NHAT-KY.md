@@ -1302,3 +1302,34 @@ bản ngắn thì nhắc (không còn là lỗi vì đã lặp bù được).
 
 **Đã kiểm:** dựng thật video-9 → XONG 62,1s · 27,5 MB · 11/11 ảnh lên hình ·
 `kiem_tram.py --sau` ✅ ĐẠT HẾT.
+
+## 20/08/2026 (khuya) — ĐẢO THỨ TỰ CHUỖI + quét nhãn kho đêm
+
+**Anh kể đúng bệnh** (ba lý do duyệt ảnh lâu): ① ảnh không khớp nội dung · ② phù hợp
+nhưng mức độ chưa cao · ③ **hệ thống tìm quá lâu nên anh tự tải về trước rồi chọn tay**.
+
+**Đo lý do ③ trên 13 bài:** 9/13 bài anh tự tìm XONG TRƯỚC khi máy xếp kho xong; giữa
+dải máy về đích **SAU anh 10 phút**. Đây là lời giải cho con số 0% ảnh kho hôm qua —
+**kho không tệ, kho về MUỘN**.
+
+**Gốc:** xếp kho (⑤b) chỉ đọc NHÃN CHỮ, không cần một tấm ảnh web nào, nhưng bị xếp sau
+bước tìm web (⑤) vốn mất 8–9 phút. Chín phút xếp hàng vô ích.
+
+**Vì sao không chạy song song được:** mọi lượt tìm đi qua MỘT thẻ Chrome dùng chung
+(`cdp.the_dung_chung`) — hai luồng là giẫm lên nhau. Nên chọn cách khác: cho máy chạy
+SỚM HƠN thay vì NHANH HƠN.
+
+**Sửa:** đảo thứ tự → `⑤b xếp kho → ⑤ tìm web → ⑥ gán nháp`. Anh mở bài sau ~1 phút đã
+có gợi ý kho để dùng; ảnh web về sau trong lúc anh đang duyệt. ⑥ vẫn cuối vì đọc cả hai.
+
+**Cổng báo TRƯỢT OAN — bệnh cũ tái phát LẦN BA:** `src[i_sd:i_sd+12000]` cắt thân hàm
+bằng đếm ký tự; ghi chú tôi vừa thêm đẩy hai lời gọi ra ngoài cửa sổ. Hai lần trước
+(18/08) tôi chỉ sửa đúng chỗ vừa gãy. **Nay rà hết 4 chỗ** → `_than_ham` (cắt theo cây
+cú pháp), và thêm **tầng ㉗ BỘ KIỂM TỰ SOI MÌNH**: hễ còn dòng nào cắt mã bằng
+`nguon[i:i+N]` là kêu.
+
+**Quét nhãn kho đêm** (anh đặt): job launchd `com.socbongda247.quetdem` — tầng ① sonnet
+quét 138 tấm chưa ai nhìn, tầng ② opus soi 486 tấm sonnet "không dám gọi tên".
+Chạy qua launchd chứ không từ phiên Claude (claude CLI lồng nhau bị EPERM).
+
+**Đã kiểm:** `kiem_tram.py --sau` ✅ ĐẠT HẾT.

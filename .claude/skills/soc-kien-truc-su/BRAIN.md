@@ -1186,3 +1186,18 @@ sửa gốc (xưởng tự lặp) chứ không chỉ vá bằng cách kéo dài 
 
 **Kèm theo:** nguồn ngoài đưa vào kho phải **mang dấu trong tên** (`-TIKTOK`) và có sổ
 nguồn riêng — sau vài tháng không ai nhớ bản nào an toàn, bản nào cần kiểm trước khi đăng.
+
+## Sửa đúng chỗ vừa gãy = mời bệnh quay lại (20/08/2026, lần thứ BA)
+
+"Cắt thân hàm bằng đếm ký tự" đã gãy 18/08 hai lần, 20/08 lần nữa. Mỗi lần tôi sửa
+đúng dòng vừa báo oan rồi đi tiếp — nên nó quay lại ở dòng khác, cùng một bệnh.
+
+**Luật rút ra:** sửa xong một lỗi, hỏi ngay *"mẫu sai này còn ở đâu nữa?"* rồi
+`grep` cả tệp — thường mất thêm hai phút, và đó là hai phút mua đứt cả họ lỗi.
+
+Lần này: `grep` ra **4 chỗ**, sửa hết, rồi thêm cổng để **bộ kiểm tự soi chính nó** —
+hễ ai viết lại `nguon[i:i+N]` là kêu ngay. Bệnh nào tái phát tới lần thứ ba thì đừng
+sửa nữa, hãy **dựng cổng chặn cả họ**.
+
+Ghi thêm cho nhớ: **cổng báo oan nguy hơn cổng không có** — nó dạy người ta bỏ qua
+lời cảnh báo, và lần sau cổng kêu thật thì không ai tin nữa.

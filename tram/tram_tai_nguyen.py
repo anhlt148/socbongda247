@@ -2654,6 +2654,36 @@ def _sau_duyet_loi(ma_job, ma):
     except Exception as e:
         tin.append(f"không gợi được card: {e}")
 
+    # ── THỨ TỰ ĐẢO 20/08 — anh kể đúng bệnh: "hệ thống tìm quá lâu nên trong khi nó
+    # xử lý anh đã tự tải về rồi, tự chọn bằng mắt". Đo lại 13 bài: 9 bài anh tự tìm
+    # XONG TRƯỚC khi máy xếp kho xong, giữa dải máy về đích SAU anh 10 phút — nên 0%
+    # ảnh lên hình đến từ kho, dù kho có sẵn 122 tấm Đình Bắc, 180 tấm tuyển Việt Nam.
+    #
+    # Gốc: xếp kho (⑤b) chỉ đọc NHÃN CHỮ của kho nhà, KHÔNG cần một tấm ảnh web nào —
+    # nhưng nó bị xếp sau bước tìm web (⑤) vốn mất 8–9 phút. Chín phút xếp hàng vô ích.
+    # Tìm web thì không thể chạy song song: mọi lượt đi qua MỘT thẻ Chrome dùng chung
+    # (`cdp.the_dung_chung`), hai luồng là giẫm lên nhau.
+    #
+    # Nên đảo: xếp kho lên trước. Anh mở bài sau ~1 phút đã có gợi ý kho để dùng, ảnh
+    # web về sau trong lúc anh đang duyệt. ⑥ gán nháp vẫn đứng cuối vì nó đọc CẢ HAI.
+    # ⑤b MÁY XẾP KHO THEO NGHĨA + ĐỀ XUẤT KHUNG ĐÔI — vào CHUỖI (vá 11/08: bài Bukit
+    # Jalil "sân 90k vs 18k chỗ" không có đề xuất khung đôi nào vì bước này chỉ chạy
+    # khi anh bấm 🧠 tay — đúng họ bệnh "một việc một đường chạy" lần thứ ba trong
+    # ngày). Đặt TRƯỚC gán nháp vì gán nháp đọc bản máy xếp làm nguồn ①a — có bản
+    # xếp thì nháp chuẩn hơn hẳn khớp từ. Một lượt sonnet mỗi bài, anh đã chốt
+    # "chấp nhận model cao để chính xác" cho đúng khâu này.
+    try:
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": False, "buoc": "máy xếp kho theo nghĩa", "tin": tin}
+        r5b = _xep_kho_nghia(ma)
+        if r5b.get("loi"):
+            tin.append(f"máy xếp kho: {r5b['loi']}")
+        else:
+            tin.append(f"máy xếp {r5b.get('co_anh', 0)} ô theo nghĩa"
+                       + (f", đề xuất {r5b['so_doi']} khung đôi" if r5b.get("so_doi") else ""))
+    except Exception as e:
+        tin.append(f"không xếp kho theo nghĩa được: {e}")
+
     # ⑤ TÌM SẴN ảnh cho từng câu — bước lâu nhất (~6 giây/câu) nên để cuối; chạy lúc anh
     # còn đang đọc lời thì thời gian chờ thành thời gian máy (anh chốt 06/08 tối).
     try:
@@ -2692,24 +2722,6 @@ def _sau_duyet_loi(ma_job, ma):
                        if trang else "")
     except Exception as e:
         tin.append(f"không tìm sẵn được ảnh: {e}")
-
-    # ⑤b MÁY XẾP KHO THEO NGHĨA + ĐỀ XUẤT KHUNG ĐÔI — vào CHUỖI (vá 11/08: bài Bukit
-    # Jalil "sân 90k vs 18k chỗ" không có đề xuất khung đôi nào vì bước này chỉ chạy
-    # khi anh bấm 🧠 tay — đúng họ bệnh "một việc một đường chạy" lần thứ ba trong
-    # ngày). Đặt TRƯỚC gán nháp vì gán nháp đọc bản máy xếp làm nguồn ①a — có bản
-    # xếp thì nháp chuẩn hơn hẳn khớp từ. Một lượt sonnet mỗi bài, anh đã chốt
-    # "chấp nhận model cao để chính xác" cho đúng khâu này.
-    try:
-        with KHOA:
-            VIEC_JOB[ma_job] = {"xong": False, "buoc": "máy xếp kho theo nghĩa", "tin": tin}
-        r5b = _xep_kho_nghia(ma)
-        if r5b.get("loi"):
-            tin.append(f"máy xếp kho: {r5b['loi']}")
-        else:
-            tin.append(f"máy xếp {r5b.get('co_anh', 0)} ô theo nghĩa"
-                       + (f", đề xuất {r5b['so_doi']} khung đôi" if r5b.get("so_doi") else ""))
-    except Exception as e:
-        tin.append(f"không xếp kho theo nghĩa được: {e}")
 
     # ⑥ GÁN NHÁP toàn bộ (Phương án ① — anh duyệt 10/08): kho nhà → ứng viên Google,
     # rồi mắt máy kiểm nội dung, tấm lệch tự gỡ. Anh mở trạm ra là bài đã dựng nháp sẵn,
