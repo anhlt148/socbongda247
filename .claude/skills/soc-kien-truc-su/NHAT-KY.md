@@ -1252,3 +1252,28 @@ trống + ô phụ là CLIP". Anh gặp vì gán clip vào ô phụ 4b mà ô ch
 
 **Đã kiểm:** dựng thật đúng bài anh đang làm → **XONG, 71,1s · 23,8 MB · 3/19 cảnh là
 clip**, câu 3 clip lên hình đúng. `kiem_tram.py --sau` ✅ ĐẠT HẾT.
+
+## 19/08/2026 (chiều) — DỰNG HỎNG lần hai: sổ ban_do có HAI GIỌNG
+
+**Anh báo:** dựng video-1 xong, sang video-3 thì chết —
+`FileNotFoundError: .../anh/chon/anh/n34.jpg` (đường bị ghép CHỒNG).
+Anh bổ sung chi tiết quyết định: *"tự tìm ảnh về kho, tự gán, bấm dựng — không quan
+tâm ghép ảnh tự động đã chạy xong hay chưa."*
+
+**Gốc:** sổ `ban_do` có hai giọng ghi:
+- tên trần `07.jpg` — ảnh đã qua bước xếp kho, nằm `anh/chon/`
+- đường `anh/n34.jpg` — ảnh máy nháp/extension tải, nằm ngay `anh/`
+
+Giọng hai do máy gán nháp ghi (`bd[ma_o] = "anh/" + tệp`, dòng ~2150 tram_tai_nguyen).
+Chuỗi tự động có bước xếp kho đổi hết về giọng đầu; anh gán tay + bấm Dựng ngay là ĐI
+TẮT qua bước đó. Xưởng phân giải ba loại sổ thì `anh_phu` và `ghep_canh` đã ghép từ
+GỐC BÀI xưa nay — riêng `ban_do` ghép mù `chon/ + giá_trị` → nổ.
+
+**Sửa:** `_duong_anh()` trong xuong.py — một cửa phân giải: có `/` thì ghép từ gốc bài,
+tên trần thì thử `chon/` rồi `anh/`; tệp mất thì KÊU TO + dùng ảnh nền, không chết bài.
+Cổng ㉕ (4 mục) canh: hàm một cửa có mặt · rẽ nhánh theo `/` · kêu to khi mất tệp ·
+lối ghép mù đã bị thay hẳn.
+
+**Đã kiểm:** dựng thật video-3 (bài hỏng) → XONG 61,2s, 10/10 ảnh anh chọn lên hình ·
+hồi quy video-1 (giọng cũ + clip) → XONG · `kiem_tram.py --sau` ✅ ĐẠT HẾT.
+Cổng soát nuốt cảnh cũng vừa ĐÓNG SỔ: 6/6 lần dựng thật sạch.

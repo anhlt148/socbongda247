@@ -1148,3 +1148,24 @@ trống + ô phụ là clip", và nổ ở chỗ cách nơi gây lỗi cả tră
    nó vừa cứu gì (`🔌`), không im lặng.
 3. **Test phải có ca TỔ HỢP, không chỉ ca đơn.** "Ô chính trống" tôi có test. "Ô phụ là
    clip" tôi có test. Nhưng hai cái CÙNG LÚC thì không — và đó mới là ca chết.
+
+## Quy trình của anh là SPEC, không phải ngoại lệ (19/08/2026)
+
+**Bệnh:** xưởng chỉ hiểu sổ `ban_do` viết bằng tên trần (`07.jpg` trong `chon/`) — vì
+tôi mặc định mọi bài đều đi qua chuỗi tự động có bước xếp kho đổi tên. Anh làm kiểu
+khác: tự tìm ảnh, tự gán, bấm Dựng luôn — sổ khi ấy mang giọng `anh/n34.jpg`, xưởng
+ghép mù thành `anh/chon/anh/n34.jpg` rồi chết.
+
+**Gốc:** tôi coi luồng tự động là "đường chính" và luồng tay của anh là "đường phụ".
+Ngược rồi — **người dùng đi đường nào, đường đó là đường chính.** Hệ có bao nhiêu cửa
+ghi vào một sổ thì bộ đọc phải hiểu đủ bấy nhiêu giọng, không được giả định "trước đó
+chắc chắn đã chạy bước X".
+
+**Phòng:**
+1. **Sổ nào có NHIỀU CỬA GHI thì bộ đọc phải phân giải qua MỘT hàm** hiểu mọi giọng
+   (ở đây: `_duong_anh`). Đối chiếu ngay: `anh_phu`, `ghep_canh` đã làm đúng từ đầu —
+   bệnh chỉ ở `ban_do` vì nó ra đời sớm nhất, trước khi có giọng thứ hai.
+2. **Thêm cửa ghi mới cho một sổ thì rà MỌI BỘ ĐỌC của sổ đó** — máy gán nháp (18/08
+   thêm giọng `anh/`) chính là "cửa ghi mới", mà hôm ấy không ai rà xưởng.
+3. Tệp trong sổ mất → **kêu to + thay nền, không chết cả bài.** Một tấm ảnh hỏng
+   không được giết 60 giây công dựng.

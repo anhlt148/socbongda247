@@ -1655,6 +1655,33 @@ def tang_clip_ban_do():
         _bao(False, f"cổng clip/bản đồ lỗi: {type(e).__name__}: {e}")
 
 
+def tang_ban_do_hai_giong():
+    """㉕ SỔ ban_do CÓ HAI GIỌNG — xưởng phải hiểu cả hai (anh báo 19/08 chiều).
+
+    Sổ ảnh-theo-câu chứa hai kiểu giá trị: tên trần `07.jpg` (ảnh đã qua xếp kho, nằm
+    `anh/chon/`) và đường `anh/n34.jpg` (ảnh máy nháp/extension tải, nằm ngay `anh/`).
+    Giọng hai xuất hiện khi anh GÁN TAY rồi bấm Dựng luôn, không chờ chuỗi xếp kho —
+    quy trình anh mô tả rõ: "tự tìm ảnh về kho, tự gán, bấm dựng, không quan tâm ghép
+    tự động chạy xong chưa". Xưởng cũ chỉ hiểu giọng đầu → FileNotFoundError
+    `anh/chon/anh/n34.jpg`.
+
+    Luật rút ra: MỌI nơi đọc ban_do phải phân giải qua một hàm hiểu cả hai giọng,
+    và tệp mất thì KÊU TO + dùng ảnh nền, không được chết cả bài.
+    """
+    print("㉕ SỔ ban_do HAI GIỌNG (tên trần / đường anh/)")
+    try:
+        x = open(os.path.join(MAY, "xuong.py"), encoding="utf-8").read()
+        _bao("def _duong_anh(" in x, "có hàm phân giải MỘT CỬA cho giá trị ban_do")
+        th = _than_ham(x, "dung_video") or x
+        _bao('"/" in dang' in th, "phân giải rẽ nhánh theo dấu / — hiểu cả hai giọng")
+        _bao("không còn trên đĩa" in th,
+             "tệp anh gán mất thì KÊU TO + dùng ảnh nền, không chết cả bài")
+        _bao("os.path.join(thu, dang) if dang else" not in x,
+             "lối ghép mù chon/+giá_trị đã bị thay hẳn, không còn sót")
+    except Exception as e:
+        _bao(False, f"cổng hai giọng lỗi: {type(e).__name__}: {e}")
+
+
 def tang_extension():
     """⑧ TIỆN ÍCH CHROME — nơi code sống NGOÀI thư mục máy, dễ lọt khỏi mọi cổng khác.
 
@@ -1768,6 +1795,7 @@ if __name__ == "__main__":
     tang_mat_may_cham_bia()  # mắt máy nhìn ảnh + bộ chấm bìa (18/08)
     tang_tai_video()        # yt-dlp còn mới không + luật tải chung (19/08)
     tang_clip_ban_do()      # mã clip không lọt vào bản đồ ảnh (19/08)
+    tang_ban_do_hai_giong() # ban_do hai giọng: tên trần / đường anh/ (19/08)
     if sau:
         tang4_luong(ma)
     else:

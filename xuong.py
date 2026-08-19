@@ -602,6 +602,27 @@ def dung(viec):
 
     if ban_do:
         thu = os.path.join(viec, "anh", "chon")
+
+        def _duong_anh(dang):
+            """Giá trị trong ban_do → đường ảnh THẬT. Sổ này có HAI giọng:
+
+            · tên trần `07.jpg`      — ảnh đã qua bước xếp kho, nằm trong `anh/chon/`
+            · đường   `anh/n34.jpg`  — ảnh máy nháp/extension tải về, nằm ngay `anh/`
+
+            Giọng thứ hai ra đời khi anh GÁN TAY rồi bấm Dựng luôn, không chờ chuỗi
+            xếp kho đổi tên (anh kể rõ quy trình 19/08). Bản cũ chỉ hiểu giọng đầu,
+            ghép mù `chon/ + anh/n34.jpg` → FileNotFoundError. Xưởng phải hiểu CẢ HAI
+            — như `anh_phu` và `ghep_canh` vốn đã ghép từ gốc bài xưa nay.
+            """
+            if not dang:
+                return None
+            cac = ([os.path.join(viec, dang)] if "/" in dang else
+                   [os.path.join(thu, dang), os.path.join(viec, "anh", dang)])
+            for c in cac:
+                if os.path.exists(c):
+                    return c
+            return None
+
         xep, dang = [], None
         for i_cau in mo_cau_goc:
             # lấy ảnh theo câu MỞ cảnh, không theo điểm giữa: cảnh giờ mở đúng tại câu anh
@@ -609,7 +630,12 @@ def dung(viec):
             for i in range(i_cau, -1, -1):          # câu chưa khai thì kế thừa câu trước
                 if i in ban_do:
                     dang = ban_do[i]; break
-            xep.append(os.path.join(thu, dang) if dang else kho_anh[0])
+            d_that = _duong_anh(dang)
+            if dang and not d_that:
+                # tệp anh gán đã mất (dọn kho, đổi tên) — KÊU TO rồi dùng ảnh nền thay,
+                # để cả bài không chết vì một tấm; cổng soát cảnh cuối vẫn đếm lại đủ.
+                print(f"  ⚠ ảnh anh gán '{dang}' không còn trên đĩa — thay bằng ảnh nền")
+            xep.append(d_that or kho_anh[0])
         dung_that = len({os.path.basename(x) for x in xep})
         print(f"  ảnh neo theo câu · {dung_that}/{len(set(ban_do.values()))} ảnh anh chọn LÊN HÌNH")
     elif chon_tay:
