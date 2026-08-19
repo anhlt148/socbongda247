@@ -1621,6 +1621,40 @@ def tang_tai_video():
         _bao(False, f"cổng yt-dlp lỗi: {type(e).__name__}: {e}")
 
 
+def tang_clip_ban_do():
+    """㉔ MÃ CLIP KHÔNG ĐƯỢC LỌT VÀO BẢN ĐỒ ẢNH — lỗi tôi tự gây ra 18/08.
+
+    Hôm ấy tôi thêm hai luật cho xưởng: "ô chính trống thì dời ô phụ lên" và "câu ngắn
+    thì ưu tiên cho clip lên hình". Cả hai đều ghi thẳng giá trị ô phụ vào `ban_do` —
+    mà `ban_do` chỉ được chứa TÊN ẢNH. Ô phụ là clip thì mã `clip::tệp::từ::đến` lọt
+    vào, xưởng ghép nó với `anh/chon/` rồi đưa cho bộ đọc ảnh:
+
+        anh/chon/clip::clip/tay/tay_02_....mp4::51.6::54.3::0.2361,...
+
+    Anh gặp 19/08 khi gán clip vào ô phụ 4b mà ô chính bỏ trống. Hôm 18/08 tôi test
+    không ra vì bài thử không có ca ấy — ô phụ toàn là ảnh.
+
+    Bài học: chỗ chết cách chỗ gây lỗi cả trăm dòng, nên cổng phải canh cả hai đầu —
+    nhánh ghi cho đúng, VÀ cầu chì chặn ngay trước lúc dùng.
+    """
+    print("㉔ MÃ CLIP vs BẢN ĐỒ ẢNH")
+    try:
+        x = open(os.path.join(MAY, "xuong.py"), encoding="utf-8").read()
+        _bao("def _tach_clip(" in x,
+             "có MỘT hàm tách mã clip dùng chung, không mỗi nơi tách một kiểu")
+        than = _than_ham(x, "dung_video") or x
+        _bao("mã clip lọt vào bản đồ ẢNH" in than,
+             "có CẦU CHÌ: mã clip lọt vào bản đồ ảnh thì chuyển sang sổ clip, không chết")
+        _bao("ban_do[_i], _ds[0] = _ds[0], ban_do[_i]" not in x,
+             "nhánh ƯU TIÊN CLIP không còn đẩy mã clip vào bản đồ ảnh")
+        import re as _re
+        kh = _re.search(r"for _i, _ds in _ap_som[.]items[(][)]:(.{0,700})", x, _re.S)
+        _bao(bool(kh) and "_tach_clip(_ds[0])" in kh.group(1),
+             "nhánh DỜI Ô PHỤ LÊN kiểm clip trước khi ghi vào bản đồ ảnh")
+    except Exception as e:
+        _bao(False, f"cổng clip/bản đồ lỗi: {type(e).__name__}: {e}")
+
+
 def tang_extension():
     """⑧ TIỆN ÍCH CHROME — nơi code sống NGOÀI thư mục máy, dễ lọt khỏi mọi cổng khác.
 
@@ -1733,6 +1767,7 @@ if __name__ == "__main__":
     tang_cua_soi_dung_o()   # cửa soi gán đúng ô, không đè ô phụ (18/08)
     tang_mat_may_cham_bia()  # mắt máy nhìn ảnh + bộ chấm bìa (18/08)
     tang_tai_video()        # yt-dlp còn mới không + luật tải chung (19/08)
+    tang_clip_ban_do()      # mã clip không lọt vào bản đồ ảnh (19/08)
     if sau:
         tang4_luong(ma)
     else:

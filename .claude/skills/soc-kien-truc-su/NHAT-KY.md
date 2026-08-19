@@ -1221,3 +1221,34 @@ luật trên có mặt ở CẢ HAI đường tải.
 
 **Đã kiểm:** tải thật đúng video anh báo qua đúng route extension (`/api/nhan-video`) →
 247 giây · 20,2 MB · vào đúng thư mục clip. `kiem_tram.py --sau` ✅ ĐẠT HẾT.
+
+## 19/08/2026 — DỰNG HỎNG: mã clip lọt vào bản đồ ẢNH (lỗi tôi gây ra 18/08)
+
+**Anh báo:** bấm Dựng thì chết —
+`FileNotFoundError: .../anh/chon/clip::clip/tay/tay_02_....mp4::51.6::54.3::0.2361,...`
+
+**Anh hỏi đúng:** "em vừa sửa gì mà sinh ra lỗi này?" — tôi có sửa thật, nhưng là
+**18/08 chứ không phải 19/08**. Hôm nay tôi chỉ đụng `yt_tai.py`, `nhap_kho_video.py`,
+`tram_tai_nguyen.py`, `kiem_tram.py`; `xuong.py` không nằm trong đó.
+
+**Gốc:** hôm 18/08 tôi thêm hai luật cho `xuong.py`, **cả hai đều ghi thẳng giá trị ô
+phụ vào `ban_do`** — mà `ban_do` chỉ được chứa TÊN ẢNH:
+- "ô chính trống → dời ô phụ lên"
+- "câu ngắn → ưu tiên cho clip lên hình" (còn đổi chỗ thẳng: `ban_do[_i], _ds[0] = ...`)
+
+Ô phụ là clip thì mã `clip::tệp::từ::đến::khung` lọt vào bản đồ ảnh, xưởng ghép nó với
+`anh/chon/` rồi đưa cho bộ đọc ảnh → chết. **Chỗ chết cách chỗ gây lỗi cả trăm dòng.**
+
+**Vì sao 18/08 test không ra:** bài thử hôm ấy ô phụ toàn là ảnh, không có ca "ô chính
+trống + ô phụ là CLIP". Anh gặp vì gán clip vào ô phụ 4b mà ô chính bỏ trống.
+
+**Sửa:**
+- `_tach_clip()` — MỘT hàm tách mã clip dùng chung (trước đó tách tay ở hai nơi)
+- nhánh "ưu tiên clip": clip vào `clip_canh`, ảnh Ở NGUYÊN ô chính làm nền
+- nhánh "dời ô phụ lên": ô phụ là clip thì cũng vào `clip_canh`
+- **CẦU CHÌ** ngay trước lúc dùng: mã clip lọt vào `ban_do` thì tự chuyển sang sổ clip
+  và in `🔌` — dù nhánh nào lỡ tay, bài vẫn dựng được
+- `kiem_tram.py` tầng ㉔ (4 mục) canh cả hai đầu
+
+**Đã kiểm:** dựng thật đúng bài anh đang làm → **XONG, 71,1s · 23,8 MB · 3/19 cảnh là
+clip**, câu 3 clip lên hình đúng. `kiem_tram.py --sau` ✅ ĐẠT HẾT.

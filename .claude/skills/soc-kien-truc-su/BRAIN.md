@@ -1127,3 +1127,24 @@ qua được lớp chặn; yt-dlp thấy danh sách rỗng thì than "không có
 4. **Lỗi hiện cho anh phải dịch sang việc anh làm được.** "Requested format is not
    available" thì anh biết làm gì? Nay là: *"YouTube đang chặn máy tải — chờ vài phút
    rồi thử lại, hoặc dán link khác"*, kèm nhắc nâng cấp nếu công cụ đã quá hạn.
+
+## Thêm luật mới thì phải hỏi: giá trị đó có thể là KIỂU KHÁC không? (19/08/2026)
+
+**Bệnh:** 18/08 tôi thêm hai luật cùng dạng — "ô chính trống thì lấy ô phụ lên", "câu
+ngắn thì cho clip lên hình". Cả hai viết `ban_do[i] = _ds[0]` mà không hỏi `_ds[0]` là
+CÁI GÌ. Ô phụ chứa được hai kiểu: tên ảnh, và mã clip `clip::tệp::từ::đến`. Bản đồ ảnh
+chỉ nuốt được kiểu thứ nhất.
+
+**Vì sao thoát mọi cổng:** mã không sai cú pháp, không sai tên biến, test 18/08 chạy
+sạch — vì bài thử hôm ấy ô phụ toàn là ảnh. Lỗi chỉ nổ khi gặp **tổ hợp** "ô chính
+trống + ô phụ là clip", và nổ ở chỗ cách nơi gây lỗi cả trăm dòng.
+
+**Phòng — ba việc, làm đủ cả ba:**
+1. **Chép một giá trị từ chỗ A sang chỗ B thì hỏi: B nhận được mọi kiểu A có thể mang
+   không?** Ở hệ này, chỗ nào chứa "hình" đều có thể là ảnh HOẶC clip — luật anh dặn
+   09/08 ("bình đẳng ảnh/clip") chính là chuyện này, tôi quên áp cho luật mới.
+2. **Đặt CẦU CHÌ ngay trước chỗ dùng, đừng chỉ vá nhánh ghi.** Nhánh ghi thì còn thêm
+   nữa; cầu chì ở cửa ra chặn được cả những nhánh chưa viết. Cầu chì phải **nói ra**
+   nó vừa cứu gì (`🔌`), không im lặng.
+3. **Test phải có ca TỔ HỢP, không chỉ ca đơn.** "Ô chính trống" tôi có test. "Ô phụ là
+   clip" tôi có test. Nhưng hai cái CÙNG LÚC thì không — và đó mới là ca chết.

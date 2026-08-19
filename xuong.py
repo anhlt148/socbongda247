@@ -446,6 +446,30 @@ def dung(viec):
             clip_canh = {int(k): v for k, v in json.load(open(p_cc)).items()}
         except Exception:
             clip_canh = {}
+    def _tach_clip(ma):
+        """clip::tệp::từ::đến[::x,y,w,h] → dict cho clip_canh; None nếu không phải clip.
+
+        BẢN ĐỒ ẢNH CHỈ ĐƯỢC CHỨA ẢNH. Mã clip lọt vào đó là xưởng ghép nó với thư mục
+        `anh/chon/` rồi đưa cho bộ đọc ảnh — ra `anh/chon/clip::clip/tay/...mp4::51.6`
+        và chết ngay. Anh gặp đúng lỗi này 19/08.
+        """
+        if not (isinstance(ma, str) and ma.startswith("clip::")):
+            return None
+        ph = ma.split("::")
+        if len(ph) < 4:
+            return None
+        try:
+            d = {"tep": ph[1], "tu": float(ph[2]), "den": float(ph[3])}
+        except ValueError:
+            return None
+        if len(ph) > 4 and ph[4]:
+            try:
+                _x, _y, _w, _h = (float(t) for t in ph[4].split(","))
+                d["khung"] = {"x": _x, "y": _y, "w": _w, "h": _h}
+            except ValueError:
+                pass
+        return d
+
     _da_doi_len = set()          # câu nào đã dời ô phụ b lên làm ô chính
     _ap_som = {}                 # ô phụ anh gán, bản dùng chung cho cả dựng lẫn soát
     if ban_do:
@@ -466,15 +490,42 @@ def dung(viec):
             if _i in ban_do and _ds and "::" in str(_ds[0]) \
                     and "::" not in str(ban_do[_i]):
                 if NC.so_o_toi_da(cau_moc[_i] - (cau_moc[_i - 1] if _i else 0.0)) <= 1:
-                    ban_do[_i], _ds[0] = _ds[0], ban_do[_i]
-                    print(f"  ⇄ câu {_i + 1}: chỉ đủ MỘT khung → đưa CLIP lên ô chính "
-                          f"(ưu tiên cảnh video), ảnh lui về ô phụ")
+                    _cl = _tach_clip(_ds[0])
+                    if _cl and _i not in clip_canh:
+                        # Clip đi vào SỔ CLIP, ảnh Ở NGUYÊN ô chính làm nền. Bản 18/08
+                        # đổi chỗ thẳng vào ban_do — mà ban_do chỉ được chứa ẢNH.
+                        clip_canh[_i] = _cl
+                        _ds.pop(0)
+                        print(f"  ⇄ câu {_i + 1}: chỉ đủ MỘT khung → cho CLIP lên hình "
+                              f"(ưu tiên cảnh video), ảnh làm nền")
         for _i, _ds in _ap_som.items():
             if _i not in ban_do and _ds:
+                _cl = _tach_clip(_ds[0])
+                if _cl:
+                    # Ô phụ là CLIP: vào sổ clip, không vào bản đồ ảnh. Ảnh nền để
+                    # nhánh ngay dưới mượn của câu trước — clip vẫn lên hình đúng câu.
+                    if _i not in clip_canh:
+                        clip_canh[_i] = _cl
+                    _da_doi_len.add(_i)
+                    print(f"  ↑ câu {_i + 1}: ô chính trống → dời CLIP ở ô phụ b lên "
+                          f"({os.path.basename(_cl['tep'])[:40]})")
+                    continue
                 ban_do[_i] = _ds[0]
                 _da_doi_len.add(_i)      # ô phụ b của câu này ĐÃ thành ô chính
                 print(f"  ↑ câu {_i + 1}: ô chính trống → dời hình ở ô phụ b lên "
                       f"({os.path.basename(str(_ds[0]))[:40]})")
+        # ── CẦU CHÌ: bản đồ ảnh KHÔNG BAO GIỜ được chứa mã clip ──────────────
+        # Ba nhánh ở trên đều có thể lỡ tay đẩy mã clip vào đây, và hậu quả không hiện
+        # ra ngay: xưởng ghép nó với `anh/chon/` rồi mới chết ở bộ đọc ảnh, cách chỗ
+        # gây lỗi cả trăm dòng. Chặn tại đây thì dù nhánh nào sai, bài vẫn dựng được và
+        # máy nói rõ nó vừa cứu chuyện gì.
+        for _i in [k for k, v in ban_do.items() if _tach_clip(v)]:
+            _cl = _tach_clip(ban_do.pop(_i))
+            if _i not in clip_canh:
+                clip_canh[_i] = _cl
+            _da_doi_len.discard(_i)
+            print(f"  🔌 câu {_i + 1}: mã clip lọt vào bản đồ ẢNH → chuyển sang sổ clip")
+
         for i in sorted(clip_canh):
             if i not in ban_do:
                 for j in range(i - 1, -1, -1):
