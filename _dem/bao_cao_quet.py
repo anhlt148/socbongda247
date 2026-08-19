@@ -99,6 +99,35 @@ def bao_cao(log=None):
     for k, v in chu.most_common(12):
         A(f"- {v:4d} ảnh — {k}")
     A("")
+    # nhịp chuỗi — có dữ liệu thì báo luôn, chưa có thì lặng
+    nhip = os.path.expanduser("~/socbongda247/hoc/nhip-chuoi.jsonl")
+    if os.path.exists(nhip):
+        import collections as _c
+        g = _c.defaultdict(list)
+        for l in open(nhip, encoding="utf-8"):
+            try:
+                x = json.loads(l)
+                g[x["buoc"]].append(x["giay"])
+            except (ValueError, KeyError):
+                pass
+        if g:
+            A("## Nhịp chuỗi sau Duyệt lời (đồng hồ đặt 20/08)")
+            A("")
+            A("| bước | số bài | giữa dải |")
+            A("|---|---|---|")
+            ten = {"xep_kho": "⑤b xếp kho (đọc nhãn)", "tim_web": "⑤ tìm ảnh web",
+                   "gan_nhap": "⑥ gán nháp"}
+            for k in ("xep_kho", "tim_web", "gan_nhap"):
+                v = sorted(g.get(k) or [])
+                if v:
+                    A(f"| {ten[k]} | {len(v)} | **{v[len(v)//2]/60:.1f} phút** |")
+            A("")
+            xk = sorted(g.get("xep_kho") or [])
+            if xk:
+                A(f"> Sau phép đảo thứ tự, anh mở bài là có gợi ý kho sau "
+                  f"**{xk[len(xk)//2]/60:.1f} phút** thay vì phải chờ hết bước tìm web.")
+                A("")
+
     A("## Điểm mù — phải nói trước")
     A("")
     A("- Máy tự chấm độ chắc của chính mình, **không ai kiểm lại** — tấm ghi \"chắc cao\" "

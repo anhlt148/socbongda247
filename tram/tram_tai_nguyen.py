@@ -2505,6 +2505,29 @@ def _chay_kiem_ct(ma_job, ma, tieu_de, loi_binh):
             VIEC_JOB[ma_job] = {"xong": True, "loi": str(e), "da_sua": []}
 
 
+NHIP_SO = os.path.join(DD.MAY, "hoc", "nhip-chuoi.jsonl")
+
+
+def _ghi_nhip(ma, buoc, giay):
+    """Ghi MỘT dòng: bước nào của chuỗi xong lúc nào, mất bao lâu.
+
+    Vì sao cần: 19/08 anh kể "hệ thống tìm quá lâu nên trong khi nó xử lý anh đã tự tải
+    về rồi". Đo gián tiếp qua dấu thời gian tệp cho ra "máy về đích sau anh 10 phút" —
+    đủ để tìm ra bệnh, nhưng không đủ để biết bước nào ăn mất bao nhiêu, và không chứng
+    minh được phép đảo thứ tự 20/08 có ăn thua hay không.
+
+    Bọc kín trong try: sổ nhịp hỏng thì mất số liệu, KHÔNG được làm gãy chuỗi dựng bài.
+    """
+    try:
+        os.makedirs(os.path.dirname(NHIP_SO), exist_ok=True)
+        with NT.khoa_ghi(NHIP_SO) as f:
+            f.write(json.dumps({"ma": ma, "buoc": buoc, "giay": round(giay, 1),
+                                "luc": time.strftime("%Y-%m-%d %H:%M:%S")},
+                               ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
 def _sau_duyet_loi(ma_job, ma):
     """Anh bấm Duyệt lời xong thì máy TỰ ĐI TIẾP (anh chốt 06/08).
 
@@ -2672,6 +2695,7 @@ def _sau_duyet_loi(ma_job, ma):
     # ngày). Đặt TRƯỚC gán nháp vì gán nháp đọc bản máy xếp làm nguồn ①a — có bản
     # xếp thì nháp chuẩn hơn hẳn khớp từ. Một lượt sonnet mỗi bài, anh đã chốt
     # "chấp nhận model cao để chính xác" cho đúng khâu này.
+    _t_xk = time.time()
     try:
         with KHOA:
             VIEC_JOB[ma_job] = {"xong": False, "buoc": "máy xếp kho theo nghĩa", "tin": tin}
@@ -2683,6 +2707,7 @@ def _sau_duyet_loi(ma_job, ma):
                        + (f", đề xuất {r5b['so_doi']} khung đôi" if r5b.get("so_doi") else ""))
     except Exception as e:
         tin.append(f"không xếp kho theo nghĩa được: {e}")
+    _ghi_nhip(ma, "xep_kho", time.time() - _t_xk)
 
     # ⑤ TÌM SẴN ảnh cho từng câu — bước lâu nhất (~6 giây/câu) nên để cuối; chạy lúc anh
     # còn đang đọc lời thì thời gian chờ thành thời gian máy (anh chốt 06/08 tối).
@@ -2691,7 +2716,9 @@ def _sau_duyet_loi(ma_job, ma):
             with KHOA:
                 VIEC_JOB[ma_job] = {"xong": False, "buoc": buoc, "da": da, "tong": tong,
                                     "tin": tin}
+        _t_tw = time.time()
         c = _tim_san(ma, None, bao5)
+        _ghi_nhip(ma, "tim_web", time.time() - _t_tw)
         tin.append(f"tìm sẵn {sum(len(v.get('anh', [])) for v in c.values())} ảnh ứng viên "
                    f"cho {len(c)} câu")
         # ⑤a TÌM LẠI VÒNG 2 cho câu TRẮNG TAY (anh đặt 12/08: "cảnh nào tìm chưa được
@@ -2731,7 +2758,9 @@ def _sau_duyet_loi(ma_job, ma):
             with KHOA:
                 VIEC_JOB[ma_job] = {"xong": False, "buoc": buoc, "da": da, "tong": tong,
                                     "tin": tin}
+        _t_gn = time.time()
         r6 = _gan_nhap_lo(ma, bao6)
+        _ghi_nhip(ma, "gan_nhap", time.time() - _t_gn)
         tin.append(f"gán nháp {r6['kho']} tấm kho nhà + {r6['web']} tấm web"
                    + (f" (tự tìm thêm {r6['tim_them']} câu)" if r6.get("tim_them") else "")
                    + (f", bỏ {r6['bo_trung']} tấm trùng kho" if r6.get("bo_trung") else "")
