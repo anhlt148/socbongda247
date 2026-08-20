@@ -1247,3 +1247,24 @@ thích cho người ĐÃ tò mò, không phải lời mời.
 **Kèm:** thuật toán "đúng" có thể NGƯỢC với người — nhảy "ô trống kế theo vòng" là tối
 ưu máy, nhưng người làm tuần tự thấy như bị giật ngược về đầu. Khi máy định làm gì
 BẤT NGỜ (nhảy vị trí, đổi ngữ cảnh), thà đứng lại và NÓI một câu còn hơn tự quyết.
+
+## Lỗi giao diện thì mở TRÌNH DUYỆT THẬT, đừng đoán từ mã (20/08/2026)
+
+Anh báo "ảnh vẫn đen, popup tự thoát" — nếu tiếp tục đọc mã để đoán, tôi sẽ sửa sai
+lần nữa. Mở Browser pane vào đúng bài của anh, 10 phút ra BA sự thật mã không nói:
+- popup tự thoát vì bài chỉ còn 1 ô trống (thiết kế "đi ô trống" lỗi thời khi máy nháp
+  phủ sẵn 16/17 ô) — đây là giả thuyết CHỈ dữ liệu thật mới xác nhận được;
+- onerror tôi vừa viết hỏng cú pháp mà không có một dòng lỗi console nào — chỉ soi DOM
+  (naturalWidth=0, không div báo) + chạy tay attribute mới lộ "missing )";
+- ảnh 200 OK mà "đen" = chụp màn lúc chưa tải xong — suýt đi sửa một lỗi không có.
+
+**Luật:** bug giao diện → tái hiện trong trình duyệt thật TRƯỚC khi sửa: đọc DOM
+(complete/naturalWidth/offsetHeight), network (status thật từng ảnh), console; và thử
+PHÍM THẬT sau khi sửa. Mã nói "phải chạy được"; chỉ trình duyệt nói "có chạy không".
+
+**Kèm hai luật con:**
+- Đừng nhét mã vào thuộc tính on* của HTML sinh bằng chuỗi — ba tầng nháy lồng nhau
+  hỏng im re. Gắn addEventListener sau render; nhớ nhánh ảnh chết TRƯỚC khi gắn
+  (`complete && !naturalWidth`).
+- Tính năng "đi ô trống" từng đúng khi ô trống nhiều; máy nháp phủ sẵn làm nó lỗi
+  thời. Tính năng phải XÉT LẠI khi bối cảnh dùng đổi, không phải chỉ khi nó gãy.

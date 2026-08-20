@@ -1440,3 +1440,27 @@ thật (dòng 863 `_luu_nhap`), sửa luôn. Cổng tự lớn đúng nghĩa.
 
 Đã kiểm: proxy 200+JPEG với báo thường, 502 với fbsbx (không cache rác); nguồn 🧠 đủ
 w/h + lý do; ĐẠT HẾT.
+
+## 20/08/2026 (khuya) — Gán nhanh lần hai: soi bằng TRÌNH DUYỆT THẬT mới ra ba bệnh
+
+Anh báo tiếp: ảnh web vẫn đen · chọn xong popup TỰ THOÁT. Lần này không đoán — mở
+trình duyệt thật (Browser pane), mở đúng bài của anh, đọc DOM + network:
+
+① **Popup tự thoát = thiết kế lỗi thời, không phải bug:** bài 17 ô thì máy gán nháp đã
+   phủ 16 — màn "chỉ đi ô trống" vào phát là hết việc → 🎉 đóng. Việc thật của anh nay
+   là DUYỆT + THAY. Sửa: gán xong sang Ô KẾ TUẦN TỰ; Space = giữ nguyên sang ô kế;
+   phím T = tới ô trống kế; mở màn đứng ngay ô đang chọn, không tự dịch anh đi đâu.
+   (Đã thử phím thật qua CDP: cảnh 1 → 1b → 2 → ← lui đúng.)
+② **Ảnh chết không hiện chữ 🚫:** thuộc tính onerror tôi viết hôm nay LỖI CÚ PHÁP
+   ("missing ) after argument list") vì BA TẦNG NHÁY lồng nhau — lỗi im re, attribute
+   có mặt mà không chạy. Soi DOM mới thấy (naturalWidth=0 mà không có div báo). Sửa:
+   bỏ hẳn lối nhét mã vào attribute, gắn addEventListener('error') sau khi render,
+   kèm nhánh `im.complete && !im.naturalWidth` cho ảnh chết TRƯỚC khi listener gắn.
+③ **Màn đen anh chụp lúc chiều** phần lớn do chụp lúc ảnh chưa tải + bản trang cũ;
+   xác minh THẬT sau sửa: 8 ô → 4 ảnh kho + 1 web qua proxy hiện đủ, 3 link Facebook
+   chết hiện "🚫 báo gốc chặn xem trước". (Hớ của tôi: kiểm cache bằng curl -I (HEAD)
+   nên tưởng thiếu no-store — GET có đủ từ trước.)
+
+Cổng: +3 mục (listener sạch neo thân gnVe · sang ô kế tuần tự · phím T). Một cổng đầu
+viết QUÁ RỘNG (cấm onerror cả nửa file → trượt oan vì 2 onerror một-dòng hợp lệ của
+phần khác) — thu hẹp về đúng thân gnVe. ĐẠT HẾT.

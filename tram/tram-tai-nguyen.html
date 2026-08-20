@@ -768,7 +768,8 @@ Dùng khi bài chưa duyệt lời, hoặc anh vừa sửa lời nên muốn g�
     <span style="color:#a0938a;font-size:11.5px">
       <b style="color:#f4efe9">1–8</b> gán + sang cảnh sau ·
       <b style="color:#f4efe9">0</b> bỏ ảnh ·
-      <b style="color:#f4efe9">Space</b> bỏ qua ·
+      <b style="color:#f4efe9">Space</b> giữ nguyên, sang ô kế ·
+      <b style="color:#f4efe9">T</b> tới ô trống ·
       <b style="color:#f4efe9">←→</b> đổi cảnh ·
       <b style="color:#f4efe9">/</b> tìm ·
       <b style="color:#f4efe9">Esc</b> đóng</span>
@@ -2222,10 +2223,10 @@ async function moGanNhanh(){
   if (!ma || !dl) return;
   gnMo = true;
   $('#ganNhanh').style.display = 'flex';
-  // vào là nhảy thẳng tới Ô CÒN TRỐNG đầu tiên (chính hay phụ đều được)
-  const dau = dangPhu ? {cau: dangPhu.cau, phan: dangPhu.phan}
-                      : {cau: dangChon, phan: null};
-  gnO = gnCoAnh(dau) ? (gnOTrongKe(dau) || dau) : dau;
+  // vào là đứng NGAY Ô ĐANG CHỌN — máy nháp phủ sẵn hầu hết ô nên nhảy tới "ô
+  // trống đầu tiên" là dịch anh đi chỗ khác vô cớ; muốn tới ô trống thì bấm T
+  gnO = dangPhu ? {cau: dangPhu.cau, phan: dangPhu.phan}
+                : {cau: dangChon, phan: null};
   await gnVe();
 }
 function dongGanNhanh(){
@@ -2264,9 +2265,7 @@ async function gnVe(){
         border-radius:10px;overflow:hidden;position:relative;display:flex;
         flex-direction:column;background:#141110">
         <img src="${m.nguon === 'web' ? '/anh-web?u=' + encodeURIComponent(m.u) : esc(m.u)}"
-          loading="lazy" onerror="this.style.display='none';
-            this.parentElement.insertAdjacentHTML('afterbegin',
-            '<div style=\'flex:1;display:grid;place-items:center;color:#6b5c53;font-size:11px;padding:8px;text-align:center\'>🚫 báo gốc chặn xem trước<br>bấm số để máy thử tải bằng trình duyệt thật</div>')"
+          loading="lazy"
           style="width:100%;flex:1;min-height:0;object-fit:cover;display:block">
         <div style="position:absolute;top:5px;left:5px;background:#FFD400;color:#1a1512;
           font-weight:800;font-size:13px;width:22px;height:22px;border-radius:6px;
@@ -2274,8 +2273,24 @@ async function gnVe(){
         <div style="font-size:10.5px;color:#a0938a;padding:3px 6px;white-space:nowrap;
           overflow:hidden;text-overflow:ellipsis">${esc(m.nhan || '')}</div>
       </div>`).join('');
-  $('#gnLuoi').querySelectorAll('.gn-o').forEach(o =>
-    o.onclick = () => gnChon(+o.dataset.k));
+  $('#gnLuoi').querySelectorAll('.gn-o').forEach(o => {
+    o.onclick = () => gnChon(+o.dataset.k);
+    // ảnh chết (báo gốc chặn / link hết hạn) → nói rõ thay vì ô đen câm. Bản đầu nhét
+    // mã vào thuộc tính onerror — ba tầng nháy lồng nhau làm hỏng cú pháp, lỗi im re
+    // (tự bắt 20/08 khi soi DOM: attribute có mặt mà chạy ra "missing )").
+    const im = o.querySelector('img');
+    if (!im) return;
+    const baoChan = () => {
+      im.style.display = 'none';
+      const d = document.createElement('div');
+      d.style.cssText = 'flex:1;display:grid;place-items:center;color:#6b5c53;'
+        + 'font-size:11px;padding:8px;text-align:center';
+      d.innerHTML = '🚫 báo gốc chặn xem trước<br>bấm số để máy thử tải bằng trình duyệt thật';
+      o.prepend(d);
+    };
+    if (im.complete && !im.naturalWidth) baoChan();    // lỗi đã xảy ra trước khi gắn
+    else im.addEventListener('error', baoChan, {once: true});
+  });
   // nạp sẵn ứng viên Ô trống kế — lúc anh đang nhìn thì máy đã đi lấy rồi
   const ke = gnOTrongKe(gnO);
   if (ke) gnLay(ke, '');
@@ -2312,14 +2327,15 @@ async function gnChon(k){
         if (g.anh_phu) anhPhu = g.anh_phu;
       }
       delete _gnKho[gnMaO(oNay) + '|'];              // ô này đổi rồi, nạp lại nếu quay về
-      const ke = gnOTrongKe(oNay, false, true);      // chỉ TIẾN — không lộn về đầu
-      const conTruoc = gnOTrongKe(oNay, true, true); // còn ô trống phía trước không?
-      if (!ke && !conTruoc){
-        bao('🎉 Hết ô trống — mọi cảnh (cả phụ) đã có ảnh');
+      // SANG Ô KẾ TIẾP TUẦN TỰ — không phải ô-trống-kế. Máy gán nháp đã phủ sẵn hầu
+      // hết ô, nên "chỉ đi ô trống" vào phát là hết việc, popup tự đóng (anh báo
+      // 20/08: "chọn xong tự thoát"). Việc thật của anh là DUYỆT + THAY từng ô.
+      const dsO2 = gnDanhSachO();
+      const i2 = dsO2.findIndex(x => x.cau === oNay.cau && x.phan === oNay.phan);
+      const ke = i2 + 1 < dsO2.length ? dsO2[i2 + 1] : null;
+      if (!ke){
+        bao('🎉 Đã duyệt tới ô cuối cùng');
         dongGanNhanh();
-      } else if (!ke){
-        gnVe();                                      // đứng yên tại ô vừa gán
-        bao('✔ Phía sau đã đầy — còn ô trống ở PHÍA TRƯỚC, bấm ← để lui tới đó');
       } else {
         gnO = ke; $('#gnTim').value = ''; $('#gnTimXoa').style.display = 'none';
         gnVe();
@@ -2376,11 +2392,19 @@ document.addEventListener('keydown', e => {
     }
     return;
   }
-  if (e.key === ' '){                              // bỏ qua, sang ô trống kế PHÍA SAU
+  if (e.key === ' '){                              // giữ ảnh đang có, sang ô kế
     e.preventDefault();
-    const ke = gnOTrongKe(gnO, false, true);
+    const dsS = gnDanhSachO();
+    const iS = dsS.findIndex(x => x.cau === gnO.cau && x.phan === gnO.phan);
+    if (iS + 1 < dsS.length){ gnO = dsS[iS + 1]; $('#gnTim').value = ''; gnVe(); }
+    else bao('🎉 Đã ở ô cuối cùng');
+    return;
+  }
+  if (e.key === 't' || e.key === 'T'){             // nhảy thẳng tới ô TRỐNG kế
+    e.preventDefault();
+    const ke = gnOTrongKe(gnO, false, true) || gnOTrongKe(gnO, true, true);
     if (ke){ gnO = ke; $('#gnTim').value = ''; gnVe(); }
-    else bao('✔ Phía sau hết ô trống — bấm ← để lui về ô trống phía trước');
+    else bao('✔ Không còn ô trống nào');
     return;
   }
   if (e.key === 'ArrowRight' || e.key === 'ArrowLeft'){

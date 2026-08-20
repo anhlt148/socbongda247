@@ -1846,8 +1846,13 @@ def tang_loc_video():
              "có proxy ảnh web + chỉ cache ẢNH THẬT (fbsbx trả HTML 200 thì từ chối)")
         _bao("'/anh-web?u=' + encodeURIComponent(m.u)" in h2,
              "lưới Gán nhanh bày ảnh web qua proxy, hết ô đen câm")
-        _bao("gnOTrongKe(oNay, false, true)" in h2 and "khongVong" in h2,
-             "gán xong chỉ nhảy TIẾN, hết phía sau thì đứng lại và nói, không lộn về đầu")
+        _gv = h2[h2.find("async function gnVe("):h2.find("async function gnChon(")]
+        _bao("baoChan" in h2 and 'onerror="' not in _gv,
+             "lưới Gán nhanh báo ảnh chết bằng LISTENER, không nhét mã vào onerror")
+        _bao("dsO2[i2 + 1]" in h2,
+             "gán xong sang Ô KẾ TUẦN TỰ (duyệt+thay), không còn kiểu chỉ-đi-ô-trống")
+        _bao("e.key === 't'" in h2 and "khongVong" in h2,
+             "phím T nhảy tới ô trống kế — tiện cũ vẫn còn cho ai cần")
     except Exception as e:
         _bao(False, f"cổng gán nhanh lỗi: {type(e).__name__}: {e}")
 
