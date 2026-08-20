@@ -1749,6 +1749,47 @@ def tang_cong_tu_soi():
         _bao(False, f"cổng tự soi lỗi: {type(e).__name__}: {e}")
 
 
+def tang_the_chu_the():
+    """㉘ TÌM CHỦ THỂ PHẢI VỚI TỚI CẢ KHO (anh bắt 20/08).
+
+    Bệnh: chủ thể "kakana khamyok" đã tạo, đã gán 4 tấm, mà gõ vào ô lọc thẻ không ra.
+    HAI TẦNG CẮT chồng nhau — cửa `/api/kho-nha-chuthe` trả top 40 theo tần suất, còn
+    trang lọc TRÊN 40 tấm đã tải. kakana đứng thứ 44/126 nên không đời nào lọt;
+    86/126 chủ thể vô hình y hệt (Tuấn Hải, Duy Mạnh, Văn Lâm, VFF…).
+
+    Cay nhất: trang hiện chữ "…gõ ô lọc" — mời anh làm đúng cái việc không thể ra kết
+    quả. Tên MỚI LẬP bao giờ cũng ít ảnh nhất, tức đúng lúc cần tìm nhất thì chắc chắn
+    không thấy.
+
+    Luật rút ra: **danh sách cắt ngắn cho gọn thì ô tìm phải với tới BẢN ĐẦY ĐỦ** —
+    không thì ô tìm chỉ là trang trí, và tệ hơn: nó nói dối người dùng.
+    """
+    print("㉘ TÌM CHỦ THỂ TRONG KHO")
+    try:
+        t = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
+        h = open(os.path.join(TRAM, "kho-nha-duyet.html"), encoding="utf-8").read()
+        _bao("def _bo_dau_ct(" in t, "server có phép bỏ dấu riêng để so tên")
+        _bao('q.get("q")' in t and "hop[:60]" in t,
+             "cửa thẻ nhận chữ tìm và tra CẢ KHO, không chỉ 40 tên đông ảnh nhất")
+        _bao("ra_ct[:40]" in t, "không gõ gì thì vẫn giữ dải 40 thẻ như cũ")
+        _bao("napTheCt(v)" in h and "setTimeout" in h,
+             "trang gõ ô lọc là HỎI SERVER (có giãn nhịp), không chỉ lọc cục bộ")
+        _bao("kho chưa có tên nào khớp" in h,
+             "tìm không ra thì nói thẳng, không để trống cho anh tưởng trang hỏng")
+        import subprocess as _sp, json as _js
+        r = _sp.run(["curl", "-s", "-m", "20", "--get", "--data-urlencode", "q=kakana",
+                     f"{CONG}/api/kho-nha-chuthe"],   # CONG đã gồm cả http://…:8756
+                    capture_output=True, text=True)
+        try:
+            d = _js.loads(r.stdout or "[]")
+        except ValueError:
+            d = []
+        _bao(any("kakana" in x.get("ten", "").lower() for x in d),
+             "tra thật: gõ 'kakana' ra đúng chủ thể ngoài top 40")
+    except Exception as e:
+        _bao(False, f"cổng thẻ chủ thể lỗi: {type(e).__name__}: {e}")
+
+
 def tang_extension():
     """⑧ TIỆN ÍCH CHROME — nơi code sống NGOÀI thư mục máy, dễ lọt khỏi mọi cổng khác.
 
@@ -1865,6 +1906,7 @@ if __name__ == "__main__":
     tang_ban_do_hai_giong() # ban_do hai giọng: tên trần / đường anh/ (19/08)
     tang_nhac_chi_dinh()    # chỉ định đúng bản nhạc + kho đủ dài (20/08)
     tang_cong_tu_soi()      # bộ kiểm tự soi: cấm cắt hàm bằng đếm ký tự (20/08)
+    tang_the_chu_the()      # tìm chủ thể phải với tới cả kho (20/08)
     if sau:
         tang4_luong(ma)
     else:

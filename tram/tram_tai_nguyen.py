@@ -1102,6 +1102,18 @@ def _doc_kho_xep(ma):
         return {}
 
 
+def _bo_dau_ct(s):
+    """Bỏ dấu tiếng Việt để so tên — gõ "dinh bac" phải ra "Nguyễn Đình Bắc".
+
+    Cùng phép với `boDau` bên trang (kho-nha-duyet.html): hạ chữ thường, tách dấu theo
+    NFD rồi bỏ, và đổi đ→d. Hai bên lệch phép là tìm được ở trang này mà mất ở trang
+    kia — đúng họ bệnh "não một nguồn".
+    """
+    import unicodedata as _ud
+    t = _ud.normalize("NFD", (s or "").lower())
+    return "".join(c for c in t if not _ud.combining(c)).replace("đ", "d")
+
+
 def _kho_nha_tim(q, toi_da=30):
     """Tra kho theo nhãn — CODE THUẦN (khớp chuỗi bỏ dấu), xếp hạng: khớp nhiều từ >
     hàng lên-hình > ÍT dùng gần đây (kênh 10 video/ngày mà tấm nào cũng lặp là người
@@ -4242,6 +4254,19 @@ class Tay(BaseHTTPRequestHandler):
                     dem.setdefault(_chuan_hoa_ct(s_ct) or s_ct, dem.get(s_ct, 0))
                 ra_ct = [{"ten": t, "so": n} for t, n in
                          sorted(dem.items(), key=lambda x: -x[1])]
+                # ANH GÕ TÌM THÌ TRA CẢ KHO, không chỉ 40 tên đông ảnh nhất.
+                # Anh bắt 20/08: chủ thể "kakana khamyok" đã tạo, đã gán 4 tấm, mà gõ
+                # vào ô lọc không ra. Gốc: cửa này cắt cứng top 40 theo tần suất, còn
+                # trang thì lọc TRÊN 40 tấm đã tải — kakana đứng thứ 44/126 nên không
+                # đời nào lọt. 86/126 chủ thể vô hình y hệt: Tuấn Hải, Duy Mạnh, Văn
+                # Lâm, VFF… Tên mới lập bao giờ cũng ít ảnh nhất, tức đúng lúc cần tìm
+                # nhất thì lại là lúc chắc chắn không tìm thấy.
+                tim = _bo_dau_ct((q.get("q") or [""])[0]).strip()
+                if tim:
+                    tu = tim.split()
+                    hop = [x for x in ra_ct
+                           if all(t in _bo_dau_ct(x["ten"]) for t in tu)]
+                    return self._js(hop[:60])
                 return self._js(ra_ct[:40])
             if d == "/api/kho-nha":
                 # KHO CHỦ THỂ dùng chung (anh chốt 10/08): tra theo NHÃN bằng code thuần

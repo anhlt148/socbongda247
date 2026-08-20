@@ -589,7 +589,10 @@ function veThe(){
   $('#theCt').innerHTML = hien.slice(0, 16).map(m =>
     `<button class="the-ct ${dangDau === m.ten ? 'dau' : ''}" data-ct="${m.ten.replace(/"/g, '&quot;')}"
       title="Có cụm chọn: gán cả cụm · Không có cụm: CẦM DẤU rồi click từng ảnh">${m.ten}${m.so ? ` <i>${m.so}</i>` : ''}</button>`).join('')
-    + (hien.length > 16 ? `<span style="color:#a0938a;font-size:12px">…gõ ô lọc</span>` : '');
+    + (hien.length > 16
+        ? `<span style="color:#a0938a;font-size:12px">…còn ${hien.length - 16} tên — gõ ô lọc</span>`
+        : ($('#locThe').value.trim() && !hien.length
+            ? `<span style="color:#a0938a;font-size:12px">kho chưa có tên nào khớp</span>` : ''));
   document.querySelectorAll('.the-ct').forEach(b => b.onclick = () => {
     const t = b.dataset.ct;
     if (daChonK.size){                             // có cụm → gán cả cụm như cũ
@@ -609,16 +612,27 @@ function thaDau(){
   veThe();
   napTheCt();
 }
-async function napTheCt(){
-  try { _dsThe = await (await fetch('/api/kho-nha-chuthe')).json() || []; veThe(); }
+async function napTheCt(tim){
+  // Có chữ tìm thì HỎI SERVER — cửa thẻ mặc định chỉ trả 40 tên đông ảnh nhất, mà kho
+  // có 126 tên. Anh bắt 20/08: "kakana khamyok" đã gán 4 tấm mà gõ ô lọc không ra, vì
+  // nó đứng thứ 44 nên chưa bao giờ về tới trang; lọc cục bộ thì lọc trên đúng 40 cái
+  // không có nó. Tên mới lập bao giờ cũng ít ảnh nhất — tức đúng lúc cần tìm nhất thì
+  // chắc chắn không thấy.
+  const u = '/api/kho-nha-chuthe' + (tim ? '?q=' + encodeURIComponent(tim) : '');
+  try { _dsThe = await (await fetch(u)).json() || []; veThe(); }
   catch (e) {}
 }
+let _hoLoc = null;
 $('#locThe').addEventListener('input', () => {
-  $('#xoaLocThe').style.display = $('#locThe').value ? '' : 'none';
-  veThe();
+  const v = $('#locThe').value.trim();
+  $('#xoaLocThe').style.display = v ? '' : 'none';
+  veThe();                                   // lọc cục bộ NGAY, khỏi chờ mạng
+  clearTimeout(_hoLoc);                      // rồi hỏi server để với tới cả kho
+  _hoLoc = setTimeout(() => napTheCt(v), 220);
 });
 $('#xoaLocThe').onclick = () => {
-  $('#locThe').value = ''; $('#xoaLocThe').style.display = 'none'; veThe();
+  $('#locThe').value = ''; $('#xoaLocThe').style.display = 'none';
+  clearTimeout(_hoLoc); napTheCt();          // về lại dải mặc định
 };
 
 // ── LOẠT ─────────────────────────────────────────────────────────────────────

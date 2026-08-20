@@ -1201,3 +1201,20 @@ sửa nữa, hãy **dựng cổng chặn cả họ**.
 
 Ghi thêm cho nhớ: **cổng báo oan nguy hơn cổng không có** — nó dạy người ta bỏ qua
 lời cảnh báo, và lần sau cổng kêu thật thì không ai tin nữa.
+
+## Cắt danh sách cho gọn thì ô TÌM phải với tới bản đầy đủ (20/08/2026)
+
+Dải thẻ chủ thể cắt top 40 cho gọn mắt — hợp lý. Nhưng ô tìm lại lọc **trên chính 40
+tấm đã cắt**, nên 86/126 tên không cách nào tìm ra. Và trang còn hiện dòng "…gõ ô lọc",
+tức **mời người dùng làm đúng cái việc không thể ra kết quả**.
+
+**Chỗ đau nhất:** thứ vừa tạo bao giờ cũng ít dữ liệu nhất, nên xếp hạng thấp nhất, nên
+bị cắt trước nhất — **đúng lúc cần tìm nhất thì chắc chắn không thấy**. Bệnh này không
+lộ ở tên quen (Đình Bắc 143 ảnh, luôn nằm top), chỉ lộ đúng lúc anh vừa lập tên mới.
+
+**Luật:** hễ hiển thị bản CẮT NGẮN của một danh sách, thì ô tìm/lọc của nó phải hỏi
+**nguồn đầy đủ**, không được lọc trên bản đã cắt. Rà ngay các dải khác cùng họ (thẻ,
+gợi ý, danh sách bài) — cùng một khuôn thì cùng một bệnh.
+
+**Kèm:** giữ nguyên hành vi khi KHÔNG gõ gì (vẫn 40 thẻ). Thêm đường mới mà không đụng
+đường cũ thì lỗi không lan — đây là cách sửa rẻ nhất về rủi ro.

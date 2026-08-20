@@ -1333,3 +1333,34 @@ quét 138 tấm chưa ai nhìn, tầng ② opus soi 486 tấm sonnet "không dá
 Chạy qua launchd chứ không từ phiên Claude (claude CLI lồng nhau bị EPERM).
 
 **Đã kiểm:** `kiem_tram.py --sau` ✅ ĐẠT HẾT.
+
+## 20/08/2026 — thẻ chủ thể: tìm "kakana" không ra dù đã gán ảnh
+
+**Anh bắt:** chủ thể `kakana khamyok` đã tạo, đã gán 4 tấm, gõ vào ô lọc thẻ không ra.
+
+**Gốc — HAI TẦNG CẮT chồng nhau:**
+| tầng | làm gì | hậu quả |
+|---|---|---|
+| `/api/kho-nha-chuthe` → `ra_ct[:40]` | trả 40 tên đông ảnh nhất | 86/126 chủ thể không bao giờ tới trang |
+| trang: `_dsThe.filter(...)` | lọc TRÊN 40 tấm đã tải | gõ "kakana" là lọc trong đúng 40 cái không có nó |
+
+`kakana khamyok` đứng thứ **44/126** (4 tấm). Cùng cảnh: Tuấn Hải, Duy Mạnh, Đặng Văn
+Lâm, VFF, AFC… Trang lại hiện chữ *"…gõ ô lọc"* — **mời anh làm đúng việc không thể ra
+kết quả**.
+
+**Sửa:**
+- server: nhận `?q=` → tra CẢ KHO (trả tối đa 60); **không gõ gì thì giữ nguyên 40 như
+  cũ** — hành vi mặc định không đổi nên không lan lỗi sang chỗ khác
+- `_bo_dau_ct()` ở server, cùng phép bỏ dấu với `boDau` bên trang (não một nguồn)
+- trang: gõ → lọc cục bộ NGAY (khỏi chờ mạng) + hỏi server sau 220ms
+- tìm không ra thì nói *"kho chưa có tên nào khớp"*, không để trống
+
+**Cổng ㉘** (6 mục) gồm cả một mục **tra thật qua HTTP**.
+
+**Cổng tự bắt lỗi của chính tôi:** mục "tra thật" báo TRƯỢT dù tay thử vẫn ra. Hoá ra
+`CONG` trong `kiem_tram.py` **đã là URL đầy đủ** (`http://127.0.0.1:8756`), tôi lại ghép
+thêm `http://127.0.0.1:{CONG}` thành URL hỏng. Mã đúng, cổng sai.
+
+**Đã kiểm:** `kakana`, `KAKANA`, `van lam`→đặng văn lâm, `tuan hai`→tuấn hải,
+`dinh bac`→Nguyễn Đình Bắc, tên không có→rỗng; không gõ gì vẫn trả đúng 40 thẻ.
+`kiem_tram.py --sau` ✅ ĐẠT HẾT.
