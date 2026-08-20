@@ -4209,11 +4209,37 @@ class Tay(BaseHTTPRequestHandler):
                 loc = (q.get("loc") or ["tat_ca"])[0]
                 trang_k = int((q.get("trang") or ["0"])[0])
                 ds_k = []
+                # LỌC GỐC / CẮT (anh đặt 20/08). Vì sao cần: đoạn CẮT mang độ dài cố
+                # định (2,5–5,0s), lắp sang bài mới thì cảnh 3,2s gặp đoạn 4,5s là thừa,
+                # cảnh 4,8s gặp đoạn 3,0s là thiếu — anh phải bỏ. Video GỐC thì cắt lại
+                # được theo đúng cảnh, nên khi tra kho phải phân biệt được hai loại.
+                # Và 50/78 đoạn cắt ĐÃ MẤT bản gốc — biết trước tấm nào còn cứu được
+                # thì đỡ mất công mở ra xem rồi mới biết.
+                _co_goc = {m2.get("tep") for m2 in _so_video_ct()
+                           if m2.get("loai") == "goc"}
                 for m in _so_video_ct():
                     if loc == "chua_chac" and (m.get("nhan_tho") or m.get("chu_the")):
                         continue
                     if loc == "chua_nhin" and not m.get("nhan_tho"):
                         continue
+                    if loc == "v_goc" and m.get("loai") != "goc":
+                        continue
+                    if loc == "v_cat" and m.get("loai") != "cat":
+                        continue
+                    if loc == "v_cat_cuu" and not (m.get("loai") == "cat"
+                                                   and m.get("goc_kho") in _co_goc):
+                        continue
+                    if loc == "v_cat_mat" and not (m.get("loai") == "cat"
+                                                   and m.get("goc_kho") not in _co_goc):
+                        continue
+                    # hai số anh cần thấy NGAY trên thẻ, khỏi phải mở ra mới biết
+                    if m.get("loai") == "cat":
+                        try:
+                            m["_giay"] = round(float(m.get("den", 0))
+                                               - float(m.get("tu", 0)), 1)
+                        except (TypeError, ValueError):
+                            m["_giay"] = 0
+                        m["_cuu"] = m.get("goc_kho") in _co_goc
                     if _bo_dau_k(q_k).strip():
                         kh = _diem_khop(q_k, [(m.get("chu_the", ""), 3),
                                               (" ".join(m.get("nhan", [])), 2),

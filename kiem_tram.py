@@ -1790,6 +1790,42 @@ def tang_the_chu_the():
         _bao(False, f"cổng thẻ chủ thể lỗi: {type(e).__name__}: {e}")
 
 
+def tang_loc_video():
+    """㉙ LỌC VIDEO GỐC/CẮT + thẻ khai đủ (anh đặt 20/08).
+
+    Bệnh anh nêu: video CẮT lắp sang bài mới hay lệch khung giờ — cảnh 3,2s gặp đoạn
+    4,5s là thừa, gặp 3,0s là thiếu — thành ra "không dùng lại được". Đo kho: 78 đoạn
+    cắt thì 50 ĐÃ MẤT bản gốc (không cắt lại được), 28 còn gốc (cứu được).
+
+    Trang duyệt kho phải: lọc được gốc/cắt/còn-gốc/mất-gốc, và thẻ video cắt phải khai
+    NGAY độ dài + còn gốc không — đỡ mở ra xem rồi mới biết là đồ không xài được.
+    """
+    print("㉙ LỌC VIDEO GỐC/CẮT")
+    try:
+        t = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
+        h = open(os.path.join(TRAM, "kho-nha-duyet.html"), encoding="utf-8").read()
+        _bao(all(f'"{x}"' in t for x in ("v_goc", "v_cat", "v_cat_cuu", "v_cat_mat")),
+             "cửa video có đủ 4 mục lọc: gốc · cắt · còn gốc · mất gốc")
+        _bao('m["_giay"]' in t and 'm["_cuu"]' in t,
+             "server khai độ dài đoạn + còn-gốc-không cho từng thẻ")
+        _bao(h.count("loc-video") >= 5, "trang có 4 mục lọc video, giấu ở chế độ ảnh")
+        _bao("mất gốc" in h and "còn gốc" in h,
+             "thẻ video cắt nói ngay: dài mấy giây, còn gốc hay mất gốc")
+        import subprocess as _sp, json as _js
+        r = _sp.run(["curl", "-s", "-m", "20",
+                     f"{CONG}/api/kho-video-ds?loc=v_cat_cuu"],
+                    capture_output=True, text=True)
+        try:
+            d = _js.loads(r.stdout or "{}")
+        except ValueError:
+            d = {}
+        _bao(d.get("tong", 0) > 0 and all(x.get("loai") == "cat"
+                                          for x in (d.get("ds") or [])[:5]),
+             f"tra thật: lọc 'cắt còn gốc' trả {d.get('tong', 0)} video, đúng loại")
+    except Exception as e:
+        _bao(False, f"cổng lọc video lỗi: {type(e).__name__}: {e}")
+
+
 def tang_extension():
     """⑧ TIỆN ÍCH CHROME — nơi code sống NGOÀI thư mục máy, dễ lọt khỏi mọi cổng khác.
 
@@ -1907,6 +1943,7 @@ if __name__ == "__main__":
     tang_nhac_chi_dinh()    # chỉ định đúng bản nhạc + kho đủ dài (20/08)
     tang_cong_tu_soi()      # bộ kiểm tự soi: cấm cắt hàm bằng đếm ký tự (20/08)
     tang_the_chu_the()      # tìm chủ thể phải với tới cả kho (20/08)
+    tang_loc_video()        # lọc video gốc/cắt + thẻ khai đủ (20/08)
     if sau:
         tang4_luong(ma)
     else:

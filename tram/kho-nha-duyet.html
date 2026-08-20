@@ -115,6 +115,10 @@
   </span>
   <select id="oLoc">
     <option value="tat_ca">Tất cả</option>
+    <option value="v_goc" class="loc-video">📼 Video GỐC — cắt lại được theo cảnh</option>
+    <option value="v_cat" class="loc-video">✂ Video CẮT (đoạn cố định)</option>
+    <option value="v_cat_cuu" class="loc-video">♻ Cắt CÒN gốc — lệch giờ thì cắt lại được</option>
+    <option value="v_cat_mat" class="loc-video">⚠ Cắt MẤT gốc — lệch là chịu</option>
     <option value="chua_chac">⚠ Chưa chắc tên</option>
     <option value="chua_nhin">🕐 Máy chưa nhìn</option>
     <option value="cho_nhan">📥 Chờ gắn nhãn</option>
@@ -278,7 +282,16 @@ function oHtml(m){
          .join('\n')}">${m.wm_muc === 'chac' ? '🧽 DÍNH watermark' : '🟡 nghi có chữ'} ·
        ${(m.wm_vung || []).map(v => v.ten.replace('góc ', '')).join(', ')}</span>`
     : (m.wm_da_xu ? `<span style="color:#7fd67f">✓ đã ${m.wm_da_xu.split('·')[0] === 'cat' ? 'cắt' : 'xoá'} WM</span>` : '');
-  const tt = (m.nguoi_sua ? '✎ anh đã sửa'
+  // VIDEO CẮT: nói ngay trên thẻ — dài mấy giây, còn bản gốc để cắt lại không.
+  // Anh bắt 20/08: đoạn cắt lắp bài mới hay lệch giờ (thừa/thiếu); biết trước tấm nào
+  // còn gốc thì lệch vẫn cứu được, tấm mất gốc thì khỏi mất công thử.
+  const vCat = laV && m.loai === 'cat'
+    ? `<span style="color:#d9b36a">✂ ${m._giay || '?'}s</span> · ` +
+      (m._cuu ? `<span style="color:#7fd67f" title="bản gốc ${m.goc_kho} còn trong kho — lệch giờ thì mở gốc cắt lại đúng cảnh">♻ còn gốc</span>`
+              : `<span class="canh-bao" title="bản gốc đã bị dọn — chỉ dùng được đúng đoạn này">⚠ mất gốc</span>`)
+    : (laV && m.loai === 'goc'
+        ? `<span style="color:#7fd67f">📼 GỐC ${m.den ? Math.round(m.den - (m.tu || 0)) + 's' : ''}</span>` : '');
+  const tt = (vCat ? vCat + ' · ' : '') + (m.nguoi_sua ? '✎ anh đã sửa'
     : (m.nhan_tho ? '<span class="canh-bao">🕐 máy chưa nhìn — chờ</span>'
     : (!m.chu_the ? '<span class="canh-bao">⚠ chưa chắc tên</span>' : '')))
     + (wm ? (m.nguoi_sua || m.nhan_tho || !m.chu_the ? ' · ' : '') + wm : '');
@@ -802,6 +815,11 @@ function datCheDo(cd){
   $('#cdVideo').className = cd === 'video' ? 'chinh' : '';
   $('#oLink').style.display = $('#nutTaiVideo').style.display = cd === 'video' ? '' : 'none';
   $('#nutLayVe').style.display = cd === 'video' ? '' : 'none';
+  // mục lọc RIÊNG VIDEO chỉ hiện ở chế độ video — để ở chế độ ảnh nó là lời hứa hão
+  document.querySelectorAll('#oLoc .loc-video').forEach(o => {
+    o.hidden = cd !== 'video';
+  });
+  if (cd !== 'video' && $('#oLoc').value.startsWith('v_')) $('#oLoc').value = 'tat_ca';
   tai(true);
 }
 $('#cdAnh').onclick = () => datCheDo('anh');

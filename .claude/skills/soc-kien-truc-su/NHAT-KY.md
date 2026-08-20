@@ -1364,3 +1364,26 @@ thêm `http://127.0.0.1:{CONG}` thành URL hỏng. Mã đúng, cổng sai.
 **Đã kiểm:** `kakana`, `KAKANA`, `van lam`→đặng văn lâm, `tuan hai`→tuấn hải,
 `dinh bac`→Nguyễn Đình Bắc, tên không có→rỗng; không gõ gì vẫn trả đúng 40 thẻ.
 `kiem_tram.py --sau` ✅ ĐẠT HẾT.
+
+## 20/08/2026 (chiều) — lọc video GỐC/CẮT trên trang duyệt kho
+
+**Anh đặt:** trang kho-nha-duyet lọc được video gốc và video cắt; video cắt đang không
+dùng lại được vì khung giờ không khớp cảnh (thiếu/thừa).
+
+**Đo trước khi sửa:** kho 108 video = 30 GỐC + 78 CẮT. Đoạn cắt dài 2,5–5,0s (giữa dải
+3,8s) — khớp DẢI cảnh nhưng lệch CON SỐ: cảnh 3,2s gặp đoạn 4,5s là thừa. Đau nhất:
+**50/78 đoạn cắt đã MẤT bản gốc** — lệch là chịu, không cắt lại được. 28 đoạn còn gốc
+(`goc_kho` còn trong kho) thì lệch vẫn cứu được.
+
+**Sửa:**
+- cửa `/api/kho-video-ds`: 4 mục lọc `v_goc · v_cat · v_cat_cuu · v_cat_mat`;
+  thẻ video cắt khai `_giay` (độ dài) + `_cuu` (còn gốc không)
+- trang: 4 mục lọc gắn class `loc-video`, **giấu ở chế độ ảnh** (mục lọc không tác dụng
+  mà vẫn hiện là lời hứa hão); thẻ cắt hiện `✂ 3.8s · ♻ còn gốc / ⚠ mất gốc`
+- cổng ㉙ (5 mục, có tra thật HTTP)
+
+**Đã kiểm:** v_goc 30 · v_cat 78 · v_cat_cuu 28 · v_cat_mat 50 · tat_ca 108. ĐẠT HẾT.
+
+**Chưa làm (đáng làm tiếp):** nút "mở bản gốc tại đúng mốc" trên thẻ cắt còn gốc —
+sổ đã có `nguon_doan` (gốc#từ-đến@khung) đủ dữ liệu để cắt lại đoạn mới đúng độ dài
+cảnh; hôm nay chỉ làm phần LỌC như anh đặt.
