@@ -345,7 +345,7 @@
         border:1px solid #332a26;border-radius:10px;padding:10px;font:13px/1.5 ui-monospace,Menlo,monospace"
         placeholder="ĐOẠN 1&#10;&quot;Có một điều khiến người hâm mộ Việt Nam…&quot;&#10;Từ khóa:&#10;- Vietnam fans ASEAN Cup 2026&#10;- cổ động viên việt nam chờ đợi&#10;&#10;ĐOẠN 2&#10;…"></textarea>
       <div id="tgBao" style="color:#a0938a;font-size:13px;margin:8px 0;min-height:18px"></div>
-      <button id="tgNhan" class="chinh" style="padding:8px 16px">Bóc và điền vào các cảnh</button>
+      <button id="tgNhan" title="Dán tin GPT vào ô trên rồi bấm: máy bóc từng ý, điền thẻ số liệu vào đúng cảnh" class="chinh" style="padding:8px 16px">Bóc và điền vào các cảnh</button>
     </div>
   </div>
   <div id="mBaiMoi" style="display:none;position:fixed;inset:0;background:#000c;z-index:70;
@@ -495,7 +495,7 @@ viền xanh 'đang dùng' = tấm này đã nằm trong bài rồi">ⓘ</span>
 Câu nào kho không có ảnh hợp thì máy nói thẳng — không bày bừa.">🧠 Xếp</button>
           <button id="kbGanHet" style="display:none;font-size:11px;padding:3px 8px;background:#2e5c2e;color:#dfd"
             title="Gán tấm máy chọn vào các cảnh CÒN TRỐNG (cảnh anh đã gán thì không đụng)">⚡ gán hết</button>
-          <button id="kbThem" style="font-size:11px;padding:3px 8px">thêm ↓</button>
+          <button id="kbThem" title="Bày thêm một trang ảnh kho nữa ở dưới" style="font-size:11px;padding:3px 8px">thêm ↓</button>
           <button id="kbGap" style="font-size:11px;padding:3px 8px" title="thu gọn dải này">▲</button>
         </div>
         <div id="kbLuoi" style="display:grid;
@@ -584,7 +584,7 @@ Câu nào kho không có ảnh hợp thì máy nói thẳng — không bày bừ
           <select id="mcCau" style="flex:1;background:#0e0b0a;color:#f4efe9;
             border:1px solid #332a26;border-radius:7px;padding:6px"></select>
           <button id="mcGan" class="chinh" style="padding:7px 14px" title="Cắt đoạn theo mốc Từ–Đến rồi gán vào câu đang chọn">🎬 GÁN đoạn này</button>
-          <button id="mcBo" style="padding:7px 10px;background:#5c2e2e;color:#fff;border:0;
+          <button id="mcBo" title="Gỡ đoạn clip khỏi câu này — ảnh của câu vẫn giữ nguyên" style="padding:7px 10px;background:#5c2e2e;color:#fff;border:0;
             border-radius:8px;cursor:pointer;display:none">🗑 Bỏ clip khỏi câu</button>
         </div>
         <div id="mcTin" style="color:#a0938a;font-size:12px;margin-top:8px">
@@ -615,9 +615,9 @@ Câu nào kho không có ảnh hợp thì máy nói thẳng — không bày bừ
         </div>
         <div style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:13px;
              flex-wrap:wrap">
-          <button id="mxSua" style="padding:7px 10px;background:#332a26;color:#f4efe9;
+          <button id="mxSua" title="Mở bản video GỐC tại đúng mốc, kéo chọn lại đoạn cho vừa cảnh" style="padding:7px 10px;background:#332a26;color:#f4efe9;
             border:0;border-radius:8px;cursor:pointer">✂ Cắt lại từ video gốc</button>
-          <button id="mxBo" style="padding:7px 10px;background:#5c2e2e;color:#fff;border:0;
+          <button id="mxBo" title="Gỡ đoạn clip khỏi câu này — ảnh của câu vẫn giữ nguyên" style="padding:7px 10px;background:#5c2e2e;color:#fff;border:0;
             border-radius:8px;cursor:pointer;display:none">🗑 Bỏ clip khỏi câu</button>
           <span style="color:#a0938a;font-size:12px">bản cắt đã BỎ TIẾNG (dựng không lồng
             âm) — muốn nghe tiếng thì mở ✂ video gốc</span>
@@ -746,7 +746,7 @@ Dùng khi bài chưa duyệt lời, hoặc anh vừa sửa lời nên muốn g�
     <button id="chonHetHD" title="Chọn nhanh mọi ảnh đạt chuẩn nét (HD) trong lưới">Chọn hết ảnh đạt chuẩn</button>
     <button id="chonHienDuoi"></button>
     <button id="chonBo" title="Bỏ chọn toàn bộ ảnh đã tích">Bỏ chọn hết</button>
-    <button id="chonLay" class="vang">Lấy 0 tấm về kho</button>
+    <button id="chonLay" title="Tải các tấm đã tích ✓ về kho bài — có crop/xoá WM thì máy tự xử trước" class="vang">Lấy 0 tấm về kho</button>
     <button id="chonDong" title="Đóng cửa sổ, không lấy gì thêm">Đóng (Esc)</button>
   </div>
   <div class="luoic" id="chonLuoi"></div>
@@ -801,7 +801,7 @@ Dùng khi bài chưa duyệt lời, hoặc anh vừa sửa lời nên muốn g�
     </div></div>
   <div class="chan">
     <button id="soiTruoc" title="Xem ảnh liền trước trong kho (phím ←)">← Ảnh trước</button>
-    <button id="soiGan" class="vang">Gán cho câu <span id="soiCau">1</span></button>
+    <button id="soiGan" title="Gán tấm đang soi vào ô ghi trên nút (Enter)" class="vang">Gán cho câu <span id="soiCau">1</span></button>
     <button id="soiSau" title="Xem ảnh liền sau trong kho (phím →)">Ảnh sau →</button>
     <button id="soiCrop" title="CROP: cắt bỏ phần thừa/watermark, ảnh cắt THAY THẾ ảnh cũ ở mọi nơi đang dùng (phím C). Kéo chuột chọn vùng GIỮ LẠI rồi Enter">✂ Crop (C)</button>
     <!-- 🧽 XOÁ WATERMARK ngay trong cửa soi của trạm (anh đặt 11/08). Trước đây chỉ kho
@@ -1012,9 +1012,9 @@ function veBangBanMoi(bm){
   b.innerHTML = `<b style="color:#7fdc8a">⬆ Có bản nâng cấp mới</b><br>`
     + `<span style="font-size:12px;color:#9ec9a9">${bm.so || ''} bản mới trên GitHub`
     + ` · máy đang chạy ${esc(bm.dang || '')}</span><br>`
-    + `<button id="bmCapNhat" class="vang" style="margin-top:8px;font-size:12px;padding:5px 11px">`
+    + `<button id="bmCapNhat" title="Kéo bản mới từ GitHub, khởi động lại trạm, trang tự nạp lại (~15 giây). Đang dựng dở thì máy tự từ chối" class="vang" style="margin-top:8px;font-size:12px;padding:5px 11px">`
     + `⬇ Cập nhật ngay</button> `
-    + `<button id="bmDeSau" style="margin-top:8px;font-size:12px;padding:5px 9px">để sau</button>`;
+    + `<button id="bmDeSau" title="Giấu thông báo này tới lần mở trang sau" style="margin-top:8px;font-size:12px;padding:5px 9px">để sau</button>`;
   document.body.appendChild(b);
   document.getElementById('bmDeSau').onclick = () => { b.remove(); };
   document.getElementById('bmCapNhat').onclick = async () => {
@@ -2203,11 +2203,16 @@ async function gnLay(o, q){
   _gnKho[khoa] = r.ds || [];
   return _gnKho[khoa];
 }
-function gnOTrongKe(tu, lui){
+function gnOTrongKe(tu, lui, khongVong){
+  // khongVong: chỉ dò PHÍA SAU, không quay vòng về đầu. Anh bắt 20/08: gán xong một
+  // cảnh giữa bài mà mọi ô sau đều đã có ảnh là máy nhảy NGƯỢC về 1b — đúng thuật
+  // toán "ô trống kế theo vòng", nhưng người đang làm tuần tự thì thấy như bị giật
+  // ngược. Nhảy chỉ được TIẾN; hết phía sau thì đứng lại và NÓI, đừng tự lộn về đầu.
   const ds = gnDanhSachO();
   const i0 = ds.findIndex(o => o.cau === tu.cau && o.phan === tu.phan);
   const n = ds.length;
-  for (let k = 1; k <= n; k++){
+  const toiDa = khongVong ? (lui ? i0 : n - 1 - i0) : n;
+  for (let k = 1; k <= toiDa; k++){
     const o = ds[(i0 + (lui ? -k : k) + n * 2) % n];
     if (!gnCoAnh(o)) return o;
   }
@@ -2258,7 +2263,10 @@ async function gnVe(){
       <div class="gn-o" data-k="${k}" style="cursor:pointer;border:1px solid #332a26;
         border-radius:10px;overflow:hidden;position:relative;display:flex;
         flex-direction:column;background:#141110">
-        <img src="${esc(m.u)}" loading="lazy"
+        <img src="${m.nguon === 'web' ? '/anh-web?u=' + encodeURIComponent(m.u) : esc(m.u)}"
+          loading="lazy" onerror="this.style.display='none';
+            this.parentElement.insertAdjacentHTML('afterbegin',
+            '<div style=\'flex:1;display:grid;place-items:center;color:#6b5c53;font-size:11px;padding:8px;text-align:center\'>🚫 báo gốc chặn xem trước<br>bấm số để máy thử tải bằng trình duyệt thật</div>')"
           style="width:100%;flex:1;min-height:0;object-fit:cover;display:block">
         <div style="position:absolute;top:5px;left:5px;background:#FFD400;color:#1a1512;
           font-weight:800;font-size:13px;width:22px;height:22px;border-radius:6px;
@@ -2304,10 +2312,14 @@ async function gnChon(k){
         if (g.anh_phu) anhPhu = g.anh_phu;
       }
       delete _gnKho[gnMaO(oNay) + '|'];              // ô này đổi rồi, nạp lại nếu quay về
-      const ke = gnOTrongKe(oNay);
-      if (!ke){
+      const ke = gnOTrongKe(oNay, false, true);      // chỉ TIẾN — không lộn về đầu
+      const conTruoc = gnOTrongKe(oNay, true, true); // còn ô trống phía trước không?
+      if (!ke && !conTruoc){
         bao('🎉 Hết ô trống — mọi cảnh (cả phụ) đã có ảnh');
         dongGanNhanh();
+      } else if (!ke){
+        gnVe();                                      // đứng yên tại ô vừa gán
+        bao('✔ Phía sau đã đầy — còn ô trống ở PHÍA TRƯỚC, bấm ← để lui tới đó');
       } else {
         gnO = ke; $('#gnTim').value = ''; $('#gnTimXoa').style.display = 'none';
         gnVe();
@@ -2364,10 +2376,11 @@ document.addEventListener('keydown', e => {
     }
     return;
   }
-  if (e.key === ' '){                              // bỏ qua, sang cảnh trống kế
+  if (e.key === ' '){                              // bỏ qua, sang ô trống kế PHÍA SAU
     e.preventDefault();
-    const ke = gnOTrongKe(gnO);
+    const ke = gnOTrongKe(gnO, false, true);
     if (ke){ gnO = ke; $('#gnTim').value = ''; gnVe(); }
+    else bao('✔ Phía sau hết ô trống — bấm ← để lui về ô trống phía trước');
     return;
   }
   if (e.key === 'ArrowRight' || e.key === 'ArrowLeft'){

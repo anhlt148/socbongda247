@@ -83,13 +83,13 @@
 <header>
   <h1>CHỌN <span>ẢNH</span></h1>
   <input id="oTim" placeholder="từ khoá tìm ảnh — Enter để tìm">
-  <button id="nutTim" class="chinh">🔎 Tìm</button>
+  <button id="nutTim" title="Tìm ảnh Google bằng từ khoá trong ô (Enter)" class="chinh">🔎 Tìm</button>
   <span class="tien-do">Cỡ</span>
   <input type="range" id="coO" min="120" max="420" step="20" value="180" style="width:110px">
-  <button id="nutHienDuoi"></button>
-  <button id="nutBoChon">Bỏ chọn</button>
+  <button id="nutHienDuoi" title="Bày thêm cả những tấm dưới chuẩn nét (có tấm quý đời chỉ có bản nhỏ)"></button>
+  <button id="nutBoChon" title="Bỏ tích ✓ toàn bộ, chọn lại từ đầu">Bỏ chọn</button>
   <button id="nutTimLai" title="Tìm lại ảnh cho cảnh đang mở bằng từ khoá trong ô">🔄 Tìm lại</button>
-  <button id="nutLay" class="vang" disabled>Lấy 0 tấm về kho</button>
+  <button id="nutLay" title="Tải các tấm đã tích ✓ về kho bài — crop/xoá WM máy tự xử trước khi lưu" class="vang" disabled>Lấy 0 tấm về kho</button>
   <button id="nutVe" title="Quay lại trạm, đúng việc đang làm (Esc)">← Về trạm</button>
 </header>
 
@@ -194,6 +194,31 @@ function veCanh(){
     e.onclick = () => chonCanh(+e.dataset.i));
 }
 
+// ── MÁY XẾP THEO NGHĨA (nối 20/08): đề xuất của một lượt model đọc CẢ BÀI — hiểu
+// "ăn mừng" ≠ "chào cờ", đúng người đúng trận — chính xác hơn hẳn khớp từ. Nó vẫn
+// nằm sẵn trong kho-xep.json từ trước, nhưng chỉ hiện sau nút ⚡ Gán nhanh mà anh
+// chưa từng bấm ("không có hướng dẫn nên không biết" — 20/08). Máy dọn cỗ phòng B,
+// anh ăn cơm phòng A. Nay dọn thẳng lên đầu lưới phòng A.
+async function tronMayXep(i){
+  try {
+    const r = await (await fetch('/api/ung-vien-canh?ma=' + encodeURIComponent(ma)
+      + '&cau=' + i + '&so=8')).json();
+    const may = (r.ds || []).filter(x => x.nguon === 'may' && x.tep);
+    if (!may.length) return;
+    const daCo = new Set(ungVien.map(a => a.u_hien || a.u));
+    const them = may
+      .filter(m => !daCo.has(location.origin + m.u))
+      .map(m => ({u: location.origin + m.u + (m.u.includes('?') ? '&' : '?')
+                     + 'ma=' + encodeURIComponent(ma),
+                  u_hien: location.origin + m.u,
+                  w: m.w || 0, h: m.h || 0,
+                  ty_le: m.h ? +((m.w || 0) / m.h).toFixed(2) : 0,
+                  du_net: true, kho_nha: true, may_xep: true,
+                  mo_ta: m.vi_sao || m.mo_ta, chu_the: m.chu_the}));
+    if (them.length){ ungVien = them.concat(ungVien); ve(); }
+  } catch (e) {}
+}
+
 // ── KHO NHÀ (anh chốt 10/08): ảnh sạch đã gắn nhãn từ các bài trước, tra code thuần
 // — bày TRƯỚC kết quả Google, lấy về đi nguyên luồng cũ (URL nội bộ của trạm)
 async function tronKhoNha(q){
@@ -229,7 +254,14 @@ function chonCanh(i){
     : '';
   $('#oTim').value = tkPhu || c.tu_khoa || '';
   ungVien = (c.anh || []).slice();
-  tronKhoNha($('#oTim').value);
+  // TRA KHO BẰNG TIẾNG VIỆT (anh dặn 17/08: "tìm trong kho có sẵn thì dùng từ khoá
+  // tiếng Việt") — ô tìm giờ mang từ khoá TIẾNG ANH cho Google, đem nó tra kho nhãn
+  // Việt là 0 tấm, dải kho nhà chết lặng từ 17/08 mà không ai hay (đo 20/08: 20 bài
+  // liền 0% ảnh kho lên hình; tra "Việt Nam Thái Lan" ra 30 tấm, "Vietnam Thailand
+  // football" ra 0). Từ khoá Việt của câu nằm sẵn ở dl.tu_khoa_vi.
+  const tkVi = (dl && dl.tu_khoa_vi && dl.tu_khoa_vi[i]) || '';
+  tronKhoNha(tkVi || $('#oTim').value);
+  tronMayXep(i);                       // đề xuất theo NGHĨA lên đầu lưới
   daChon = new Set();
   const dat = ungVien.filter(a => a.du_net).length;
   const ten_dich = dangPhan !== null
@@ -271,9 +303,10 @@ function ve(){
       <div class="hd ${a.du_net ? '' : 'kem'}">${a.du_net ? 'HD' : 'nhỏ'}</div>
       ${cropChon[a.u] ? '<div class="cropdau" title="đã ghi vùng cắt — lấy về kho sẽ tự cắt">✂</div>' : ''}
       ${wmChon[a.u] ? '<div class="cropdau" style="left:auto;right:5px;background:#8858c9;color:#fff" title="đã ghi vùng xoá watermark — lấy về máy tự vá">🧽</div>' : ''}
-      ${a.kho_nha ? '<div class="hd" style="top:26px;background:#2e5c2e" title="ảnh KHO NHÀ — đã sạch watermark, đã qua duyệt bài trước">🏠</div>' : ''}
+      ${a.may_xep ? '<div class="hd" style="top:26px;background:#5a4a1e" title="MÁY XẾP THEO NGHĨA đề xuất cho đúng câu này — lý do ghi ở dòng dưới ảnh">🧠</div>'
+        : (a.kho_nha ? '<div class="hd" style="top:26px;background:#2e5c2e" title="ảnh KHO NHÀ — đã sạch watermark, đã qua duyệt bài trước">🏠</div>' : '')}
       <div class="to" title="xem to (hoặc rê chuột + Space)">🔍</div>
-      <div class="th">${a.kho_nha ? '🏠 ' + (a.mo_ta || a.chu_the || 'kho nhà').slice(0, 40) + '<br>' : ''}${a.w}×${a.h} · ${a.ty_le}</div>
+      <div class="th">${a.kho_nha ? (a.may_xep ? '🧠 ' : '🏠 ') + (a.mo_ta || a.chu_the || 'kho nhà').slice(0, 40) + '<br>' : ''}${a.w}×${a.h} · ${a.ty_le}</div>
     </div>`;
   }).join('');
   document.querySelectorAll('.o').forEach(e => {
@@ -446,7 +479,7 @@ async function tim(tk){
     n.disabled = false; n.textContent = '🔎 Tìm';
     if (t.loi) return bao('Tìm hỏng — ' + t.loi, true);
     ungVien = (t.anh || []).slice(); daChon = new Set();
-    tronKhoNha(tk);
+    tronKhoNha((dl && dl.tu_khoa_vi && dl.tu_khoa_vi[dangCau]) || tk);
     const dat = ungVien.filter(a => a.du_net).length;
     $('#tinTrang').textContent = `${dat} đạt chuẩn / ${ungVien.length} tấm` +
       (dangCau !== null ? ` — tấm chọn cuối gán cho cảnh ${dangCau + 1}` : '');
@@ -635,7 +668,7 @@ document.addEventListener('keydown', e => {
   if (cau0 !== null && dl.cau[+cau0]) chonCanh(+cau0);
   else if (tk0){
     $('#oTim').value = tk0;
-    tronKhoNha(tk0);        // KHO NHÀ hiện NGAY — không bắt chờ Google (anh chốt 10/08)
+    tronKhoNha((dl && dl.tu_khoa_vi && dl.tu_khoa_vi[dangCau]) || tk0);  // kho tra TIẾNG VIỆT — hiện ngay, không chờ Google
     tim(tk0);
   }
   else if (dl.cau.length) chonCanh(0);

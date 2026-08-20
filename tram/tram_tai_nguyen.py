@@ -4294,6 +4294,39 @@ class Tay(BaseHTTPRequestHandler):
                            if all(t in _bo_dau_ct(x["ten"]) for t in tu)]
                     return self._js(hop[:60])
                 return self._js(ra_ct[:40])
+            if d == "/anh-web":
+                # ẢNH WEB TRONG GÁN NHANH BỊ ĐEN (anh bắt 20/08): lưới bày thẳng URL
+                # gốc của báo/mạng xã hội, mà đa số chặn truy cập từ trang lạ →
+                # trình duyệt nhận 403, ô đen thui, 7/8 ô không dùng được. Server tải
+                # HỘ với danh tính trình duyệt thường rồi đưa về — có cache theo nội
+                # dung URL nên mỗi tấm chỉ tải một lần.
+                u_w = (q.get("u") or [""])[0]
+                if not re.match(r"^https?://", u_w):
+                    return self._js({"loi": "chỉ nhận http/https"}, 400)
+                th_c = os.path.join(NT.thu_muc_tam(), "anh-web-cache")
+                os.makedirs(th_c, exist_ok=True)
+                kc = os.path.join(th_c, hashlib.md5(u_w.encode()).hexdigest() + ".jpg")
+                if not os.path.exists(kc):
+                    try:
+                        rq = urllib.request.Request(u_w, headers={
+                            "User-Agent": UA_CLIP,
+                            "Referer": "https://www.google.com/"})
+                        with urllib.request.urlopen(rq, timeout=20) as f_w:
+                            du = f_w.read(20 * 1024 * 1024)
+                        # PHẢI LÀ ẢNH THẬT mới cache: link Facebook hết phiên trả về
+                        # trang HTML kèm mã 200 — nuốt vào cache là ô đen thành vĩnh
+                        # viễn dù nguồn có sống lại. Soi chữ ký đầu tệp, không tin mã.
+                        la_anh = (du[:2] == b"\xff\xd8" or du[:4] == b"\x89PNG"
+                                  or du[:4] == b"GIF8"
+                                  or (du[:4] == b"RIFF" and du[8:12] == b"WEBP"))
+                        if not la_anh:
+                            return self._js({"loi": "nguồn trả về trang chặn,"
+                                                    " không phải ảnh"}, 502)
+                        with open(kc, "wb") as f_w:
+                            f_w.write(du)
+                    except Exception as e_w:
+                        return self._js({"loi": f"nguồn chặn: {e_w}"}, 502)
+                return self._tep(kc)
             if d == "/api/kho-nha":
                 # KHO CHỦ THỂ dùng chung (anh chốt 10/08): tra theo NHÃN bằng code thuần
                 # — không tốn model; ảnh đã sạch watermark + qua soi từ lúc nhập
@@ -4320,14 +4353,34 @@ class Tay(BaseHTTPRequestHandler):
                     dang_dung_u |= {os.path.basename(str(x)) for x in (ds_ap or []) if x}
                 ra_u, thay_u = [], set()
                 kh_o = f"{cau_u}:{phan_u}" if phan_u != "" else str(cau_u)
-                # ① model xếp theo nghĩa (khoá ô: "3" cho chính, "3:0" cho phụ)
-                for t in ((_doc_kho_xep(ma_u).get("xep") or {})
-                          .get(kh_o, {}).get("tep") or []):
+                # ① model xếp theo nghĩa (khoá ô: "3" cho chính, "3:0" cho phụ).
+                # Kèm w/h + LÝ DO máy chọn + chủ thể — 20/08 trang chọn ảnh bắt đầu
+                # bày nguồn này lên lưới: thiếu kích thước là thẻ hiện "0×0", thiếu
+                # lý do là mất đúng thông tin quý nhất của một lượt model.
+                _o_xep = (_doc_kho_xep(ma_u).get("xep") or {}).get(kh_o, {})
+                _so_kho = {}
+                try:
+                    for _dg in open(SO_CHU_THE, encoding="utf-8"):
+                        _m2 = json.loads(_dg)
+                        if _m2.get("tep"):
+                            _so_kho[_m2["tep"]] = {**_so_kho.get(_m2["tep"], {}), **_m2}
+                except (OSError, ValueError):
+                    pass
+                for t in (_o_xep.get("tep") or []):
                     if t in thay_u or t in dang_dung_u:
                         continue
                     thay_u.add(t)
+                    _sk = _so_kho.get(t, {})
+                    try:
+                        _w, _h = (int(x) for x in
+                                  str(_sk.get("kich_thuoc", "")).lower().split("x"))
+                    except (ValueError, AttributeError):
+                        _w = _h = 0
                     ra_u.append({"u": "/kho-nha-anh/" + t, "tep": t, "nguon": "may",
-                                 "nhan": "🧠 máy chọn"})
+                                 "w": _w, "h": _h,
+                                 "chu_the": _sk.get("chu_the", ""),
+                                 "vi_sao": (_o_xep.get("vi_sao") or "")[:120],
+                                 "nhan": "🧠 " + ((_o_xep.get("vi_sao") or "máy chọn")[:26])})
                 # ② kho nhà theo từ khoá câu — dùng đúng bộ lọc của dải kho (đội lạ đã
                 #    bị loại, sổ học đã cộng điểm) rồi giữ tấm hợp CHÍNH câu này
                 if len(ra_u) < so_u and tk_u.strip():

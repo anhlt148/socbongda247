@@ -1233,3 +1233,17 @@ quét 669 tấm thay vì 136.
 2. **Thử tính năng mới bằng cách gọi ĐÚNG hàm sẽ chạy thật.** Viết lại logic để thử là
    thử cái mình NGHĨ, không phải cái máy SẼ LÀM. Muốn tránh gọi model thật thì vá tạm
    (monkeypatch subprocess) rồi nhìn dòng in đầu — 5 giây, bắt được ngay.
+
+## Tính năng không ai biết = tính năng không tồn tại (20/08/2026)
+
+Gán nhanh nằm trên trạm từ 11/08 với tooltip tử tế — anh CHƯA TỪNG BẤM, vì tooltip chỉ
+hiện khi rê chuột đứng yên, mà không ai rê lên nút mình không hiểu. Máy xếp kho dọn cỗ
+sau nút đó suốt chín ngày, 0% được dùng.
+
+**Luật:** thứ muốn người dùng DÙNG thì phải tự giới thiệu tại chỗ họ đang đứng (trộn
+vào luồng sẵn có, badge ngay trên lưới), không phải chờ họ khám phá. Tooltip là chú
+thích cho người ĐÃ tò mò, không phải lời mời.
+
+**Kèm:** thuật toán "đúng" có thể NGƯỢC với người — nhảy "ô trống kế theo vòng" là tối
+ưu máy, nhưng người làm tuần tự thấy như bị giật ngược về đầu. Khi máy định làm gì
+BẤT NGỜ (nhảy vị trí, đổi ngữ cảnh), thà đứng lại và NÓI một câu còn hơn tự quyết.

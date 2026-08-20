@@ -1410,3 +1410,33 @@ qua ĐÚNG hàm (vá subprocess để dừng trước khi gọi model): `--so=5`
 
 **Đính chính:** nghi "job chạy hai lần" là tôi hớ — dòng lặp trong terminal là output
 lệnh grep của chính tôi, log chỉ có một dòng BẮT ĐẦU.
+
+## 20/08/2026 (tối) — anh thử Gán nhanh LẦN ĐẦU, báo 4 vấn đề
+
+Bối cảnh: anh trả lời "chưa từng bấm Gán nhanh vì không có hướng dẫn" → em sửa trang
+chọn ảnh tra kho bằng TIẾNG VIỆT (`tu_khoa_vi`) — phát hiện dải kho nhà CHẾT LẶNG từ
+17/08 vì tra kho nhãn Việt bằng từ khoá tiếng Anh ("Việt Nam Thái Lan"→30 tấm,
+"Vietnam Thailand football"→0). Đây là lời giải THẬT của 0% ảnh kho. Kèm: trộn đề xuất
+máy-xếp-theo-nghĩa (badge 🧠) lên đầu lưới chọn; +13 title cho nút thiếu.
+
+Anh thử Gán nhanh và báo 4 lỗi. Đã sửa 2 lỗi chặn dùng:
+① **Khung đen 7/8 ô**: lưới bày thẳng URL báo/MXH → chặn hotlink. Sửa: route `/anh-web`
+   proxy tải hộ (UA trình duyệt + referer), CHỈ CACHE ẢNH THẬT (soi chữ ký đầu tệp —
+   fbsbx trả HTML kèm mã 200, nuốt vào cache là đen vĩnh viễn); ảnh chặn hẳn thì ô
+   hiện "🚫 báo gốc chặn xem trước — bấm số để máy thử tải bằng trình duyệt thật".
+② **Gán xong nhảy ngược về 1b**: thuật toán "ô trống kế theo VÒNG" đúng máy nhưng
+   ngược người — người làm tuần tự thấy như bị giật về đầu. Sửa: chỉ nhảy TIẾN
+   (khongVong); hết phía sau thì ĐỨNG LẠI + báo "còn ô trống phía trước, bấm ←".
+   Space bỏ-qua cùng luật.
+
+2 mục còn lại là TÍNH NĂNG, chưa làm, chờ anh xếp ưu tiên:
+③ gán 2 ảnh/cảnh trong màn này (ô phụ 1b/2b đã là 2 ảnh đổi hình; cái thiếu là KHUNG
+   ĐÔI 2 ảnh cùng khung) · ④ video trong Gán nhanh (ứng viên hiện chỉ ảnh).
+
+Bệnh đếm-ký-tự cắn LẦN NĂM: cổng "gán nhanh duyệt cả ô phụ" cắt `[:6000]` sau chữ
+"GÁN NHANH" — ghi chú mới đẩy `gan-phu` ra ngoài cửa sổ → trượt oan. Sửa neo ranh giới
+hàm + DẠY CỔNG TỰ SOI dạng mới `.split(...)[..][:N]` — nó lập tức bắt thêm một chỗ cũ
+thật (dòng 863 `_luu_nhap`), sửa luôn. Cổng tự lớn đúng nghĩa.
+
+Đã kiểm: proxy 200+JPEG với báo thường, 502 với fbsbx (không cache rác); nguồn 🧠 đủ
+w/h + lý do; ĐẠT HẾT.

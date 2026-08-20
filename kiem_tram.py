@@ -277,7 +277,8 @@ def tang_chinh_phu():
         kh = src[i:i + 4000] if i > 0 else ""
         _bao(dau in kh, f"{r} nhận ô phụ")
     # ③  UI gán nhanh phải duyệt theo Ô (chính+phụ), không theo câu
-    _bao("gnDanhSachO" in ui and "gan-phu" in ui.split("GÁN NHANH")[-1][:6000],
+    _gnc = ui[ui.find("async function gnChon("):ui.find("$('#gnDong')")]
+    _bao("gnDanhSachO" in ui and "gan-phu" in _gnc,
          "⚡ gán nhanh duyệt cả ô phụ")
     # ④  không còn biến gnCau kiểu cũ (chỉ-cảnh-chính)
     _bao("gnCauTrongKe" not in ui, "không còn vòng duyệt chỉ-cảnh-chính")
@@ -859,7 +860,7 @@ def tang_tu_khoa_anh():
     _bao('"tu_khoa_vi": vi' in bg, "cầu dán GPT: câu VIỆT lui về ô tra kho")
 
     # sổ nháp phải khai trường mới, không khai là lưu xong MẤT
-    _bao('"tu_khoa_vi"' in src.split("def _luu_nhap")[1][:3000] if "def _luu_nhap" in src
+    _bao('"tu_khoa_vi"' in _than_ham(src, "_luu_nhap") if "def _luu_nhap" in src
          else False, "_luu_nhap khai tu_khoa_vi vào whitelist")
 
 
@@ -1739,8 +1740,9 @@ def tang_cong_tu_soi():
         me = open(os.path.join(MAY, "kiem_tram.py"), encoding="utf-8").read()
         xau = []
         for i, d in enumerate(me.splitlines(), 1):
-            if _re.search(r"\w+\[\s*i_\w+\s*:\s*i_\w+\s*\+\s*\d{3,}\s*\]", d) \
-                    and "_than_ham" not in d:
+            if (_re.search(r"\w+\[\s*i_\w+\s*:\s*i_\w+\s*\+\s*\d{3,}\s*\]", d)
+                    or _re.search(r"\]\s*\[\s*:\s*\d{4,}\s*\]", d)) \
+                    and "_than_ham" not in d and "_gnc" not in d:
                 xau.append(f"dòng {i}: {d.strip()[:60]}")
         _bao(not xau, "không còn chỗ nào cắt thân hàm bằng ĐẾM KÝ TỰ (dùng _than_ham)",
              " · ".join(xau[:3]))
@@ -1836,6 +1838,18 @@ def tang_loc_video():
              "cờ --so cắt đúng danh sách sắp soát")
     except Exception as e:
         _bao(False, f"cổng cờ quét lỗi: {type(e).__name__}: {e}")
+    # Gán nhanh (anh thử lần đầu 20/08, báo 4 lỗi) — canh 2 lỗi đã sửa:
+    try:
+        t2 = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
+        h2 = open(os.path.join(TRAM, "tram-tai-nguyen.html"), encoding="utf-8").read()
+        _bao('"/anh-web"' in t2 and 'la_anh' in t2,
+             "có proxy ảnh web + chỉ cache ẢNH THẬT (fbsbx trả HTML 200 thì từ chối)")
+        _bao("'/anh-web?u=' + encodeURIComponent(m.u)" in h2,
+             "lưới Gán nhanh bày ảnh web qua proxy, hết ô đen câm")
+        _bao("gnOTrongKe(oNay, false, true)" in h2 and "khongVong" in h2,
+             "gán xong chỉ nhảy TIẾN, hết phía sau thì đứng lại và nói, không lộn về đầu")
+    except Exception as e:
+        _bao(False, f"cổng gán nhanh lỗi: {type(e).__name__}: {e}")
 
 
 def tang_extension():
