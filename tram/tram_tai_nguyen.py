@@ -2532,10 +2532,14 @@ def _ghi_nhip(ma, buoc, giay):
     """
     try:
         os.makedirs(os.path.dirname(NHIP_SO), exist_ok=True)
-        with NT.khoa_ghi(NHIP_SO) as f:
-            f.write(json.dumps({"ma": ma, "buoc": buoc, "giay": round(giay, 1),
-                                "luc": time.strftime("%Y-%m-%d %H:%M:%S")},
-                               ensure_ascii=False) + "\n")
+        # khoa_ghi trả về TỆP KHOÁ (.lock) chứ không phải sổ — bản đầu write thẳng vào
+        # nó nên cả ngày dữ liệu nằm nhầm chỗ mà không ai hay (tự bắt 20/08 khi sổ
+        # "không tồn tại" còn .lock thì phình 2,5KB). Khoá để giữ chỗ, sổ mở riêng.
+        with NT.khoa_ghi(NHIP_SO):
+            with open(NHIP_SO, "a", encoding="utf-8") as f:
+                f.write(json.dumps({"ma": ma, "buoc": buoc, "giay": round(giay, 1),
+                                    "luc": time.strftime("%Y-%m-%d %H:%M:%S")},
+                                   ensure_ascii=False) + "\n")
     except Exception:
         pass
 
