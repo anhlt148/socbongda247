@@ -1464,3 +1464,23 @@ trình duyệt thật (Browser pane), mở đúng bài của anh, đọc DOM + n
 Cổng: +3 mục (listener sạch neo thân gnVe · sang ô kế tuần tự · phím T). Một cổng đầu
 viết QUÁ RỘNG (cấm onerror cả nửa file → trượt oan vì 2 onerror một-dòng hợp lệ của
 phần khác) — thu hẹp về đúng thân gnVe. ĐẠT HẾT.
+
+## 20/08/2026 (khuya) — clip gán Ô PHỤ nhảy sang cảnh CHÍNH, ô phụ biến mất
+
+**Anh báo:** đưa video vào cảnh phụ thì cảnh phụ không hiện nữa, cảnh chính kéo dài
+11,7s (bài video-7 "ĐỔ BỘ BANGKOK", câu 1).
+
+**Chuỗi nhân quả (đọc sổ thật của bài):**
+1. Anh đứng ở ô phụ 1b, bấm "gán đoạn" trên thẻ video → `ganDoan()` là cửa gán clip
+   DUY NHẤT quên nhìn `dangPhu`: luôn ghi vào `clip-canh.json` của cảnh CHÍNH, còn
+   chủ động `dangPhu = null` nên thao tác mất không dấu vết.
+2. `nhip_canh.chia_nhip`: câu là cảnh clip → ép **1 khung** (trừ khi có ảnh phụ — mà
+   anh_phu trống vì thao tác bị nuốt ở bước 1) → cảnh 11,7s một khung, ô phụ biến mất.
+
+**Sửa:** `ganDoan` rẽ nhánh đầu hàm — đang đứng ô phụ (không truyền cau tường minh) →
+đi `ganPhuSlot` với mã `clip::tep::tu::den[::khung]` (luồng sẵn có, cửa mc/mx đã dùng).
+**Cứu bài anh:** gỡ clip khỏi clip_canh câu 0 + gán lại vào anh_phu[0] qua API thật;
+kiểm bằng trình duyệt: cảnh 1 → 3 phần (1·1b·1c), clip đúng ô 1b.
+
+Cổng +1 mục (neo thân ganDoan). ĐẠT HẾT. Cùng họ bệnh "cửa mới quên đường ô phụ" —
+lần thứ NĂM luật "cảnh chính có gì cảnh phụ có nấy" bị một cửa lẻ vi phạm.

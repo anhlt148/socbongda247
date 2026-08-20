@@ -1853,6 +1853,12 @@ def tang_loc_video():
              "gán xong sang Ô KẾ TUẦN TỰ (duyệt+thay), không còn kiểu chỉ-đi-ô-trống")
         _bao("e.key === 't'" in h2 and "khongVong" in h2,
              "phím T nhảy tới ô trống kế — tiện cũ vẫn còn cho ai cần")
+        # anh bắt 20/08 khuya: đưa video vào Ô PHỤ mà clip nhảy sang cảnh CHÍNH, ô phụ
+        # biến mất (cảnh 11,7s thành một khung). ganDoan là cửa gán clip DUY NHẤT quên
+        # nhìn dangPhu — mọi cửa gán clip mặc-định-câu-đang-chọn phải rẽ ô phụ trước.
+        _gd = h2[h2.find("async function ganDoan("):h2.find("let mxSeg")]
+        _bao("dangPhu" in _gd and "ganPhuSlot(dangPhu.cau, dangPhu.phan" in _gd,
+             "ganDoan tôn trọng Ô PHỤ đang chọn, không cướp về cảnh chính")
     except Exception as e:
         _bao(False, f"cổng gán nhanh lỗi: {type(e).__name__}: {e}")
 

@@ -2753,6 +2753,18 @@ window.addEventListener('resize', () => $('#mClip').style.display === 'flex' && 
 
 // gán một ĐOẠN ĐÃ CẮT cho một câu (mặc định câu đang chọn) — xong nhảy câu kế
 async function ganDoan(s, cau){
+  // ĐANG ĐỨNG Ở Ô PHỤ thì gán vào đúng Ô PHỤ ấy (anh bắt 20/08: đưa video vào cảnh
+  // phụ mà clip nhảy sang cảnh CHÍNH, ô phụ biến mất, cảnh 11,7s thành một khung.
+  // Đây là cửa gán clip DUY NHẤT quên nhìn dangPhu — các cửa khác đều xử đúng —
+  // và nó còn chủ động xoá dangPhu nên thao tác của anh mất không dấu vết).
+  if (cau === undefined && dangPhu){
+    const kh = s.khung
+      ? `::${s.khung.x},${s.khung.y},${s.khung.w},${s.khung.h}` : '';
+    if (!await ganPhuSlot(dangPhu.cau, dangPhu.phan,
+                          `clip::${s.tep}::${s.tu}::${s.den}${kh}`)) return false;
+    tienBuoc(); veCau(); veKho();
+    return true;
+  }
   if (cau === undefined) cau = dangChon;
   const r = await (await fetch('/api/gan-clip', {method: 'POST',
     headers: {'Content-Type': 'application/json'},
