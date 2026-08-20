@@ -1268,3 +1268,18 @@ PHÍM THẬT sau khi sửa. Mã nói "phải chạy được"; chỉ trình duy�
   (`complete && !naturalWidth`).
 - Tính năng "đi ô trống" từng đúng khi ô trống nhiều; máy nháp phủ sẵn làm nó lỗi
   thời. Tính năng phải XÉT LẠI khi bối cảnh dùng đổi, không phải chỉ khi nó gãy.
+
+## "Nhanh hơn" thật sự = bớt việc thừa, rồi mới đến chạy khéo (20/08/2026)
+
+Ba nấc của cùng một bài toán tăng tốc, đúc từ chuỗi hôm nay:
+1. **Bớt việc thừa** (tầng A): 90% câu kho đã dày — không tìm web nữa. Ăn nhất,
+   rẻ nhất, và chính ANH chỉ ra ("tìm song song thì trùng"), không phải em.
+2. **Chạy khéo** (tầng B): hai việc KHÁC tài nguyên thì song song — nhưng chỉ sau
+   khi đã bớt thừa, không thì là "làm việc thừa nhanh hơn".
+3. **Đổi công cụ** (opus): đo hai lượt trên prompt thật mới dám nói — model TO hơn
+   hoá ra NHANH gấp đôi. Trực giác "to = chậm" sai; một phép đo 10 phút cứu khỏi
+   một quyết định sai dài hạn.
+
+Kèm: máy được phép nói "không có" (ô trống của model xếp kho) hoá ra là TÍN HIỆU ĐIỀU
+PHỐI quý — tầng C dùng chính câu trả lời đó để quyết tìm web bổ sung. Thiết kế cho
+máy quyền từ chối không chỉ chống bịa — nó còn cho tầng sau thứ để bám vào.

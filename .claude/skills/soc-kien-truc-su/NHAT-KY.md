@@ -1506,3 +1506,32 @@ lần thứ NĂM luật "cảnh chính có gì cảnh phụ có nấy" bị mộ
 Cổng +2 mục. ĐẠT HẾT. Bài học lặp: TRUYỀN tham số mà không có AI ĐỌC là bệnh câm —
 cùng họ với "cửa thẻ chủ thể cắt top 40" sáng nay: giao diện hứa một việc backend
 không làm.
+
+## 20/08/2026 (đêm) — CHUỖI BA TẦNG + MẮT OPUS (anh chốt "tăng tốc thôi")
+
+**Đường quyết định:** em đề xuất song song hoá → anh bắt "tìm song song thì trùng, kho
+có rồi cần gì tìm" → thiết kế lại ba tầng → anh hỏi "nâng model có nhanh hơn không?"
+→ ĐO THẬT (2 lượt/model, đúng prompt thật 11,4k token): **opus ~2,4ph · sonnet ~5,0ph
+· haiku ~3,4ph** — opus vừa NHANH NHẤT vừa để ô trống hợp lý nhất; haiku lệch nhiều
+(6/17 ô trùng sonnet) và ít dám để trống → chọn bừa. → anh gật cả gói.
+
+**Làm:**
+- `_xep_kho_nghia`: KHO_MODEL mặc định → `claude-opus-5`.
+- `_tim_san` thêm `chi_cau_ds` — chế độ chọn lọc.
+- Chuỗi `_sau_duyet_loi` viết lại khúc ⑤: A đếm kho bằng code (~2s, `NG_KHO_DAY=3`)
+  → B `threading.Thread` tìm web câu MỎNG ∥ model xếp kho (hai tài nguyên khác nhau:
+  claude CLI vs thẻ Chrome; tìm web vẫn MỘT luồng như cũ) → `join` → C câu model phán
+  "kho không có" mà tầng A tưởng dày → tìm bù (`tim_web_bu` có đồng hồ riêng).
+  Vòng-2-từ-khoá-ngắn giữ nguyên, giờ đọc `ung-vien.json` thay vì biến cục bộ.
+
+**Đo tầng A trên 2 bài thật:** 90–91% câu kho DÀY → tìm web còn ~1 câu/bài. Soi độ
+chặt: bộ tra `_kho_nha_tim` vốn đòi khớp gần trọn từ (thêm từ rác là rớt hết) → ngưỡng
+3 tấm đủ nghiêm.
+
+**Cổng cũ bắt em một phát đúng:** `int(k)` trên khoá xếp (ô phụ "3:0" sẽ nổ) — mã có
+lọc ":" nên an toàn nhưng viết lại theo khuôn `split(":")[0]` chuẩn của hệ để cổng xác
+minh được. Cổng ㉙ mới 7 mục. ĐẠT HẾT.
+
+**Ước sau nâng cấp:** chuỗi máy 8,2ph → ~2,5–3ph (opus 2,4 là bước dài nhất, tìm web
+~1 câu lồng bên trong). Chứng minh cuối cùng = bài thật kế tiếp của anh, đồng hồ nhịp
+(đã ghi đúng sổ) sẽ tự nói.

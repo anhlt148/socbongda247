@@ -1869,6 +1869,37 @@ def tang_loc_video():
         _bao(False, f"cổng gán nhanh lỗi: {type(e).__name__}: {e}")
 
 
+def tang_ba_tang():
+    """㉙ CHUỖI BA TẦNG + MẮT OPUS (anh chốt 20/08 tối: "tăng tốc thôi").
+
+    Đường cũ: xếp kho rồi tìm web NỐI ĐUÔI = 8,2 phút, và tìm web cho MỌI câu kể cả
+    câu kho đã dày — anh bắt đúng: "tìm song song thì trùng, kho có rồi cần gì tìm".
+
+    Đường mới: A đếm kho (code, ~2s) → B xếp kho (opus) ∥ tìm web CHỈ câu mỏng →
+    C model phán "kho không có" thì tìm bù. Đo bài thật: 90% câu kho dày → tìm web
+    còn 1 câu/bài. Opus đo hai lượt ~2,4ph vs sonnet ~5,0ph.
+    """
+    print("㉙ CHUỖI BA TẦNG + MẮT OPUS")
+    try:
+        t = open(os.path.join(TRAM, "tram_tai_nguyen.py"), encoding="utf-8").read()
+        _bao('"claude-opus-5"]' in t.replace("\n", "") or 'KHO_MODEL", "claude-opus-5"' in t,
+             "mắt xếp kho mặc định OPUS (đo 2 lượt: nhanh hơn sonnet ~52%)")
+        _bao("chi_cau_ds" in _than_ham(t, "_tim_san"),
+             "_tim_san có chế độ CHỌN LỌC — chỉ tìm câu trong danh sách")
+        sd = _than_ham(t, "_sau_duyet_loi")
+        _bao("NG_KHO_DAY" in sd and "_kho_nha_tim(tk5" in sd,
+             "tầng A: đếm kho bằng code, ngưỡng khai một nơi")
+        _bao("threading.Thread(target=_luong_tim" in sd,
+             "tầng B: tìm web câu mỏng chạy SONG SONG với model xếp kho")
+        _bao("luong_tim.join" in sd, "chuỗi CHỜ luồng tìm xong mới sang gán nháp")
+        _bao('& day' in sd and "tim_web_bu" in sd,
+             "tầng C: model phán 'kho không có' ở câu tưởng dày thì tìm bù")
+        _bao("chi_cau_ds=mong" in sd and "chi_cau_ds=bu" in sd,
+             "hai lượt tìm đều đi chế độ chọn lọc, không quét mọi câu")
+    except Exception as e:
+        _bao(False, f"cổng ba tầng lỗi: {type(e).__name__}: {e}")
+
+
 def tang_extension():
     """⑧ TIỆN ÍCH CHROME — nơi code sống NGOÀI thư mục máy, dễ lọt khỏi mọi cổng khác.
 
@@ -1986,6 +2017,7 @@ if __name__ == "__main__":
     tang_nhac_chi_dinh()    # chỉ định đúng bản nhạc + kho đủ dài (20/08)
     tang_cong_tu_soi()      # bộ kiểm tự soi: cấm cắt hàm bằng đếm ký tự (20/08)
     tang_the_chu_the()      # tìm chủ thể phải với tới cả kho (20/08)
+    tang_ba_tang()          # chuỗi ba tầng + mắt opus (20/08 tối)
     tang_loc_video()        # lọc video gốc/cắt + thẻ khai đủ (20/08)
     if sau:
         tang4_luong(ma)

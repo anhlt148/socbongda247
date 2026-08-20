@@ -800,7 +800,10 @@ def _trich_ho_so_bai(ma):
     try:
         r = subprocess.run(
             [NT.tim_claude(), "-p", "--model",
-             os.environ.get("KHO_MODEL", "claude-sonnet-5")],
+             # opus: đo 20/08 trên đúng prompt thật, hai lượt — opus ~2,4ph vs
+             # sonnet ~5,0ph (nhanh 52%) và để ô trống hợp lý hơn. Model to hơn
+             # KHÔNG đồng nghĩa chậm hơn — phải đo, đừng đoán.
+             os.environ.get("KHO_MODEL", "claude-opus-5")],
             input=lenh, capture_output=True, text=True, timeout=300)
         m = re.search(r"\{.*\}", r.stdout, re.S)
         hs = json.loads(m.group(0)) if m else {}
@@ -1851,7 +1854,8 @@ def _luu_loi(ma, tieu_de, loi_binh, duyet=False):
             "so_cau": so_cau, "canh_bao": canh_bao}
 
 
-def _tim_san(ma, chi_cau=None, bao_tien=None, chi_thieu=False, tk_ep=None):
+def _tim_san(ma, chi_cau=None, bao_tien=None, chi_thieu=False, tk_ep=None,
+             chi_cau_ds=None):
     """TÌM SẴN ảnh cho từng câu, cache vào anh/ung-vien.json (anh chốt 06/08 tối).
 
     Nỗi đau: mỗi lượt tìm Google mất ~6 giây, hai chục câu là anh ngồi chờ cả buổi —
@@ -1877,6 +1881,11 @@ def _tim_san(ma, chi_cau=None, bao_tien=None, chi_thieu=False, tk_ep=None):
             tk = {int(chi_cau): tk_ep.strip()}
         else:
             tk = {int(chi_cau): tk.get(int(chi_cau), "")} if tk.get(int(chi_cau)) else {}
+    # chi_cau_ds: CHỈ tìm các câu trong tập này (chế độ chọn lọc 20/08 — câu kho đã
+    # DÀY thì miễn tìm web: đỡ lượt Google, đỡ CAPTCHA, đỡ tải ảnh trùng kho)
+    if chi_cau_ds is not None and chi_cau is None and not chi_thieu:
+        tk = {i: v for i, v in tk.items() if i in chi_cau_ds}
+
     thay = set()
     if chi_thieu:
         # Anh chốt 06/08 tối: mở trang chọn giữa chừng thì CHỈ tự tìm cho cảnh CHƯA GÁN
@@ -2693,28 +2702,60 @@ def _sau_duyet_loi(ma_job, ma):
     except Exception as e:
         tin.append(f"không gợi được card: {e}")
 
-    # ── THỨ TỰ ĐẢO 20/08 — anh kể đúng bệnh: "hệ thống tìm quá lâu nên trong khi nó
-    # xử lý anh đã tự tải về rồi, tự chọn bằng mắt". Đo lại 13 bài: 9 bài anh tự tìm
-    # XONG TRƯỚC khi máy xếp kho xong, giữa dải máy về đích SAU anh 10 phút — nên 0%
-    # ảnh lên hình đến từ kho, dù kho có sẵn 122 tấm Đình Bắc, 180 tấm tuyển Việt Nam.
+    # ── BA TẦNG 20/08 tối (anh chốt "tăng tốc thôi" — mục tiêu 5 phút/bài) ──────
     #
-    # Gốc: xếp kho (⑤b) chỉ đọc NHÃN CHỮ của kho nhà, KHÔNG cần một tấm ảnh web nào —
-    # nhưng nó bị xếp sau bước tìm web (⑤) vốn mất 8–9 phút. Chín phút xếp hàng vô ích.
-    # Tìm web thì không thể chạy song song: mọi lượt đi qua MỘT thẻ Chrome dùng chung
-    # (`cdp.the_dung_chung`), hai luồng là giẫm lên nhau.
+    # Bài học hai đời trước: tuần tự tìm-web→xếp-kho làm máy về SAU anh 10 phút (đảo
+    # sáng 20/08); đảo xong thì hai bước vẫn nối đuôi 8,2 phút. Anh bắt tiếp: "tìm
+    # song song thì trùng — cảnh kho có ảnh rồi cần gì tìm nữa". Đúng. Nên:
     #
-    # Nên đảo: xếp kho lên trước. Anh mở bài sau ~1 phút đã có gợi ý kho để dùng, ảnh
-    # web về sau trong lúc anh đang duyệt. ⑥ gán nháp vẫn đứng cuối vì nó đọc CẢ HAI.
-    # ⑤b MÁY XẾP KHO THEO NGHĨA + ĐỀ XUẤT KHUNG ĐÔI — vào CHUỖI (vá 11/08: bài Bukit
-    # Jalil "sân 90k vs 18k chỗ" không có đề xuất khung đôi nào vì bước này chỉ chạy
-    # khi anh bấm 🧠 tay — đúng họ bệnh "một việc một đường chạy" lần thứ ba trong
-    # ngày). Đặt TRƯỚC gán nháp vì gán nháp đọc bản máy xếp làm nguồn ①a — có bản
-    # xếp thì nháp chuẩn hơn hẳn khớp từ. Một lượt sonnet mỗi bài, anh đã chốt
-    # "chấp nhận model cao để chính xác" cho đúng khâu này.
+    #   A (code, ~0s)  đếm tấm kho khớp TỪ KHOÁ VIỆT từng câu → câu DÀY (≥NG_KHO_DAY)
+    #                  miễn tìm web; câu MỎNG vào danh sách tìm
+    #   B (song song)  model xếp kho theo nghĩa (opus, mọi câu)
+    #                  ∥ tìm web CHỈ câu mỏng — hai việc khác tài nguyên hẳn nhau:
+    #                  một bên là claude CLI, một bên là thẻ Chrome; tìm web vẫn chỉ
+    #                  MỘT luồng như cũ nên không đụng bài học "một tab Chrome"
+    #   C (vá nốt)     model phán "kho KHÔNG có tấm hợp nghĩa" cho câu tầng A tưởng
+    #                  dày (khớp từ mà lệch nghĩa) → tìm web bù đúng câu đó
+    #
+    # Giá phải trả (anh đã nghe và chốt): câu miễn tìm sẽ không có ảnh web dự phòng
+    # sẵn — chê hết tấm kho thì bấm 🔄 Tìm lại tay. Ngưỡng bảo thủ, khai một nơi.
+    NG_KHO_DAY = 3
+    nh5 = _nhap(viec)
+    mong, day = set(), set()
+    for k5 in (nh5.get("tu_khoa") or {}):
+        try:
+            i5 = int(k5)
+        except ValueError:
+            continue
+        tk5 = _tk_kho(nh5, i5)
+        if tk5 and len(_kho_nha_tim(tk5, toi_da=NG_KHO_DAY)) >= NG_KHO_DAY:
+            day.add(i5)
+        else:
+            mong.add(i5)
+
+    def bao5(buoc, da, tong):
+        with KHOA:
+            VIEC_JOB[ma_job] = {"xong": False, "buoc": buoc, "da": da, "tong": tong,
+                                "tin": tin}
+    ket_tim = {}
+
+    def _luong_tim():
+        _t = time.time()
+        try:
+            ket_tim["c"] = _tim_san(ma, None, None, chi_cau_ds=mong)
+        except Exception as e:
+            ket_tim["loi"] = str(e)
+        _ghi_nhip(ma, "tim_web", time.time() - _t)
+
+    luong_tim = threading.Thread(target=_luong_tim, daemon=True)
+    luong_tim.start()
+
     _t_xk = time.time()
     try:
         with KHOA:
-            VIEC_JOB[ma_job] = {"xong": False, "buoc": "máy xếp kho theo nghĩa", "tin": tin}
+            VIEC_JOB[ma_job] = {"xong": False, "tin": tin,
+                                "buoc": f"máy xếp kho ∥ tìm web ({len(mong)} câu kho mỏng,"
+                                        f" {len(day)} câu kho dày miễn tìm)"}
         r5b = _xep_kho_nghia(ma)
         if r5b.get("loi"):
             tin.append(f"máy xếp kho: {r5b['loi']}")
@@ -2724,28 +2765,42 @@ def _sau_duyet_loi(ma_job, ma):
     except Exception as e:
         tin.append(f"không xếp kho theo nghĩa được: {e}")
     _ghi_nhip(ma, "xep_kho", time.time() - _t_xk)
+    luong_tim.join(timeout=900)
+    if ket_tim.get("loi"):
+        tin.append(f"tìm web câu mỏng lỗi: {ket_tim['loi']}")
+    else:
+        c5 = ket_tim.get("c") or {}
+        tin.append(f"tìm web {len(c5)}/{len(mong) + len(day)} câu (kho dày miễn "
+                   f"{len(day)} câu), về {sum(len(v.get('anh', [])) for v in c5.values())} ảnh")
 
-    # ⑤ TÌM SẴN ảnh cho từng câu — bước lâu nhất (~6 giây/câu) nên để cuối; chạy lúc anh
-    # còn đang đọc lời thì thời gian chờ thành thời gian máy (anh chốt 06/08 tối).
+    # tầng C: model là trọng tài — câu nó phán trống mà tầng A tưởng dày → tìm bù
     try:
-        def bao5(buoc, da, tong):
+        xep_c = (_doc_kho_xep(ma).get("xep") or {})
+        bu = {int(str(k).split(":")[0]) for k, v in xep_c.items()
+              if ":" not in str(k) and not (v or {}).get("tep")} & day
+        if bu:
             with KHOA:
-                VIEC_JOB[ma_job] = {"xong": False, "buoc": buoc, "da": da, "tong": tong,
-                                    "tin": tin}
-        _t_tw = time.time()
-        c = _tim_san(ma, None, bao5)
-        _ghi_nhip(ma, "tim_web", time.time() - _t_tw)
-        tin.append(f"tìm sẵn {sum(len(v.get('anh', [])) for v in c.values())} ảnh ứng viên "
-                   f"cho {len(c)} câu")
-        # ⑤a TÌM LẠI VÒNG 2 cho câu TRẮNG TAY (anh đặt 12/08: "cảnh nào tìm chưa được
-        # phải tự tìm lại"). Từ khoá dài hay ra 0 kết quả — Google càng nhiều chữ càng
-        # siết. Vòng 2 rút gọn còn 4 từ đầu (thường là TÊN RIÊNG + hành động) rồi tìm
-        # lại đúng những câu đó. Trước đây việc này đợi anh mở Trang chọn mới chạy —
-        # đúng họ bệnh "một việc một đường chạy".
-        trang = [i for i, v in c.items() if not (v.get("anh") or [])]
+                VIEC_JOB[ma_job] = {"xong": False, "tin": tin,
+                                    "buoc": f"tìm bù {len(bu)} câu khớp từ mà lệch nghĩa"}
+            _t_bu = time.time()
+            _tim_san(ma, None, None, chi_cau_ds=bu)
+            _ghi_nhip(ma, "tim_web_bu", time.time() - _t_bu)
+            tin.append(f"tìm bù {len(bu)} câu (kho khớp từ nhưng model phán lệch nghĩa)")
+    except Exception as e:
+        tin.append(f"không tìm bù được: {e}")
+
+    # ⑤a TÌM LẠI VÒNG 2 cho câu TRẮNG TAY trong số ĐÃ TÌM (anh đặt 12/08) — từ khoá
+    # dài hay ra 0 kết quả, rút còn 4 từ đầu rồi tìm lại đúng câu đó.
+    try:
+        uv5 = json.load(open(os.path.join(viec, "anh", "ung-vien.json"),
+                             encoding="utf-8"))
+    except Exception:
+        uv5 = {}
+    try:
+        trang = [int(i) for i, v in uv5.items()
+                 if int(i) in (mong | set()) and not (v.get("anh") or [])]
         if trang:
-            nh_t = _nhap(viec)
-            tk_t = nh_t.get("tu_khoa") or {}
+            tk_t = nh5.get("tu_khoa") or {}
             n_bu = 0
             for i_t in trang:
                 cu_t = (tk_t.get(str(i_t)) or "").strip()
@@ -2761,10 +2816,9 @@ def _sau_duyet_loi(ma_job, ma):
                         n_bu += 1
                 except Exception:
                     pass
-            tin.append(f"tìm lại vòng 2: {n_bu}/{len(trang)} câu trắng tay đã có ảnh"
-                       if trang else "")
+            tin.append(f"tìm lại vòng 2: {n_bu}/{len(trang)} câu trắng tay đã có ảnh")
     except Exception as e:
-        tin.append(f"không tìm sẵn được ảnh: {e}")
+        tin.append(f"vòng 2 lỗi: {e}")
 
     # ⑥ GÁN NHÁP toàn bộ (Phương án ① — anh duyệt 10/08): kho nhà → ứng viên Google,
     # rồi mắt máy kiểm nội dung, tấm lệch tự gỡ. Anh mở trạm ra là bài đã dựng nháp sẵn,
