@@ -4344,6 +4344,21 @@ class Tay(BaseHTTPRequestHandler):
                 so_u = min(int((q.get("so") or ["8"])[0]), 16)
                 viec_u = os.path.join(DD.VIEC, ma_u)
                 nh_u = _nhap(viec_u)
+                # Ô TÌM của màn Gán nhanh (anh bắt 20/08: "gõ mà không thấy thay đổi
+                # gì"): trang gửi &q= từ ngày đầu nhưng server chưa từng đọc — ô tìm
+                # là trang trí. Nay: anh gõ gì thì tra KHO NHÀ theo đúng cái đó, thay
+                # cả danh sách (ba nguồn mặc định là gợi ý cho câu, không phải kết
+                # quả tìm của anh).
+                q_go = (q.get("q") or [""])[0].strip()
+                if q_go:
+                    ra_q = []
+                    for m in _kho_nha_tim(q_go)[:so_u]:
+                        ra_q.append({"u": m["u"], "tep": m["tep"], "nguon": "kho",
+                                     "w": m.get("w", 0), "h": m.get("h", 0),
+                                     "nhan": "🏠 " + ((m.get("chu_the")
+                                             or (m.get("nhan") or [""])[0]))[:26]})
+                    return self._js({"cau": cau_u, "phan": phan_u, "tu_khoa": q_go,
+                                     "tim": True, "ds": ra_q})
                 tk_u = ((nh_u.get("tu_khoa_phu") or {}).get(str(cau_u), {})
                         .get(phan_u, "") if phan_u != "" else "") \
                     or (nh_u.get("tu_khoa") or {}).get(str(cau_u), "")

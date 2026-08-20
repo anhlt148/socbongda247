@@ -783,7 +783,7 @@ Dùng khi bài chưa duyệt lời, hoặc anh vừa sửa lời nên muốn g�
       <div id="gnSo" style="color:#FFD400;font-weight:700;font-size:13px"></div>
       <div id="gnChu" style="font-size:17px;line-height:1.45;margin:2px 0 6px"></div>
       <span class="otim" style="position:relative;display:inline-block;width:340px">
-        <input id="gnTim" placeholder="/ để tìm ảnh khác cho cảnh này…"
+        <input id="gnTim" placeholder="/ gõ để tìm trong KHO NHÀ (tên cầu thủ, đội, tình huống)…"
           style="width:100%;padding:5px 26px 5px 9px;font-size:12.5px">
         <span class="xoa-tim" id="gnTimXoa" style="position:absolute;right:7px;top:50%;
           transform:translateY(-50%);cursor:pointer;color:#a0938a;display:none">✕</span>
@@ -2315,7 +2315,19 @@ async function gnChon(k){
       clearInterval(nhip);
       gnDangGan = false;
       const duong = t.ban_do_url && t.ban_do_url[u];
-      if (!duong){ if (o) o.style.opacity = 1; return bao('⚠ nhận ảnh hỏng', true); }
+      if (!duong){
+        // NGUỒN CHẾT — nói to ngay TRÊN Ô anh vừa bấm, đừng chỉ nháy toast góc màn
+        // (anh bắt 20/08: "bấm số không tải về được" — thật ra máy có báo, nhưng báo
+        // khẽ quá thành ra như không có gì xảy ra).
+        if (o){
+          o.style.opacity = 1;
+          o.style.border = '2px solid #b3392f';
+          const nh = o.querySelector('div:last-child');
+          if (nh){ nh.textContent = '✗ nguồn ảnh đã chết — chọn tấm khác';
+                   nh.style.color = '#e05c50'; }
+        }
+        return bao('⚠ Nguồn ảnh này đã chết, không tải được — bấm tấm khác', true);
+      }
       // Ô CHÍNH đi /api/gan, Ô PHỤ đi /api/gan-phu — cùng một luồng, khác cửa
       if (oNay.phan === null){
         const g = await api('/api/gan', {ma, cau: oNay.cau, duong});

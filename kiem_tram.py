@@ -1859,6 +1859,12 @@ def tang_loc_video():
         _gd = h2[h2.find("async function ganDoan("):h2.find("let mxSeg")]
         _bao("dangPhu" in _gd and "ganPhuSlot(dangPhu.cau, dangPhu.phan" in _gd,
              "ganDoan tôn trọng Ô PHỤ đang chọn, không cướp về cảnh chính")
+        # ô tìm Gán nhanh: trang gửi &q= từ ngày đầu mà server chưa từng đọc (anh bắt
+        # 20/08: "gõ không thấy thay đổi gì") — ô tìm là trang trí suốt chín ngày.
+        _bao('q_go = (q.get("q")' in t2 and "_kho_nha_tim(q_go)" in t2,
+             "ô tìm Gán nhanh TRA KHO thật theo chữ anh gõ")
+        _bao("nguồn ảnh đã chết" in h2,
+             "bấm ảnh nguồn chết thì báo ĐỎ ngay trên ô, không chỉ nháy toast góc màn")
     except Exception as e:
         _bao(False, f"cổng gán nhanh lỗi: {type(e).__name__}: {e}")
 

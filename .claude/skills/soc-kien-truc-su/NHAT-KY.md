@@ -1484,3 +1484,25 @@ kiểm bằng trình duyệt: cảnh 1 → 3 phần (1·1b·1c), clip đúng ô 
 
 Cổng +1 mục (neo thân ganDoan). ĐẠT HẾT. Cùng họ bệnh "cửa mới quên đường ô phụ" —
 lần thứ NĂM luật "cảnh chính có gì cảnh phụ có nấy" bị một cửa lẻ vi phạm.
+
+## 20/08/2026 (khuya²) — Gán nhanh: ô tìm là TRANG TRÍ + bấm ảnh chết báo quá khẽ
+
+**Anh báo:** ① gõ ô tìm không thấy thay đổi gì · ② bấm số ảnh không tải về được.
+
+**Soi bằng trình duyệt thật (bấm thử từng ca, có hoàn lại bài):**
+- Bấm ảnh KHO → gán được (t16→t14, nhảy đúng cảnh kế). Bấm ảnh WEB SỐNG (AFC) → gán
+  được. Ca hỏng = bấm ảnh WEB CHẾT (fbsbx) → máy có báo nhưng chỉ nháy toast nhỏ góc
+  màn → với anh là "không có gì xảy ra".
+- Ô tìm: trang gửi `&q=` từ ngày đầu, **server chưa từng đọc** — trang trí chín ngày.
+
+**Sửa:**
+- server: có `q` → `_kho_nha_tim(q)` thay cả danh sách (ba nguồn mặc định là gợi ý cho
+  câu, không phải kết quả tìm của anh); trả cờ `tim: true`.
+- UI: bấm ảnh chết → viền ĐỎ + "✗ nguồn ảnh đã chết — chọn tấm khác" NGAY TRÊN Ô,
+  toast cũng nói rõ hơn; placeholder đổi thành "gõ để tìm trong KHO NHÀ…" (nói rõ tìm
+  ở đâu — trước ghi chung chung "tìm ảnh khác").
+- Kiểm end-to-end trình duyệt: gõ "Xuân Son" → 8 ứng viên đổi ngay thành 🏠 Xuân Son.
+
+Cổng +2 mục. ĐẠT HẾT. Bài học lặp: TRUYỀN tham số mà không có AI ĐỌC là bệnh câm —
+cùng họ với "cửa thẻ chủ thể cắt top 40" sáng nay: giao diện hứa một việc backend
+không làm.
