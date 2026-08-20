@@ -425,34 +425,6 @@ def bo_nhan(me=15):
     can = [d for d in _doc_so() if d.get("nhan_tho")]
     # --phan i/n: chia dải để CHẠY SONG SONG nhiều máy (10/08 — vòng chi tiết ~4
     # phút/mẻ, một máy mất 2,5 giờ; 3 máy còn ~50 phút). Sổ ghi có KHOÁ FILE.
-    # ── ƯU TIÊN THEO NỘI DUNG: --loc "việt nam,thái lan" (anh đặt 20/08) ─────────
-    # Kho lớn dần, quét trọn một lượt là tốn và lâu. Anh làm bài về tuyển Việt Nam và
-    # Thái Lan gần như hằng ngày, nên nhãn của hai nhóm ấy đáng đúng trước. So chuỗi
-    # BỎ DẤU để "viet nam" cũng bắt được "Tuyển Việt Nam"; soi cả chủ thể, nhãn, mô tả
-    # lẫn TÊN BÀI (tên tệp mang mã bài, thường lộ rõ trận nào).
-    loc = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--loc=")), "")
-    if loc:
-        cum = [_bo_dau_nk(x.strip()) for x in loc.split(",") if x.strip()]
-
-        def _hop(d):
-            kho = _bo_dau_nk(" ".join([
-                str(d.get("chu_the") or ""), " ".join(d.get("nhan") or []),
-                str(d.get("mo_ta") or ""), str(d.get("tep") or "")]))
-            return any(c in kho for c in cum)
-
-        truoc = len(can)
-        uu = [d for d in can if _hop(d)]
-        con = [d for d in can if not _hop(d)]
-        can = uu + con          # hợp lọc lên ĐẦU, phần còn lại vẫn giữ để --so cắt
-        print(f"  ưu tiên {len(uu)}/{truoc} tấm khớp: {loc}")
-
-    # ── GIỚI HẠN SỐ TẤM: --so=200 ────────────────────────────────────────────────
-    # Anh ra số lượng cụ thể thì làm đúng số ấy — biết trước tốn bao nhiêu, dừng ở đâu.
-    so_ep = next((int(a.split("=", 1)[1]) for a in sys.argv
-                  if a.startswith("--so=") and a.split("=", 1)[1].isdigit()), 0)
-    if so_ep:
-        can = can[:so_ep]
-
     phan = next((a for a in sys.argv if re.match(r"^\d+/\d+$", a)), None)
     if phan:
         i_p, n_p = (int(x) for x in phan.split("/"))
@@ -558,6 +530,34 @@ def soat(me=8):
     # chạy opus là quét trọn 986 tấm, đắt gấp mấy lần mà phần lớn chẳng chữa được gì.
     if "--chua-chac" in sys.argv:
         can = [d for d in can if d.get("soat_chac") in ("vua", "thap")]
+    # ── ƯU TIÊN THEO NỘI DUNG: --loc "việt nam,thái lan" (anh đặt 20/08) ─────────
+    # Kho lớn dần, quét trọn một lượt là tốn và lâu. Anh làm bài về tuyển Việt Nam và
+    # Thái Lan gần như hằng ngày, nên nhãn của hai nhóm ấy đáng đúng trước. So chuỗi
+    # BỎ DẤU để "viet nam" cũng bắt được "Tuyển Việt Nam"; soi cả chủ thể, nhãn, mô tả
+    # lẫn TÊN BÀI (tên tệp mang mã bài, thường lộ rõ trận nào).
+    loc = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--loc=")), "")
+    if loc:
+        cum = [_bo_dau_nk(x.strip()) for x in loc.split(",") if x.strip()]
+
+        def _hop(d):
+            kho = _bo_dau_nk(" ".join([
+                str(d.get("chu_the") or ""), " ".join(d.get("nhan") or []),
+                str(d.get("mo_ta") or ""), str(d.get("tep") or "")]))
+            return any(c in kho for c in cum)
+
+        truoc = len(can)
+        uu = [d for d in can if _hop(d)]
+        con = [d for d in can if not _hop(d)]
+        can = uu + con          # hợp lọc lên ĐẦU, phần còn lại vẫn giữ để --so cắt
+        print(f"  ưu tiên {len(uu)}/{truoc} tấm khớp: {loc}")
+
+    # ── GIỚI HẠN SỐ TẤM: --so=200 ────────────────────────────────────────────────
+    # Anh ra số lượng cụ thể thì làm đúng số ấy — biết trước tốn bao nhiêu, dừng ở đâu.
+    so_ep = next((int(a.split("=", 1)[1]) for a in sys.argv
+                  if a.startswith("--so=") and a.split("=", 1)[1].isdigit()), 0)
+    if so_ep:
+        can = can[:so_ep]
+
     phan = next((a for a in sys.argv if re.match(r"^\d+/\d+$", a)), None)
     if phan:
         i_p, n_p = (int(x) for x in phan.split("/"))

@@ -1824,6 +1824,18 @@ def tang_loc_video():
              f"tra thật: lọc 'cắt còn gốc' trả {d.get('tong', 0)} video, đúng loại")
     except Exception as e:
         _bao(False, f"cổng lọc video lỗi: {type(e).__name__}: {e}")
+    # Cờ --loc/--so của bộ quét nhãn: 20/08 tôi chèn bằng thay-chuỗi mà mẫu
+    # `phan = next(...)` có ở CẢ bo_nhan() lẫn soat() → khối rơi vào bo_nhan, cờ
+    # --so=136 câm lặng và opus quét cả 669 tấm. Cổng neo vào đúng thân hàm.
+    try:
+        nk = open(os.path.join(MAY, "nhap_kho_chu_the.py"), encoding="utf-8").read()
+        than_soat = _than_ham(nk, "soat")
+        _bao('"--loc="' in than_soat.replace("startswith(", '"') or "--loc=" in than_soat,
+             "cờ --loc nằm trong soat(), không lạc sang hàm khác")
+        _bao("so_ep" in than_soat and "can[:so_ep]" in than_soat,
+             "cờ --so cắt đúng danh sách sắp soát")
+    except Exception as e:
+        _bao(False, f"cổng cờ quét lỗi: {type(e).__name__}: {e}")
 
 
 def tang_extension():

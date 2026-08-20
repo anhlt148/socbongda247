@@ -1387,3 +1387,26 @@ dùng lại được vì khung giờ không khớp cảnh (thiếu/thừa).
 **Chưa làm (đáng làm tiếp):** nút "mở bản gốc tại đúng mốc" trên thẻ cắt còn gốc —
 sổ đã có `nguon_doan` (gốc#từ-đến@khung) đủ dữ liệu để cắt lại đoạn mới đúng độ dài
 cảnh; hôm nay chỉ làm phần LỌC như anh đặt.
+
+## 20/08/2026 (chiều muộn) — quét đợt hai chạy LỐ vì cờ chèn nhầm hàm
+
+**Phát hiện qua Monitor:** đợt hai đặt `--so=136` mà log ghi "soát 669 tấm" — đã dừng
+tay ở mẻ 24 (~192 tấm, vẫn sát mức 200 anh đặt nên không thiệt hại lớn).
+
+**Gốc:** khối cờ `--loc/--so` được chèn bằng THAY CHUỖI theo mẫu
+`phan = next(...)` — mẫu này có ở CẢ `bo_nhan()` (dòng 427) lẫn `soat()` (dòng ~533),
+phép thay ăn vào chỗ gặp ĐẦU TIÊN → khối rơi vào `bo_nhan()`, cờ ở `soat()` câm lặng.
+Họ hàng với bệnh "cắt thân hàm bằng đếm ký tự" — đều là XỬ MÃ THEO MẪU TRÙNG LẶP.
+
+**Vì sao test không bắt được:** lúc thử `--loc` tôi viết LẠI logic lọc trong script thử
+thay vì gọi đúng `soat()` — logic đúng nhưng đường chạy thật không đi qua nó.
+
+**Sửa:** nhổ khối khỏi `bo_nhan()`, cấy vào `soat()` sau bộ lọc `--chua-chac`. Thử khô
+qua ĐÚNG hàm (vá subprocess để dừng trước khi gọi model): `--so=5` → "soát 5 tấm" ✓,
+`--loc` → "ưu tiên 313/487 tấm khớp" ✓. Cổng +2 mục neo vào `_than_ham(soat)`.
+
+**Dọn:** bootout + xoá plist 3 job quét một-lần (RunAtLoad=true mà để lại là máy khởi
+động lại tự chạy, đốt token không chủ đích).
+
+**Đính chính:** nghi "job chạy hai lần" là tôi hớ — dòng lặp trong terminal là output
+lệnh grep của chính tôi, log chỉ có một dòng BẮT ĐẦU.

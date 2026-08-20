@@ -1218,3 +1218,18 @@ gợi ý, danh sách bài) — cùng một khuôn thì cùng một bệnh.
 
 **Kèm:** giữ nguyên hành vi khi KHÔNG gõ gì (vẫn 40 thẻ). Thêm đường mới mà không đụng
 đường cũ thì lỗi không lan — đây là cách sửa rẻ nhất về rủi ro.
+
+## Test phải đi QUA ĐÚNG HÀM sẽ chạy thật, không viết lại logic để thử (20/08/2026)
+
+Thêm cờ `--loc/--so` cho bộ quét nhãn, tôi thử bằng cách VIẾT LẠI phép lọc trong một
+script thử — ra số đẹp, báo ổn. Nhưng khối cờ thật đã chèn NHẦM HÀM (thay-chuỗi theo
+mẫu `phan = next(...)` có ở hai hàm), nên đường chạy thật không hề đi qua nó: opus
+quét 669 tấm thay vì 136.
+
+**Hai luật:**
+1. **Thay/chèn mã theo chuỗi thì mẫu phải ĐỘC NHẤT trong tệp** — grep đếm số lần khớp
+   trước khi thay; mẫu xuất hiện ≥2 lần thì neo thêm ngữ cảnh (tên hàm, chú thích gần
+   đó). Cùng họ với bệnh "cắt thân hàm bằng đếm ký tự" — lần thứ TƯ họ này cắn.
+2. **Thử tính năng mới bằng cách gọi ĐÚNG hàm sẽ chạy thật.** Viết lại logic để thử là
+   thử cái mình NGHĨ, không phải cái máy SẼ LÀM. Muốn tránh gọi model thật thì vá tạm
+   (monkeypatch subprocess) rồi nhìn dòng in đầu — 5 giây, bắt được ngay.
